@@ -2,8 +2,7 @@ package artifacts
 
 import (
 	"errors"
-	"fmt"
-	"io/ioutil"
+	"os"
 
 	"gopkg.in/yaml.v2"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -19,24 +18,14 @@ type Artifact struct {
 	resource  map[string]interface{}
 }
 
-func (a *Artifact) WriteFile() (string, error) {
-	tmpfile, err := ioutil.TempFile("trivy-k8s", fmt.Sprintf("%s/%s/%s", a.Namespace, a.Kind, a.Name))
-	if err != nil {
-		return "", nil
-	}
-	defer tmpfile.Close()
-
+func (a *Artifact) WriteToFile(file *os.File) error {
 	data, err := yaml.Marshal(a.resource)
 	if err != nil {
-		return "", err
+		return err
 	}
 
-	tmpfile.Write(data)
-	if err != nil {
-		return "", err
-	}
-
-	return tmpfile.Name(), nil
+	_, err = file.Write(data)
+	return err
 }
 
 func FromResource(resource unstructured.Unstructured) (*Artifact, error) {

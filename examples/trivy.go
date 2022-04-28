@@ -12,7 +12,7 @@ import (
 func main() {
 	ctx := context.Background()
 
-	fmt.Println("Scaning image on namespace 'default'")
+	fmt.Println("Scaning image cluster")
 
 	kubeConfig, err := trivyk8s.GetKubeConfig()
 	if err != nil {

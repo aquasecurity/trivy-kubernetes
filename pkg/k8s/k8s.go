@@ -5,9 +5,10 @@ import (
 )
 
 const (
-	KindPod     = "Pod"
-	KindJob     = "Job"
-	KindCronJob = "CronJob"
+	KindPod        = "Pod"
+	KindJob        = "Job"
+	KindCronJob    = "CronJob"
+	KindReplicaSet = "ReplicaSet"
 
 	AppsGroup              = "apps"
 	CoreGroup              = "cores"

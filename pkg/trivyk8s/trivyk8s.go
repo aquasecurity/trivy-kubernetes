@@ -9,6 +9,7 @@ import (
 	"github.com/aquasecurity/trivy-kubernetes/pkg/artifacts"
 	"github.com/aquasecurity/trivy-kubernetes/pkg/k8s"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -63,14 +64,12 @@ func (c *client) ListArtifacts(ctx context.Context, namespace string) ([]*artifa
 		}
 
 		for _, resource := range resources.Items {
-			// it should return artifact, found, error
+			if ignoreResource(resource) {
+				continue
+			}
 			artifact, err := artifacts.FromResource(resource)
 			if err != nil {
 				return nil, err
-			}
-
-			if artifact == nil {
-				continue
 			}
 
 			artifactList = append(artifactList, artifact)
@@ -78,4 +77,18 @@ func (c *client) ListArtifacts(ctx context.Context, namespace string) ([]*artifa
 	}
 
 	return artifactList, nil
+}
+
+// ignore resources to avoid duplication,
+// when a resource has an owner, the image/iac will be scanned on the owner itself
+func ignoreResource(resource unstructured.Unstructured) bool {
+	switch resource.GetKind() {
+	case k8s.KindPod, k8s.KindJob, k8s.KindReplicaSet:
+		metadata := resource.GetOwnerReferences()
+		if metadata != nil {
+			return true
+		}
+	}
+
+	return false
 }

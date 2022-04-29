@@ -17,6 +17,8 @@ type KubernetesReport struct {
 }
 
 func PrintImagesReport(reports []KubernetesReport) {
+	var isMisconfig bool
+
 	var data [][]string
 	for _, r := range reports {
 		d := make([]string, 4)
@@ -57,6 +59,7 @@ func PrintImagesReport(reports []KubernetesReport) {
 			}
 
 			for _, mis := range rr.Misconfigurations {
+				isMisconfig = true
 				switch mis.Severity {
 				case "CRITICAL":
 					critical++
@@ -86,20 +89,24 @@ func PrintImagesReport(reports []KubernetesReport) {
 
 	table := tablewriter.NewWriter(os.Stdout)
 	table.AppendBulk(data)
-	table.SetHeader([]string{
-		"Namespace",
-		"Resource",
-		"Image",
-		"Vunerabilities",
-	})
+
+	if isMisconfig {
+		table.SetHeader([]string{
+			"Namespace",
+			"Kind",
+			"Name",
+			"Vunerabilities",
+		})
+	} else {
+		table.SetHeader([]string{
+			"Namespace",
+			"Resource",
+			"Image",
+			"Vunerabilities",
+		})
+
+	}
 
 	table.SetRowLine(true)
 	table.Render() // Send output
-}
-
-func PrintIACReport(report types.Report) {
-	for _, r := range report.Results {
-		fmt.Printf("%v\n", r)
-		return
-	}
 }

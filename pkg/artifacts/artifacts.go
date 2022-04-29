@@ -1,7 +1,6 @@
 package artifacts
 
 import (
-	"errors"
 	"os"
 
 	"gopkg.in/yaml.v2"
@@ -32,16 +31,6 @@ func FromResource(resource unstructured.Unstructured) (*Artifact, error) {
 	var containersNestedKeys []string
 
 	switch resource.GetKind() {
-	case k8s.KindPod, k8s.KindJob, "ReplicaSet":
-		metadata := resource.GetOwnerReferences()
-		if metadata != nil {
-			// ignore pod to avoid duplication because it is owned by another resource which will also be scanned
-			return nil, nil
-		}
-	default:
-	}
-
-	switch resource.GetKind() {
 	case k8s.KindPod:
 		containersNestedKeys = []string{"spec", "containers"}
 	case k8s.KindCronJob:
@@ -62,20 +51,17 @@ func FromResource(resource unstructured.Unstructured) (*Artifact, error) {
 			if err != nil {
 				return nil, err
 			}
-			if !found {
-				return nil, errors.New("not found")
-			}
 
-			images = append(images, name)
+			if found {
+				images = append(images, name)
+			}
 		}
 	}
 
-	name, found, err := unstructured.NestedString(resource.Object, "metadata", "name")
+	// we don't check found here, if the name is not found it will be an empty string
+	name, _, err := unstructured.NestedString(resource.Object, "metadata", "name")
 	if err != nil {
 		return nil, err
-	}
-	if !found {
-		return nil, errors.New("not found")
 	}
 
 	return &Artifact{

@@ -9,6 +9,7 @@ import (
 	"github.com/aquasecurity/trivy-kubernetes/pkg/k8s"
 )
 
+// Artifact holds information for kubernetes scannable resources
 type Artifact struct {
 	Namespace string
 	Kind      string
@@ -17,6 +18,7 @@ type Artifact struct {
 	resource  map[string]interface{}
 }
 
+// WriteToFile the resource to a file
 func (a *Artifact) WriteToFile(file *os.File) error {
 	data, err := yaml.Marshal(a.resource)
 	if err != nil {
@@ -27,6 +29,7 @@ func (a *Artifact) WriteToFile(file *os.File) error {
 	return err
 }
 
+// FromResource is a factory method to create an Artifact from an unstructured.Unstructured
 func FromResource(resource unstructured.Unstructured) (*Artifact, error) {
 	var containersNestedKeys []string
 

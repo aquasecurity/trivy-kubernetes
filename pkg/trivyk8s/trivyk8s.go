@@ -15,6 +15,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
+// GetKubeConfig returns local kubernetes configurations
 func GetKubeConfig() (*rest.Config, error) {
 	userHomeDir, err := os.UserHomeDir()
 	if err != nil {
@@ -30,6 +31,7 @@ func GetKubeConfig() (*rest.Config, error) {
 	return kubeConfig, nil
 }
 
+// TrivyK8S interface represents the operations supported by the library
 type TrivyK8S interface {
 	ListArtifacts(context.Context, string) ([]*artifacts.Artifact, error)
 }
@@ -38,6 +40,7 @@ type client struct {
 	k8s dynamic.Interface
 }
 
+// New creates a trivyK8S client
 func New(kubeConfig *rest.Config) (TrivyK8S, error) {
 	k8sClient, err := dynamic.NewForConfig(kubeConfig)
 	if err != nil {
@@ -47,6 +50,8 @@ func New(kubeConfig *rest.Config) (TrivyK8S, error) {
 	return &client{k8sClient}, nil
 }
 
+// ListArtifacts returns kubernetes scannable artifacs. If namespace is empty, it returns artifacts
+// for the whole cluster.
 func (c *client) ListArtifacts(ctx context.Context, namespace string) ([]*artifacts.Artifact, error) {
 	artifactList := make([]*artifacts.Artifact, 0)
 

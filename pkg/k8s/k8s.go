@@ -39,6 +39,8 @@ const (
 	PodSecurityPolicies    = "podsecuritypolicies"
 )
 
+// GetGVRs returns GroupVersionResource to query kubernetes,
+// if the namespace is empty it returns GRVs for the whole cluster
 func GetGVRs(namespace string) []schema.GroupVersionResource {
 	gvrs := getNamespaceGVR()
 	if len(namespace) == 0 {

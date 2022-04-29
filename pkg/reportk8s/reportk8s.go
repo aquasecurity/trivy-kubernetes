@@ -14,6 +14,7 @@ type KubernetesReport struct {
 	Kind      string
 	Image     string
 	Results   types.Results
+	Error     error
 }
 
 func PrintImagesReport(reports []KubernetesReport) {
@@ -30,6 +31,10 @@ func PrintImagesReport(reports []KubernetesReport) {
 		} else {
 			d[1] = fmt.Sprintf("%s/%s", r.Kind, r.Name)
 			d[2] = r.Image
+		}
+
+		if r.Error != nil {
+			d[3] = "Error scanning image"
 		}
 
 		for _, rr := range r.Results {
@@ -82,7 +87,6 @@ func PrintImagesReport(reports []KubernetesReport) {
 					unknown,
 				)
 			}
-
 		}
 		data = append(data, d)
 	}

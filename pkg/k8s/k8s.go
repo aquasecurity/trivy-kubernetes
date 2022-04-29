@@ -13,10 +13,11 @@ const (
 	AppsGroup              = "apps"
 	CoreGroup              = "cores"
 	BatchGroup             = "batch"
-	RbacGroup              = "rbac"
-	NetworkingGroup        = "networking"
+	RbacGroup              = "rbac.authorization.k8s.io"
+	NetworkingGroup        = "networking.k8s.io"
+	PolicyGroup            = "policy"
 	V1Version              = "v1"
-	V1beta1Version         = "v1Beta1"
+	V1beta1Version         = "v1beta1"
 	Deployments            = "deployments"
 	ReplicaSets            = "replicasets"
 	ReplicationControllers = "replicationcontrollers"
@@ -29,14 +30,41 @@ const (
 	ConfigMaps             = "configmaps"
 	Roles                  = "roles"
 	RoleBindings           = "rolebindings"
-	NetworkPolicys         = "networkpolicy"
-	Ingresss               = "ingresss"
-	ResourceQuotas         = "resourceQuotas"
+	NetworkPolicys         = "networkpolicies"
+	Ingresss               = "ingresses"
+	ResourceQuotas         = "resourcequotas"
 	LimitRanges            = "limitranges"
+	ClusterRoles           = "clusterroles"
+	ClusterRoleBindings    = "clusterrolebindings"
+	PodSecurityPolicies    = "podsecuritypolicies"
 )
 
 func GetGVRs(namespace string) []schema.GroupVersionResource {
-	return getNamespaceGVR()
+	gvrs := getNamespaceGVR()
+	if len(namespace) == 0 {
+		gvrs = append(gvrs, getClusterGVR()...)
+	}
+	return gvrs
+}
+
+func getClusterGVR() []schema.GroupVersionResource {
+	return []schema.GroupVersionResource{
+		{
+			Version:  V1Version,
+			Group:    RbacGroup,
+			Resource: ClusterRoles,
+		},
+		{
+			Version:  V1Version,
+			Group:    RbacGroup,
+			Resource: ClusterRoleBindings,
+		},
+		{
+			Version:  V1beta1Version,
+			Group:    PolicyGroup,
+			Resource: PodSecurityPolicies,
+		},
+	}
 }
 
 func getNamespaceGVR() []schema.GroupVersionResource {
@@ -81,45 +109,45 @@ func getNamespaceGVR() []schema.GroupVersionResource {
 			Group:    BatchGroup,
 			Resource: Jobs,
 		},
-		//		{
-		//			Version:  V1Version,
-		//			Group:    "svc",
-		//			Resource: Services,
-		//		},
-		// {
-		// 	Version:  V1Version,
-		// 	Group:    "cm",
-		// 	Resource: ConfigMaps,
-		// },
-		// {
-		// 	Version:  V1Version,
-		// 	Group:    RbacGroup,
-		// 	Resource: Roles,
-		// },
-		// {
-		// 	Version:  V1Version,
-		// 	Group:    RbacGroup,
-		// 	Resource: RoleBindings,
-		// },
-		// {
-		// 	Version:  V1Version,
-		// 	Group:    NetworkingGroup,
-		// 	Resource: NetworkPolicys,
-		// },
-		// {
-		// 	Version:  V1Version,
-		// 	Group:    NetworkingGroup,
-		// 	Resource: Ingresss,
-		// },
-		// {
-		// 	Version:  V1Version,
-		// 	Group:    CoreGroup,
-		// 	Resource: ResourceQuotas,
-		// },
-		// {
-		// 	Version:  V1Version,
-		// 	Group:    CoreGroup,
-		// 	Resource: LimitRanges,
-		// },
+		{
+			Version:  V1Version,
+			Group:    "",
+			Resource: Services,
+		},
+		{
+			Version:  V1Version,
+			Group:    "",
+			Resource: ConfigMaps,
+		},
+		{
+			Version:  V1Version,
+			Group:    RbacGroup,
+			Resource: Roles,
+		},
+		{
+			Version:  V1Version,
+			Group:    RbacGroup,
+			Resource: RoleBindings,
+		},
+		{
+			Version:  V1Version,
+			Group:    NetworkingGroup,
+			Resource: NetworkPolicys,
+		},
+		{
+			Version:  V1Version,
+			Group:    NetworkingGroup,
+			Resource: Ingresss,
+		},
+		{
+			Version:  V1Version,
+			Group:    "",
+			Resource: ResourceQuotas,
+		},
+		{
+			Version:  V1Version,
+			Group:    "",
+			Resource: LimitRanges,
+		},
 	}
 }

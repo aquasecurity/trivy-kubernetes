@@ -32,20 +32,18 @@ func FromResource(resource unstructured.Unstructured) (*Artifact, error) {
 	var containersNestedKeys []string
 
 	switch resource.GetKind() {
+	case k8s.KindPod, k8s.KindJob, "ReplicaSet":
+		metadata := resource.GetOwnerReferences()
+		if metadata != nil {
+			// ignore pod to avoid duplication because it is owned by another resource which will also be scanned
+			return nil, nil
+		}
+	default:
+	}
+
+	switch resource.GetKind() {
 	case k8s.KindPod:
-		metadata := resource.GetOwnerReferences()
-		if metadata != nil {
-			// ignore pod to avoid duplication because it is owned by another resource which will also be scanned
-			return nil, nil
-		}
 		containersNestedKeys = []string{"spec", "containers"}
-	case k8s.KindJob:
-		metadata := resource.GetOwnerReferences()
-		if metadata != nil {
-			// ignore pod to avoid duplication because it is owned by another resource which will also be scanned
-			return nil, nil
-		}
-		containersNestedKeys = []string{"spec", "template", "spec", "containers"}
 	case k8s.KindCronJob:
 		containersNestedKeys = []string{"spec", "jobTemplate", "spec", "template", "spec", "containers"}
 	default:

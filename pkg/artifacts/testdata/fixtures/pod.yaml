@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: prometheus
+spec:
+  containers:
+  - name: prometheus
+    image: ubuntu/prometheus

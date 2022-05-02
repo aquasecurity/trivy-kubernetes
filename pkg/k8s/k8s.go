@@ -2,6 +2,9 @@ package k8s
 
 import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
+	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/rest"
 )
 
 const (
@@ -11,7 +14,6 @@ const (
 	KindReplicaSet = "ReplicaSet"
 
 	AppsGroup              = "apps"
-	CoreGroup              = "cores"
 	BatchGroup             = "batch"
 	RbacGroup              = "rbac.authorization.k8s.io"
 	NetworkingGroup        = "networking.k8s.io"
@@ -38,6 +40,23 @@ const (
 	ClusterRoleBindings    = "clusterrolebindings"
 	PodSecurityPolicies    = "podsecuritypolicies"
 )
+
+// GetKubeConfig returns local kubernetes configurations
+func GetKubeConfig() (*rest.Config, error) {
+	var cf *genericclioptions.ConfigFlags
+	cf = genericclioptions.NewConfigFlags(true)
+	return cf.ToRESTConfig()
+}
+
+// NewDynamicClient returns a dynamic k8s client
+func NewDynamicClient(kubeConfig *rest.Config) (dynamic.Interface, error) {
+	k8sClient, err := dynamic.NewForConfig(kubeConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	return k8sClient, nil
+}
 
 // GetGVRs returns GroupVersionResource to query kubernetes,
 // if the namespace is empty it returns GRVs for the whole cluster
@@ -102,7 +121,7 @@ func getNamespaceGVR() []schema.GroupVersionResource {
 			Resource: DaemonSets,
 		},
 		{
-			Version:  "v1",
+			Version:  V1Version,
 			Group:    BatchGroup,
 			Resource: CronJobs,
 		},

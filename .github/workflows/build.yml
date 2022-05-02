@@ -31,7 +31,8 @@ env:
 # Disable permissions granted to the GITHUB_TOKEN for all the available scopes.
 permissions: {}
 
-# Cancel any in-flight jobs for the same PR branch so there's only one active at a time.
+# Cancel any in-flight jobs for the same PR branch,
+# so there's only one active at a time.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true

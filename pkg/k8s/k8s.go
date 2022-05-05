@@ -43,9 +43,21 @@ const (
 
 // GetKubeConfig returns local kubernetes configurations
 func GetKubeConfig() (*rest.Config, error) {
-	var cf *genericclioptions.ConfigFlags
-	cf = genericclioptions.NewConfigFlags(true)
-	return cf.ToRESTConfig()
+	return getConfigFlags().ToRESTConfig()
+}
+
+// GetCurrentContext returns local kubernetes current-context
+func GetCurrentContext() (string, error) {
+	cf := getConfigFlags()
+	rawCfg, err := cf.ToRawKubeConfigLoader().RawConfig()
+	if err != nil {
+		return "", err
+	}
+	return rawCfg.CurrentContext, nil
+}
+
+func getConfigFlags() *genericclioptions.ConfigFlags {
+	return genericclioptions.NewConfigFlags(true)
 }
 
 // NewDynamicClient returns a dynamic k8s client

@@ -18,9 +18,9 @@ type TrivyK8S interface {
 	ArtifactsK8S
 }
 
-// ArtifactsK8s interface represents operations to query the artifacts
+// ArtifactsK8S interface represents operations to query the artifacts
 type ArtifactsK8S interface {
-	// ListArtifacts returns kubernetes scannable artifacs.
+	// ListArtifacts returns kubernetes scanable artifacts
 	ListArtifacts(context.Context) ([]*artifacts.Artifact, error)
 }
 

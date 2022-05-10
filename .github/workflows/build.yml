@@ -58,7 +58,7 @@ jobs:
       - name: Verify Go code
         uses: golangci/golangci-lint-action@v3.1.0
         with:
-          args: --verbose
+          args: --verbose --deadline=5m
           version: latest
           skip-pkg-cache: true
           skip-build-cache: true

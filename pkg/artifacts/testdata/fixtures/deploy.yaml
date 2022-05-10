@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deploy1
+  labels:
+    app: nginx
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: deploy1
+  template:
+    metadata:
+      labels:
+        app: deploy1 
+    spec:
+      containers:
+      - name: deploy1 
+        image: ubuntu:latest
+        command: ["tail", "-f", "/dev/null"]
+        ports:
+        - containerPort: 80

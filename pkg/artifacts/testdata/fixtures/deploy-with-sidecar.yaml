@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: deploy-with-sidecar 
+  labels:
+    app: deploy-with-sidecar
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: deploy-with-sidecar
+  template:
+    metadata:
+      labels:
+        app: deploy-with-sidecar
+    spec:
+      containers:
+      - name: deploy-with-sidecar-cache
+        image: memcached
+      - name: deploy-with-sidecar-frontend 
+        image: nginx
+        ports:
+        - containerPort: 80

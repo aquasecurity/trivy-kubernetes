@@ -1,7 +1,8 @@
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: deploy-with-sidecar 
+  name: deploy-with-sidecar
   labels:
     app: deploy-with-sidecar
 spec:
@@ -15,9 +16,9 @@ spec:
         app: deploy-with-sidecar
     spec:
       containers:
-      - name: deploy-with-sidecar-cache
-        image: memcached
-      - name: deploy-with-sidecar-frontend 
-        image: nginx
-        ports:
-        - containerPort: 80
+        - name: deploy-with-sidecar-cache
+          image: memcached
+        - name: deploy-with-sidecar-frontend
+          image: nginx
+          ports:
+            - containerPort: 80

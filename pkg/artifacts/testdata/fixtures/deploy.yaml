@@ -1,3 +1,4 @@
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -12,11 +13,11 @@ spec:
   template:
     metadata:
       labels:
-        app: deploy1 
+        app: deploy1
     spec:
       containers:
-      - name: deploy1 
-        image: ubuntu:latest
-        command: ["tail", "-f", "/dev/null"]
-        ports:
-        - containerPort: 80
+        - name: deploy1
+          image: ubuntu:latest
+          command: ["tail", "-f", "/dev/null"]
+          ports:
+            - containerPort: 80

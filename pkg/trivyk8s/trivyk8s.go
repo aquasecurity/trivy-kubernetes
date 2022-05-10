@@ -10,6 +10,9 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
+
+	// import auth plugins
+	_ "k8s.io/client-go/plugin/pkg/client/auth"
 )
 
 // TrivyK8S interface represents the operations supported by the library

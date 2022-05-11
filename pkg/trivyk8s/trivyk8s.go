@@ -8,7 +8,6 @@ import (
 	"github.com/aquasecurity/trivy-kubernetes/pkg/k8s"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
 )
 
@@ -25,13 +24,13 @@ type ArtifactsK8S interface {
 }
 
 type client struct {
-	k8s       dynamic.Interface
+	cluster   k8s.Cluster
 	namespace string
 }
 
 // New creates a trivyK8S client
-func New(k8sClient dynamic.Interface) TrivyK8S {
-	return &client{k8s: k8sClient}
+func New(cluster k8s.Cluster) TrivyK8S {
+	return &client{cluster: cluster}
 }
 
 // Namespace configure the namespace to execute the queries
@@ -42,19 +41,22 @@ func (c *client) Namespace(namespace string) TrivyK8S {
 
 // ListArtifacts returns kubernetes scannable artifacs.
 func (c *client) ListArtifacts(ctx context.Context) ([]*artifacts.Artifact, error) {
-	grvs := k8s.GetGVRs(c.namespace)
-	return c.listArtifacts(ctx, grvs)
-}
-
-func (c *client) listArtifacts(ctx context.Context, grvs []schema.GroupVersionResource) ([]*artifacts.Artifact, error) {
 	artifactList := make([]*artifacts.Artifact, 0)
 
+	namespaced := len(c.namespace) != 0
+
+	grvs, err := c.cluster.GetGVRs(namespaced)
+	if err != nil {
+		return nil, err
+	}
+
+	k8s := c.cluster.GetDynamicClient()
 	for _, gvr := range grvs {
 		var dclient dynamic.ResourceInterface
-		if len(c.namespace) == 0 {
-			dclient = c.k8s.Resource(gvr)
+		if namespaced {
+			dclient = k8s.Resource(gvr).Namespace(c.namespace)
 		} else {
-			dclient = c.k8s.Resource(gvr).Namespace(c.namespace)
+			dclient = k8s.Resource(gvr)
 		}
 
 		resources, err := dclient.List(ctx, v1.ListOptions{})

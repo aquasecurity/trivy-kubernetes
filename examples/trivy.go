@@ -21,7 +21,8 @@ func main() {
 
 	trivyk8s := trivyk8s.New(cluster)
 
-	fmt.Println("Scaning cluster")
+	fmt.Println("Scanning cluster")
+
 	//trivy k8s #cluster
 	artifacts, err := trivyk8s.ListArtifacts(ctx)
 	if err != nil {
@@ -29,7 +30,8 @@ func main() {
 	}
 	printArtifacts(artifacts)
 
-	fmt.Println("Scaning namespace 'default'")
+	fmt.Println("Scanning namespace 'default'")
+
 	//trivy k8s --namespace default
 	artifacts, err = trivyk8s.Namespace("default").ListArtifacts(ctx)
 	if err != nil {

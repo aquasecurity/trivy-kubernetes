@@ -14,19 +14,14 @@ import (
 func main() {
 	ctx := context.Background()
 
-	fmt.Println("Scaning image cluster")
-
-	kubeConfig, err := k8s.GetKubeConfig()
+	cluster, err := k8s.GetCluster()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	k8sClient, err := k8s.NewDynamicClient(kubeConfig)
-	if err != nil {
-		log.Fatal(err)
-	}
+	trivyk8s := trivyk8s.New(cluster)
 
-	trivyk8s := trivyk8s.New(k8sClient)
+	fmt.Println("Scanning cluster")
 
 	//trivy k8s #cluster
 	artifacts, err := trivyk8s.ListArtifacts(ctx)
@@ -34,6 +29,8 @@ func main() {
 		log.Fatal(err)
 	}
 	printArtifacts(artifacts)
+
+	fmt.Println("Scanning namespace 'default'")
 
 	//trivy k8s --namespace default
 	artifacts, err = trivyk8s.Namespace("default").ListArtifacts(ctx)

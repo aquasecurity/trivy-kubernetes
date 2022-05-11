@@ -1,6 +1,7 @@
 package k8s
 
 import (
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/dynamic"
@@ -13,13 +14,6 @@ const (
 	KindCronJob    = "CronJob"
 	KindReplicaSet = "ReplicaSet"
 
-	AppsGroup              = "apps"
-	BatchGroup             = "batch"
-	RbacGroup              = "rbac.authorization.k8s.io"
-	NetworkingGroup        = "networking.k8s.io"
-	PolicyGroup            = "policy"
-	V1Version              = "v1"
-	V1beta1Version         = "v1beta1"
 	Deployments            = "deployments"
 	ReplicaSets            = "replicasets"
 	ReplicationControllers = "replicationcontrollers"
@@ -41,146 +35,114 @@ const (
 	PodSecurityPolicies    = "podsecuritypolicies"
 )
 
-// GetKubeConfig returns local kubernetes configurations
-func GetKubeConfig() (*rest.Config, error) {
-	return getConfigFlags().ToRESTConfig()
+// Cluster interface represents the operations needed to scan a cluster
+type Cluster interface {
+	// GetCurrentContext returns local kubernetes current-context
+	GetCurrentContext() string
+	// GetDynamicClient returns a dynamic k8s client
+	GetDynamicClient() dynamic.Interface
+	// GetGVRs returns cluster GroupVersionResource to query kubernetes, receives
+	// a boolean to determine if returns namespaced GVRs only or all GVRs
+	GetGVRs(bool) ([]schema.GroupVersionResource, error)
 }
 
-// GetCurrentContext returns local kubernetes current-context
-func GetCurrentContext() (string, error) {
-	cf := getConfigFlags()
-	rawCfg, err := cf.ToRawKubeConfigLoader().RawConfig()
-	if err != nil {
-		return "", err
-	}
-	return rawCfg.CurrentContext, nil
+type cluster struct {
+	currentContext string
+	dynamicClient  dynamic.Interface
+	restMapper     meta.RESTMapper
 }
 
-func getConfigFlags() *genericclioptions.ConfigFlags {
-	return genericclioptions.NewConfigFlags(true)
-}
+// GetCluster returns a current configured cluster
+func GetCluster() (Cluster, error) {
+	cf := genericclioptions.NewConfigFlags(true)
 
-// NewDynamicClient returns a dynamic k8s client
-func NewDynamicClient(kubeConfig *rest.Config) (dynamic.Interface, error) {
-	k8sClient, err := dynamic.NewForConfig(kubeConfig)
+	kubeConfig, err := cf.ToRESTConfig()
 	if err != nil {
 		return nil, err
 	}
 
-	return k8sClient, nil
-}
+	// disable warnings
+	rest.SetDefaultWarningHandler(rest.NoWarnings{})
 
-// GetGVRs returns GroupVersionResource to query kubernetes,
-// if the namespace is empty it returns GRVs for the whole cluster
-func GetGVRs(namespace string) []schema.GroupVersionResource {
-	gvrs := getNamespaceGVR()
-	if len(namespace) == 0 {
-		gvrs = append(gvrs, getClusterGVR()...)
+	k8sDynamicClient, err := dynamic.NewForConfig(kubeConfig)
+	if err != nil {
+		return nil, err
 	}
-	return gvrs
+
+	rawCfg, err := cf.ToRawKubeConfigLoader().RawConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	restMapper, err := cf.ToRESTMapper()
+	if err != nil {
+		return nil, err
+	}
+
+	return &cluster{
+		currentContext: rawCfg.CurrentContext,
+		dynamicClient:  k8sDynamicClient,
+		restMapper:     restMapper,
+	}, nil
 }
 
-func getClusterGVR() []schema.GroupVersionResource {
-	return []schema.GroupVersionResource{
-		{
-			Version:  V1Version,
-			Group:    RbacGroup,
-			Resource: ClusterRoles,
-		},
-		{
-			Version:  V1Version,
-			Group:    RbacGroup,
-			Resource: ClusterRoleBindings,
-		},
-		{
-			Version:  V1beta1Version,
-			Group:    PolicyGroup,
-			Resource: PodSecurityPolicies,
-		},
+// GetCurrentContext returns local kubernetes current-context
+func (c *cluster) GetCurrentContext() string {
+	return c.currentContext
+}
+
+// GetDynamicClient returns a dynamic k8s client
+func (c *cluster) GetDynamicClient() dynamic.Interface {
+	return c.dynamicClient
+}
+
+// GetGVRs returns cluster GroupVersionResource to query kubernetes, receives
+// a boolean to determine if returns namespaced GVRs only or all GVRs
+func (c *cluster) GetGVRs(namespaced bool) ([]schema.GroupVersionResource, error) {
+	grvs := make([]schema.GroupVersionResource, 0)
+
+	resources := getNamespaceResources()
+	if !namespaced {
+		resources = append(resources, getClusterResources()...)
+	}
+
+	for _, resource := range resources {
+		list, err := c.restMapper.ResourcesFor(schema.GroupVersionResource{Resource: resource})
+		if err != nil {
+			return nil, err
+		}
+
+		grvs = append(grvs, list...)
+	}
+
+	return grvs, nil
+}
+
+func getClusterResources() []string {
+	return []string{
+		ClusterRoles,
+		ClusterRoleBindings,
+		PodSecurityPolicies,
 	}
 }
 
-func getNamespaceGVR() []schema.GroupVersionResource {
-	return []schema.GroupVersionResource{
-		{
-			Version:  V1Version,
-			Group:    AppsGroup,
-			Resource: Deployments,
-		},
-		{
-			Version:  V1Version,
-			Group:    "",
-			Resource: Pods,
-		},
-		{
-			Version:  V1Version,
-			Group:    AppsGroup,
-			Resource: ReplicaSets,
-		},
-		{
-			Version:  V1Version,
-			Group:    "",
-			Resource: ReplicationControllers,
-		},
-		{
-			Version:  V1Version,
-			Group:    AppsGroup,
-			Resource: StatefulSets,
-		},
-		{
-			Version:  V1Version,
-			Group:    AppsGroup,
-			Resource: DaemonSets,
-		},
-		{
-			Version:  V1Version,
-			Group:    BatchGroup,
-			Resource: CronJobs,
-		},
-		{
-			Version:  V1Version,
-			Group:    BatchGroup,
-			Resource: Jobs,
-		},
-		{
-			Version:  V1Version,
-			Group:    "",
-			Resource: Services,
-		},
-		{
-			Version:  V1Version,
-			Group:    "",
-			Resource: ConfigMaps,
-		},
-		{
-			Version:  V1Version,
-			Group:    RbacGroup,
-			Resource: Roles,
-		},
-		{
-			Version:  V1Version,
-			Group:    RbacGroup,
-			Resource: RoleBindings,
-		},
-		{
-			Version:  V1Version,
-			Group:    NetworkingGroup,
-			Resource: NetworkPolicys,
-		},
-		{
-			Version:  V1Version,
-			Group:    NetworkingGroup,
-			Resource: Ingresss,
-		},
-		{
-			Version:  V1Version,
-			Group:    "",
-			Resource: ResourceQuotas,
-		},
-		{
-			Version:  V1Version,
-			Group:    "",
-			Resource: LimitRanges,
-		},
+func getNamespaceResources() []string {
+	return []string{
+		Deployments,
+		Pods,
+		ReplicaSets,
+		ReplicationControllers,
+		StatefulSets,
+		DaemonSets,
+		CronJobs,
+		Jobs,
+		Services,
+		ConfigMaps,
+		Roles,
+		RoleBindings,
+		NetworkPolicys,
+		Ingresss,
+		ResourceQuotas,
+		LimitRanges,
 	}
 }

@@ -1,3 +1,4 @@
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
@@ -10,13 +11,13 @@ metadata:
   resourceVersion: "89"
   uid: 15c1fed2-e733-430d-bec7-fa82d376ff8e
 rules:
-- nonResourceURLs:
-  - /healthz
-  - /healthz/*
-  - /livez
-  - /livez/*
-  - /metrics
-  - /readyz
-  - /readyz/*
-  verbs:
-  - get
+  - nonResourceURLs:
+      - /healthz
+      - /healthz/*
+      - /livez
+      - /livez/*
+      - /metrics
+      - /readyz
+      - /readyz/*
+    verbs:
+      - get

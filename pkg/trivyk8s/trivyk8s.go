@@ -24,6 +24,8 @@ type TrivyK8S interface {
 type ArtifactsK8S interface {
 	// ListArtifacts returns kubernetes scanable artifacts
 	ListArtifacts(context.Context) ([]*artifacts.Artifact, error)
+	// GetArtifact return kubernete scanable artifact
+	GetArtifact(context.Context, string, string) (*artifacts.Artifact, error)
 }
 
 type client struct {
@@ -81,6 +83,37 @@ func (c *client) ListArtifacts(ctx context.Context) ([]*artifacts.Artifact, erro
 	}
 
 	return artifactList, nil
+}
+
+// GetArtifact return kubernetes scannable artifac.
+func (c *client) GetArtifact(ctx context.Context, kind, name string) (*artifacts.Artifact, error) {
+	namespaced := len(c.namespace) != 0
+
+	gvr, err := c.cluster.GetGVR(kind)
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO: extract
+	k8s := c.cluster.GetDynamicClient()
+	var dclient dynamic.ResourceInterface
+	if namespaced {
+		dclient = k8s.Resource(gvr).Namespace(c.namespace)
+	} else {
+		dclient = k8s.Resource(gvr)
+	}
+
+	resource, err := dclient.Get(ctx, name, v1.GetOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("failed getting resource for gvr: %v - %w", gvr, err)
+	}
+
+	artifact, err := artifacts.FromResource(*resource)
+	if err != nil {
+		return nil, err
+	}
+
+	return artifact, nil
 }
 
 // ignore resources to avoid duplication,

@@ -38,17 +38,29 @@ func main() {
 		log.Fatal(err)
 	}
 	printArtifacts(artifacts)
+
+	fmt.Println("Scanning namespace 'default', resource 'deployment/orion'")
+
+	//trivy k8s --namespace default deployment/orion
+	artifact, err := trivyk8s.Namespace("default").GetArtifact(ctx, "deploy", "orion")
+	if err != nil {
+		log.Fatal(err)
+	}
+	printArtifact(artifact)
 }
 
 func printArtifacts(artifacts []*artifacts.Artifact) {
 	for _, artifact := range artifacts {
-		fmt.Printf(
-			"Name: %s, Kind: %s, Namespace: %s, Images: %v\n",
-			artifact.Name,
-			artifact.Kind,
-			artifact.Namespace,
-			artifact.Images,
-		)
+		printArtifact(artifact)
 	}
+}
 
+func printArtifact(artifact *artifacts.Artifact) {
+	fmt.Printf(
+		"Name: %s, Kind: %s, Namespace: %s, Images: %v\n",
+		artifact.Name,
+		artifact.Kind,
+		artifact.Namespace,
+		artifact.Images,
+	)
 }

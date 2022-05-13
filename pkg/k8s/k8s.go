@@ -44,6 +44,9 @@ type Cluster interface {
 	// GetGVRs returns cluster GroupVersionResource to query kubernetes, receives
 	// a boolean to determine if returns namespaced GVRs only or all GVRs
 	GetGVRs(bool) ([]schema.GroupVersionResource, error)
+	// GetGVR returns resource GroupVersionResource to query kubernetes, receives
+	// a string with the resource kind
+	GetGVR(string) (schema.GroupVersionResource, error)
 }
 
 type cluster struct {
@@ -116,6 +119,10 @@ func (c *cluster) GetGVRs(namespaced bool) ([]schema.GroupVersionResource, error
 	}
 
 	return grvs, nil
+}
+
+func (c *cluster) GetGVR(kind string) (schema.GroupVersionResource, error) {
+	return c.restMapper.ResourceFor(schema.GroupVersionResource{Resource: kind})
 }
 
 func getClusterResources() []string {

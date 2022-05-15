@@ -8,6 +8,7 @@ import (
 	"github.com/aquasecurity/trivy-kubernetes/pkg/k8s"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
 
 	// import auth plugins
@@ -49,20 +50,13 @@ func (c *client) ListArtifacts(ctx context.Context) ([]*artifacts.Artifact, erro
 	artifactList := make([]*artifacts.Artifact, 0)
 
 	namespaced := len(c.namespace) != 0
-
 	grvs, err := c.cluster.GetGVRs(namespaced)
 	if err != nil {
 		return nil, err
 	}
 
-	k8s := c.cluster.GetDynamicClient()
 	for _, gvr := range grvs {
-		var dclient dynamic.ResourceInterface
-		if namespaced {
-			dclient = k8s.Resource(gvr).Namespace(c.namespace)
-		} else {
-			dclient = k8s.Resource(gvr)
-		}
+		dclient := c.getDynamicClient(gvr)
 
 		resources, err := dclient.List(ctx, v1.ListOptions{})
 		if err != nil {
@@ -87,22 +81,12 @@ func (c *client) ListArtifacts(ctx context.Context) ([]*artifacts.Artifact, erro
 
 // GetArtifact return kubernetes scannable artifac.
 func (c *client) GetArtifact(ctx context.Context, kind, name string) (*artifacts.Artifact, error) {
-	namespaced := len(c.namespace) != 0
-
 	gvr, err := c.cluster.GetGVR(kind)
 	if err != nil {
 		return nil, err
 	}
 
-	// TODO: extract
-	k8s := c.cluster.GetDynamicClient()
-	var dclient dynamic.ResourceInterface
-	if namespaced {
-		dclient = k8s.Resource(gvr).Namespace(c.namespace)
-	} else {
-		dclient = k8s.Resource(gvr)
-	}
-
+	dclient := c.getDynamicClient(gvr)
 	resource, err := dclient.Get(ctx, name, v1.GetOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed getting resource for gvr: %v - %w", gvr, err)
@@ -114,6 +98,15 @@ func (c *client) GetArtifact(ctx context.Context, kind, name string) (*artifacts
 	}
 
 	return artifact, nil
+}
+
+func (c *client) getDynamicClient(gvr schema.GroupVersionResource) dynamic.ResourceInterface {
+	k8s := c.cluster.GetDynamicClient()
+	if len(c.namespace) == 0 {
+		return k8s.Resource(gvr)
+	} else {
+		return k8s.Resource(gvr).Namespace(c.namespace)
+	}
 }
 
 // ignore resources to avoid duplication,

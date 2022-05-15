@@ -39,6 +39,8 @@ const (
 type Cluster interface {
 	// GetCurrentContext returns local kubernetes current-context
 	GetCurrentContext() string
+	// GetCurrentNamespace returns local kubernetes current namespace
+	GetCurrentNamespace() string
 	// GetDynamicClient returns a dynamic k8s client
 	GetDynamicClient() dynamic.Interface
 	// GetGVRs returns cluster GroupVersionResource to query kubernetes, receives
@@ -50,9 +52,10 @@ type Cluster interface {
 }
 
 type cluster struct {
-	currentContext string
-	dynamicClient  dynamic.Interface
-	restMapper     meta.RESTMapper
+	currentContext   string
+	currentNamespace string
+	dynamicClient    dynamic.Interface
+	restMapper       meta.RESTMapper
 }
 
 // GetCluster returns a current configured cluster
@@ -77,21 +80,32 @@ func GetCluster() (Cluster, error) {
 		return nil, err
 	}
 
+	var namespace string
+	if context, ok := rawCfg.Contexts[rawCfg.CurrentContext]; ok {
+		namespace = context.Namespace
+	}
+
 	restMapper, err := cf.ToRESTMapper()
 	if err != nil {
 		return nil, err
 	}
 
 	return &cluster{
-		currentContext: rawCfg.CurrentContext,
-		dynamicClient:  k8sDynamicClient,
-		restMapper:     restMapper,
+		currentContext:   rawCfg.CurrentContext,
+		currentNamespace: namespace,
+		dynamicClient:    k8sDynamicClient,
+		restMapper:       restMapper,
 	}, nil
 }
 
 // GetCurrentContext returns local kubernetes current-context
 func (c *cluster) GetCurrentContext() string {
 	return c.currentContext
+}
+
+// GetCurrentNamespace returns local kubernetes current namespace
+func (c *cluster) GetCurrentNamespace() string {
+	return c.currentNamespace
 }
 
 // GetDynamicClient returns a dynamic k8s client

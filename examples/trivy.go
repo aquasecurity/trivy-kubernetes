@@ -19,6 +19,8 @@ func main() {
 		log.Fatal(err)
 	}
 
+	fmt.Println("Current namespace:", cluster.GetCurrentNamespace())
+
 	trivyk8s := trivyk8s.New(cluster)
 
 	fmt.Println("Scanning cluster")

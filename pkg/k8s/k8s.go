@@ -139,6 +139,15 @@ func (c *cluster) GetGVR(kind string) (schema.GroupVersionResource, error) {
 	return c.restMapper.ResourceFor(schema.GroupVersionResource{Resource: kind})
 }
 
+func IsClusterResource(gvr schema.GroupVersionResource) bool {
+	for _, r := range getClusterResources() {
+		if gvr.Resource == r {
+			return true
+		}
+	}
+	return false
+}
+
 func getClusterResources() []string {
 	return []string{
 		ClusterRoles,

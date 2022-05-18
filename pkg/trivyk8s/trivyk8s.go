@@ -103,16 +103,13 @@ func (c *client) GetArtifact(ctx context.Context, kind, name string) (*artifacts
 func (c *client) getDynamicClient(gvr schema.GroupVersionResource) dynamic.ResourceInterface {
 	dclient := c.cluster.GetDynamicClient()
 
-	// ignore namespace if it is a cluster level resource
-	if k8s.IsClusterResource(gvr) {
+	// don't use namespace if it is a cluster levle resource,
+	// or namespace is empty
+	if k8s.IsClusterResource(gvr) || len(c.namespace) == 0 {
 		return dclient.Resource(gvr)
 	}
 
-	if len(c.namespace) == 0 {
-		return dclient.Resource(gvr)
-	} else {
-		return dclient.Resource(gvr).Namespace(c.namespace)
-	}
+	return dclient.Resource(gvr).Namespace(c.namespace)
 }
 
 // ignore resources to avoid duplication,

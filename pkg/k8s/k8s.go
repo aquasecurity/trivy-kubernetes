@@ -58,9 +58,12 @@ type cluster struct {
 	restMapper       meta.RESTMapper
 }
 
-// GetCluster returns a current configured cluster
-func GetCluster() (Cluster, error) {
+// GetCluster returns a current configured cluster,
+// receives context to use, if empty uses default
+func GetCluster(context string) (Cluster, error) {
 	cf := genericclioptions.NewConfigFlags(true)
+
+	cf.Context = &context
 
 	kubeConfig, err := cf.ToRESTConfig()
 	if err != nil {

@@ -14,7 +14,7 @@ import (
 func main() {
 	ctx := context.Background()
 
-	cluster, err := k8s.GetCluster()
+	cluster, err := k8s.GetCluster("")
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -124,12 +124,12 @@ func (c *cluster) GetGVRs(namespaced bool) ([]schema.GroupVersionResource, error
 	}
 
 	for _, resource := range resources {
-		list, err := c.restMapper.ResourcesFor(schema.GroupVersionResource{Resource: resource})
+		gvr, err := c.GetGVR(resource)
 		if err != nil {
 			return nil, err
 		}
 
-		grvs = append(grvs, list...)
+		grvs = append(grvs, gvr)
 	}
 
 	return grvs, nil
@@ -139,6 +139,7 @@ func (c *cluster) GetGVR(kind string) (schema.GroupVersionResource, error) {
 	return c.restMapper.ResourceFor(schema.GroupVersionResource{Resource: kind})
 }
 
+// IsClusterResource returns if a GVR is a cluster resource
 func IsClusterResource(gvr schema.GroupVersionResource) bool {
 	for _, r := range getClusterResources() {
 		if gvr.Resource == r {

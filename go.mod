@@ -3,6 +3,7 @@ module github.com/aquasecurity/trivy-kubernetes
 go 1.18
 
 require (
+	github.com/stretchr/testify v1.7.1
 	k8s.io/apimachinery v0.23.6
 	k8s.io/cli-runtime v0.23.6
 	k8s.io/client-go v0.23.6
@@ -50,7 +51,6 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/spf13/cobra v1.2.1 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/stretchr/testify v1.7.1 // indirect
 	github.com/xlab/treeprint v0.0.0-20181112141820-a009c3971eca // indirect
 	go.starlark.net v0.0.0-20200306205701-8dd3e2ee1dd5 // indirect
 	golang.org/x/crypto v0.0.0-20210817164053-32db794688a5 // indirect

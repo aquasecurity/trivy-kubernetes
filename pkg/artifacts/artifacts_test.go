@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/kubectl/pkg/scheme"
@@ -26,6 +27,7 @@ func TestFromResource(t *testing.T) {
 		{"Pod", resourceFromFile("pod.yaml"), newArtifact("Pod", "prometheus", []string{"ubuntu/prometheus"})},
 		{"Role", resourceFromFile("role.yaml"), newArtifact("Role", "kube-proxy", []string{})},
 		{"Service", resourceFromFile("service.yaml"), newArtifact("Service", "nginx", []string{})},
+		{"EphemeralContainer", resourceFromFile("ephemeralcontainer.yaml"), newArtifact("Pod", "ephemeral-demo", []string{"k8s.gcr.io/pause:3.1", "busybox:1.28", "ubuntu:latest"})},
 	}
 
 	for _, test := range tests {
@@ -71,17 +73,9 @@ func newArtifact(kind, name string, images []string) *Artifact {
 }
 
 func compare(t *testing.T, expectedResource unstructured.Unstructured, expectedArtifact, result *Artifact) {
-	if expectedArtifact.Name != result.Name {
-		t.Errorf("Expected name %v, but got %v", expectedArtifact.Name, result.Name)
-	}
-
-	if expectedArtifact.Kind != result.Kind {
-		t.Errorf("Expected kind %v, but got %v", expectedArtifact.Kind, result.Kind)
-	}
-
-	if !reflect.DeepEqual(expectedArtifact.Images, result.Images) {
-		t.Errorf("Expected images %v, but got %v", expectedArtifact.Images, result.Images)
-	}
+	assert.Equal(t, expectedArtifact.Name, result.Name)
+	assert.Equal(t, expectedArtifact.Kind, result.Kind)
+	assert.Equal(t, expectedArtifact.Images, result.Images)
 
 	if !reflect.DeepEqual(expectedResource.Object, result.RawResource) {
 		t.Errorf("Expected resources to be equal but it wasn't: \n%v\n%v", expectedResource.Object, result.RawResource)

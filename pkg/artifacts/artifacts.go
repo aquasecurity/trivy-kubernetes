@@ -17,35 +17,30 @@ type Artifact struct {
 
 // FromResource is a factory method to create an Artifact from an unstructured.Unstructured
 func FromResource(resource unstructured.Unstructured) (*Artifact, error) {
-	var containersNestedKeys []string
+	var nestedKeys []string
 
 	switch resource.GetKind() {
 	case k8s.KindPod:
-		containersNestedKeys = []string{"spec", "containers"}
+		nestedKeys = []string{"spec"}
 	case k8s.KindCronJob:
-		containersNestedKeys = []string{"spec", "jobTemplate", "spec", "template", "spec", "containers"}
+		nestedKeys = []string{"spec", "jobTemplate", "spec", "template", "spec"}
 	default:
-		containersNestedKeys = []string{"spec", "template", "spec", "containers"}
-	}
-
-	containers, found, err := unstructured.NestedSlice(resource.Object, containersNestedKeys...)
-	if err != nil {
-		return nil, err
+		nestedKeys = []string{"spec", "template", "spec"}
 	}
 
 	images := make([]string, 0)
-	if found { // the spec has containers declared
-		for _, container := range containers {
-			name, found, err := unstructured.NestedString(container.(map[string]interface{}), "image")
-			if err != nil {
-				return nil, err
-			}
 
-			if found {
-				images = append(images, name)
-			}
-		}
+	containersImages, err := extractImages(resource, append(nestedKeys, "containers"))
+	if err != nil {
+		return nil, err
 	}
+	images = append(images, containersImages...)
+
+	ephemeralContainersImages, err := extractImages(resource, append(nestedKeys, "ephemeralContainers"))
+	if err != nil {
+		return nil, err
+	}
+	images = append(images, ephemeralContainersImages...)
 
 	// we don't check found here, if the name is not found it will be an empty string
 	name, _, err := unstructured.NestedString(resource.Object, "metadata", "name")
@@ -60,4 +55,29 @@ func FromResource(resource unstructured.Unstructured) (*Artifact, error) {
 		Images:      images,
 		RawResource: resource.Object,
 	}, nil
+}
+
+func extractImages(resource unstructured.Unstructured, keys []string) ([]string, error) {
+	containers, found, err := unstructured.NestedSlice(resource.Object, keys...)
+	if err != nil {
+		return []string{}, err
+	}
+
+	if !found {
+		return []string{}, nil
+	}
+
+	images := make([]string, 0)
+	for _, container := range containers {
+		name, found, err := unstructured.NestedString(container.(map[string]interface{}), "image")
+		if err != nil {
+			return []string{}, err
+		}
+
+		if found {
+			images = append(images, name)
+		}
+	}
+
+	return images, nil
 }

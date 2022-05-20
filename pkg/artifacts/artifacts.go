@@ -42,6 +42,12 @@ func FromResource(resource unstructured.Unstructured) (*Artifact, error) {
 	}
 	images = append(images, ephemeralContainersImages...)
 
+	initContainersImages, err := extractImages(resource, append(nestedKeys, "initContainers"))
+	if err != nil {
+		return nil, err
+	}
+	images = append(images, initContainersImages...)
+
 	// we don't check found here, if the name is not found it will be an empty string
 	name, _, err := unstructured.NestedString(resource.Object, "metadata", "name")
 	if err != nil {

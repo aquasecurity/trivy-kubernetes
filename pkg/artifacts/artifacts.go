@@ -17,16 +17,7 @@ type Artifact struct {
 
 // FromResource is a factory method to create an Artifact from an unstructured.Unstructured
 func FromResource(resource unstructured.Unstructured) (*Artifact, error) {
-	var nestedKeys []string
-
-	switch resource.GetKind() {
-	case k8s.KindPod:
-		nestedKeys = []string{"spec"}
-	case k8s.KindCronJob:
-		nestedKeys = []string{"spec", "jobTemplate", "spec", "template", "spec"}
-	default:
-		nestedKeys = []string{"spec", "template", "spec"}
-	}
+	nestedKeys := getContainerNestedKeys(resource.GetKind())
 
 	images := make([]string, 0)
 
@@ -86,4 +77,15 @@ func extractImages(resource unstructured.Unstructured, keys []string) ([]string,
 	}
 
 	return images, nil
+}
+
+func getContainerNestedKeys(kind string) []string {
+	switch kind {
+	case k8s.KindPod:
+		return []string{"spec"}
+	case k8s.KindCronJob:
+		return []string{"spec", "jobTemplate", "spec", "template", "spec"}
+	default:
+		return []string{"spec", "template", "spec"}
+	}
 }

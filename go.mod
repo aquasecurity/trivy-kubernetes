@@ -7,7 +7,7 @@ require (
 	k8s.io/apimachinery v0.24.0
 	k8s.io/cli-runtime v0.24.0
 	k8s.io/client-go v0.24.0
-	k8s.io/kubectl v0.23.6
+	k8s.io/kubectl v0.24.0
 )
 
 require (

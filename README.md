@@ -8,14 +8,5 @@ Trivy Kubernetes Library.
 
 Supports trivy <-> kubernetes communication for resources scanning.
 
-Trivy example:
-
-```
-$ trivy k8s --report=summary
-```
-
-![k8s Summary Report](./imgs/k8s-summary.png)
-
-
 # Documentation
-Please check `trivy` documentation, which provides detailed installation, configuration, and quick start guides, is available at https://aquasecurity.github.io/trivy/.
+Please check `trivy` documentation, which provides detailed installation, configuration, and quick start guides, available at [Trivy Kubernetes](https://aquasecurity.github.io/trivy/latest/docs/kubernetes/cli/scanning/)

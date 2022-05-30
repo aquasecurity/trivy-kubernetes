@@ -88,6 +88,10 @@ func GetCluster(context string) (Cluster, error) {
 		namespace = context.Namespace
 	}
 
+	if len(namespace) == 0 {
+		namespace = "default"
+	}
+
 	restMapper, err := cf.ToRESTMapper()
 	if err != nil {
 		return nil, err

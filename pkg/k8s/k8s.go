@@ -6,6 +6,7 @@ import (
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 const (
@@ -65,20 +66,31 @@ func GetCluster(context string) (Cluster, error) {
 
 	cf.Context = &context
 
-	kubeConfig, err := cf.ToRESTConfig()
+	// disable warnings
+	rest.SetDefaultWarningHandler(rest.NoWarnings{})
+
+	clientConfig := cf.ToRawKubeConfigLoader()
+
+	restMapper, err := cf.ToRESTMapper()
 	if err != nil {
 		return nil, err
 	}
 
-	// disable warnings
-	rest.SetDefaultWarningHandler(rest.NoWarnings{})
+	return getCluster(clientConfig, restMapper)
+}
+
+func getCluster(clientConfig clientcmd.ClientConfig, restMapper meta.RESTMapper) (*cluster, error) {
+	kubeConfig, err := clientConfig.ClientConfig()
+	if err != nil {
+		return nil, err
+	}
 
 	k8sDynamicClient, err := dynamic.NewForConfig(kubeConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	rawCfg, err := cf.ToRawKubeConfigLoader().RawConfig()
+	rawCfg, err := clientConfig.RawConfig()
 	if err != nil {
 		return nil, err
 	}
@@ -90,11 +102,6 @@ func GetCluster(context string) (Cluster, error) {
 
 	if len(namespace) == 0 {
 		namespace = "default"
-	}
-
-	restMapper, err := cf.ToRESTMapper()
-	if err != nil {
-		return nil, err
 	}
 
 	return &cluster{

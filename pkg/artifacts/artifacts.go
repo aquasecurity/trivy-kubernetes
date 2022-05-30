@@ -21,23 +21,14 @@ func FromResource(resource unstructured.Unstructured) (*Artifact, error) {
 
 	images := make([]string, 0)
 
-	containersImages, err := extractImages(resource, append(nestedKeys, "containers"))
-	if err != nil {
-		return nil, err
+	cTypes := []string{"containers", "ephemeralContainers", "initContainers"}
+	for _, t := range cTypes {
+		cTypeImages, err := extractImages(resource, append(nestedKeys, t))
+		if err != nil {
+			return nil, err
+		}
+		images = append(images, cTypeImages...)
 	}
-	images = append(images, containersImages...)
-
-	ephemeralContainersImages, err := extractImages(resource, append(nestedKeys, "ephemeralContainers"))
-	if err != nil {
-		return nil, err
-	}
-	images = append(images, ephemeralContainersImages...)
-
-	initContainersImages, err := extractImages(resource, append(nestedKeys, "initContainers"))
-	if err != nil {
-		return nil, err
-	}
-	images = append(images, initContainersImages...)
 
 	// we don't check found here, if the name is not found it will be an empty string
 	name, _, err := unstructured.NestedString(resource.Object, "metadata", "name")

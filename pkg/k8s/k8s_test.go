@@ -4,12 +4,13 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 )
 
-func Test_getCluster(t *testing.T) {
+func TestGetCurrentNamespace(t *testing.T) {
 	tests := []struct {
 		Name              string
 		Namespace         string
@@ -33,6 +34,44 @@ func Test_getCluster(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, test.ExpectedNamespace, cluster.GetCurrentNamespace())
 		})
+	}
+}
+
+func TestGetGVR(t *testing.T) {
+	tests := []struct {
+		Resource         string
+		GroupVersionKind schema.GroupVersionKind
+		ExpectedResource schema.GroupVersionResource
+		Err              bool
+	}{
+		{
+			Resource:         "nonexisting",
+			GroupVersionKind: schema.GroupVersionKind{Group: "testapi", Version: "test", Kind: "MyObject"},
+			Err:              true,
+		},
+		{
+			Resource:         "MyObject",
+			GroupVersionKind: schema.GroupVersionKind{Group: "testapi", Version: "test", Kind: "MyObject"},
+			ExpectedResource: schema.GroupVersionResource{Resource: "myobjects", Group: "testapi", Version: "test"},
+		},
+	}
+
+	for _, test := range tests {
+		mapper := meta.NewDefaultRESTMapper([]schema.GroupVersion{test.GroupVersionKind.GroupVersion()})
+		mapper.Add(test.GroupVersionKind, meta.RESTScopeNamespace)
+
+		fakeConfig := createValidTestConfig("")
+
+		cluster, err := getCluster(fakeConfig, mapper)
+		assert.NoError(t, err)
+
+		gvr, err := cluster.GetGVR(test.Resource)
+		if test.Err {
+			assert.Error(t, err)
+			continue
+		}
+
+		assert.Equal(t, test.ExpectedResource, gvr)
 	}
 }
 

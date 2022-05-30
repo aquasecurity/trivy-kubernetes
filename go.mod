@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/stretchr/testify v1.7.1
 	k8s.io/apimachinery v0.24.1
-	k8s.io/cli-runtime v0.24.0
+	k8s.io/cli-runtime v0.24.1
 	k8s.io/client-go v0.24.1
 	k8s.io/kubectl v0.24.0
 )

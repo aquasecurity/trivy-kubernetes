@@ -17,7 +17,7 @@ func TestGetCurrentNamespace(t *testing.T) {
 		ExpectedNamespace string
 	}{
 		{
-			Name:              "empty context and empty namespace",
+			Name:              "empty namespace",
 			ExpectedNamespace: "default",
 		},
 		{

@@ -4,9 +4,9 @@ import (
 	"io/ioutil"
 	"log"
 	"path/filepath"
-	"reflect"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/kubectl/pkg/scheme"
@@ -26,15 +26,22 @@ func TestFromResource(t *testing.T) {
 		{"Pod", resourceFromFile("pod.yaml"), newArtifact("Pod", "prometheus", []string{"ubuntu/prometheus"})},
 		{"Role", resourceFromFile("role.yaml"), newArtifact("Role", "kube-proxy", []string{})},
 		{"Service", resourceFromFile("service.yaml"), newArtifact("Service", "nginx", []string{})},
+		{"InitContainer", resourceFromFile("initcontainer.yaml"), newArtifact("Pod", "initapp", []string{"ubuntu:latest", "alpine:latest", "alpine:latest"})},
+		{"EphemeralContainer", resourceFromFile("ephemeral.yaml"), newArtifact("Pod", "ephemeral", []string{"k8s.gcr.io/pause:3.1", "busybox:1.28", "ubuntu:latest"})},
 	}
 
 	for _, test := range tests {
 		t.Run(test.Name, func(t *testing.T) {
-			artifact, err := FromResource(test.Resource)
+			result, err := FromResource(test.Resource)
 			if err != nil {
 				t.Fatal(err)
 			}
-			compare(t, test.Resource, test.ExpectedArtifact, artifact)
+
+			assert.Equal(t, test.ExpectedArtifact.Name, result.Name)
+			assert.Equal(t, test.ExpectedArtifact.Kind, result.Kind)
+			assert.Equal(t, test.ExpectedArtifact.Images, result.Images)
+			assert.Equal(t, test.Resource.Object, result.RawResource)
+
 		})
 	}
 }
@@ -67,23 +74,5 @@ func newArtifact(kind, name string, images []string) *Artifact {
 		Kind:   kind,
 		Name:   name,
 		Images: images,
-	}
-}
-
-func compare(t *testing.T, expectedResource unstructured.Unstructured, expectedArtifact, result *Artifact) {
-	if expectedArtifact.Name != result.Name {
-		t.Errorf("Expected name %v, but got %v", expectedArtifact.Name, result.Name)
-	}
-
-	if expectedArtifact.Kind != result.Kind {
-		t.Errorf("Expected kind %v, but got %v", expectedArtifact.Kind, result.Kind)
-	}
-
-	if !reflect.DeepEqual(expectedArtifact.Images, result.Images) {
-		t.Errorf("Expected images %v, but got %v", expectedArtifact.Images, result.Images)
-	}
-
-	if !reflect.DeepEqual(expectedResource.Object, result.RawResource) {
-		t.Errorf("Expected resources to be equal but it wasn't: \n%v\n%v", expectedResource.Object, result.RawResource)
 	}
 }

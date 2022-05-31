@@ -1,0 +1,44 @@
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    run: ephemeral
+  name: ephemeral
+  namespace: default
+spec:
+  containers:
+    - image: k8s.gcr.io/pause:3.1
+      imagePullPolicy: IfNotPresent
+      name: ephemeral-demo
+      resources: {}
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      volumeMounts:
+        - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+          name: kube-api-access-xnb2s
+          readOnly: true
+  dnsPolicy: ClusterFirst
+  enableServiceLinks: true
+  ephemeralContainers:
+    - image: busybox:1.28
+      imagePullPolicy: IfNotPresent
+      name: debugger-p9scb
+      resources: {}
+      stdin: true
+      targetContainerName: ephemeral-demo
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      tty: true
+    - image: ubuntu:latest
+      imagePullPolicy: Always
+      name: debugger-5kf9l
+      resources: {}
+      stdin: true
+      targetContainerName: ephemeral-demo
+      terminationMessagePath: /dev/termination-log
+      terminationMessagePolicy: File
+      tty: true
+  priority: 0
+  restartPolicy: Never
+  schedulerName: default-scheduler

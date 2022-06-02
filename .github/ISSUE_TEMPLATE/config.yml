@@ -10,5 +10,5 @@ contact_links:
     about: I have a suggestion (and might want to implement myself)!
   - name: Support Question
     # yamllint disable-line rule:line-length
-    url: https://github.com/aquasecurity/trivy/issues/new?labels=triage%2Fsupport,target%2Fkubernetes&template=SUPPORT_QUESTION.md
+    url: https://github.com/aquasecurity/trivy/discussions/new?category=help-support
     about: If you have a question about Trivy kubernetes.

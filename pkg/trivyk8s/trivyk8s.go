@@ -6,6 +6,7 @@ import (
 
 	"github.com/aquasecurity/trivy-kubernetes/pkg/artifacts"
 	"github.com/aquasecurity/trivy-kubernetes/pkg/k8s"
+	"go.uber.org/zap"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -32,11 +33,12 @@ type ArtifactsK8S interface {
 type client struct {
 	cluster   k8s.Cluster
 	namespace string
+	logger    *zap.SugaredLogger
 }
 
 // New creates a trivyK8S client
-func New(cluster k8s.Cluster) TrivyK8S {
-	return &client{cluster: cluster}
+func New(cluster k8s.Cluster, logger *zap.SugaredLogger) TrivyK8S {
+	return &client{cluster: cluster, logger: logger}
 }
 
 // Namespace configure the namespace to execute the queries
@@ -60,7 +62,9 @@ func (c *client) ListArtifacts(ctx context.Context) ([]*artifacts.Artifact, erro
 
 		resources, err := dclient.List(ctx, v1.ListOptions{})
 		if err != nil {
-			return nil, fmt.Errorf("failed listing resources for gvr: %v - %w", gvr, err)
+			c.logger.Errorf("failed listing resources for gvr: %v - %w", gvr, err)
+			// if a resource is not found, we log and continue
+			continue
 		}
 
 		for _, resource := range resources.Items {

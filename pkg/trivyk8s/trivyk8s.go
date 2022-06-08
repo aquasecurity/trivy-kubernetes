@@ -7,6 +7,7 @@ import (
 	"github.com/aquasecurity/trivy-kubernetes/pkg/artifacts"
 	"github.com/aquasecurity/trivy-kubernetes/pkg/k8s"
 	"go.uber.org/zap"
+	"k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -62,9 +63,15 @@ func (c *client) ListArtifacts(ctx context.Context) ([]*artifacts.Artifact, erro
 
 		resources, err := dclient.List(ctx, v1.ListOptions{})
 		if err != nil {
-			c.logger.Errorf("failed listing resources for gvr: %v - %w", gvr, err)
-			// if a resource is not found, we log and continue
-			continue
+			lerr := fmt.Errorf("failed listing resources for gvr: %v - %w", gvr, err)
+
+			if errors.IsNotFound(err) {
+				c.logger.Error(lerr)
+				// if a resource is not found, we log and continue
+				continue
+			}
+
+			return nil, lerr
 		}
 
 		for _, resource := range resources.Items {

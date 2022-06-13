@@ -4,6 +4,7 @@ go 1.18
 
 require (
 	github.com/stretchr/testify v1.7.1
+	go.uber.org/zap v1.19.0
 	k8s.io/apimachinery v0.24.1
 	k8s.io/cli-runtime v0.24.1
 	k8s.io/client-go v0.24.1
@@ -55,6 +56,8 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/xlab/treeprint v0.0.0-20181112141820-a009c3971eca // indirect
 	go.starlark.net v0.0.0-20200306205701-8dd3e2ee1dd5 // indirect
+	go.uber.org/atomic v1.7.0 // indirect
+	go.uber.org/multierr v1.6.0 // indirect
 	golang.org/x/crypto v0.0.0-20220214200702-86341886e292 // indirect
 	golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd // indirect
 	golang.org/x/oauth2 v0.0.0-20211104180415-d3ed0bb246c8 // indirect

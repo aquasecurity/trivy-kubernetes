@@ -7,11 +7,16 @@ import (
 	"github.com/aquasecurity/trivy-kubernetes/pkg/artifacts"
 	"github.com/aquasecurity/trivy-kubernetes/pkg/k8s"
 	"github.com/aquasecurity/trivy-kubernetes/pkg/trivyk8s"
+	"go.uber.org/zap"
 
 	"context"
 )
 
 func main() {
+
+	logger, _ := zap.NewProduction()
+	defer logger.Sync()
+
 	ctx := context.Background()
 
 	cluster, err := k8s.GetCluster("")
@@ -21,7 +26,7 @@ func main() {
 
 	fmt.Println("Current namespace:", cluster.GetCurrentNamespace())
 
-	trivyk8s := trivyk8s.New(cluster)
+	trivyk8s := trivyk8s.New(cluster, logger.Sugar())
 
 	fmt.Println("Scanning cluster")
 

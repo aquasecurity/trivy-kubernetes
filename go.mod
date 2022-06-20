@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/stretchr/testify v1.7.3
-	go.uber.org/zap v1.19.0
+	go.uber.org/zap v1.21.0
 	k8s.io/apimachinery v0.24.2
 	k8s.io/cli-runtime v0.24.2
 	k8s.io/client-go v0.24.2

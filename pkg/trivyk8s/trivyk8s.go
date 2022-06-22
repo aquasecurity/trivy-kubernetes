@@ -3,6 +3,7 @@ package trivyk8s
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/aquasecurity/trivy-kubernetes/pkg/artifacts"
 	"github.com/aquasecurity/trivy-kubernetes/pkg/k8s"
@@ -20,6 +21,7 @@ import (
 // TrivyK8S interface represents the operations supported by the library
 type TrivyK8S interface {
 	Namespace(string) TrivyK8S
+	Resources(string) TrivyK8S
 	ArtifactsK8S
 }
 
@@ -34,6 +36,7 @@ type ArtifactsK8S interface {
 type client struct {
 	cluster   k8s.Cluster
 	namespace string
+	resources []string
 	logger    *zap.SugaredLogger
 }
 
@@ -48,12 +51,23 @@ func (c *client) Namespace(namespace string) TrivyK8S {
 	return c
 }
 
+// Resource configure which resources to execute the queries
+func (c *client) Resources(resources string) TrivyK8S {
+	if len(resources) == 0 {
+		return c
+	}
+
+	c.resources = strings.Split(resources, ",")
+
+	return c
+}
+
 // ListArtifacts returns kubernetes scannable artifacs.
 func (c *client) ListArtifacts(ctx context.Context) ([]*artifacts.Artifact, error) {
 	artifactList := make([]*artifacts.Artifact, 0)
 
 	namespaced := len(c.namespace) != 0
-	grvs, err := c.cluster.GetGVRs(namespaced)
+	grvs, err := c.cluster.GetGVRs(namespaced, c.resources)
 	if err != nil {
 		return nil, err
 	}
@@ -75,7 +89,7 @@ func (c *client) ListArtifacts(ctx context.Context) ([]*artifacts.Artifact, erro
 		}
 
 		for _, resource := range resources.Items {
-			if ignoreResource(resource) {
+			if c.ignoreResource(resource) {
 				continue
 			}
 			artifact, err := artifacts.FromResource(resource)
@@ -125,7 +139,12 @@ func (c *client) getDynamicClient(gvr schema.GroupVersionResource) dynamic.Resou
 
 // ignore resources to avoid duplication,
 // when a resource has an owner, the image/iac will be scanned on the owner itself
-func ignoreResource(resource unstructured.Unstructured) bool {
+func (c *client) ignoreResource(resource unstructured.Unstructured) bool {
+	// if we are filtering resources, don't ignore
+	if len(c.resources) > 0 {
+		return false
+	}
+
 	switch resource.GetKind() {
 	case k8s.KindPod, k8s.KindJob, k8s.KindReplicaSet:
 		metadata := resource.GetOwnerReferences()

@@ -54,6 +54,23 @@ func main() {
 		log.Fatal(err)
 	}
 	printArtifact(artifact)
+
+	fmt.Println("Scanning 'deployments'")
+
+	//trivy k8s deployment
+	artifacts, err = trivyk8s.Namespace("default").Resources("deployment").ListArtifacts(ctx)
+	if err != nil {
+		log.Fatal(err)
+	}
+	printArtifacts(artifacts)
+
+	fmt.Println("Scanning 'cm,pods'")
+	//trivy k8s clusterroles,pods
+	artifacts, err = trivyk8s.Namespace("default").Resources("cm,pods").ListArtifacts(ctx)
+	if err != nil {
+		log.Fatal(err)
+	}
+	printArtifacts(artifacts)
 }
 
 func printArtifacts(artifacts []*artifacts.Artifact) {

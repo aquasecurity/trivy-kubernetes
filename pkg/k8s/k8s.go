@@ -45,8 +45,9 @@ type Cluster interface {
 	// GetDynamicClient returns a dynamic k8s client
 	GetDynamicClient() dynamic.Interface
 	// GetGVRs returns cluster GroupVersionResource to query kubernetes, receives
-	// a boolean to determine if returns namespaced GVRs only or all GVRs
-	GetGVRs(bool) ([]schema.GroupVersionResource, error)
+	// a boolean to determine if returns namespaced GVRs only or all GVRs, unless
+	// resources is passed to filter
+	GetGVRs(bool, []string) ([]schema.GroupVersionResource, error)
 	// GetGVR returns resource GroupVersionResource to query kubernetes, receives
 	// a string with the resource kind
 	GetGVR(string) (schema.GroupVersionResource, error)
@@ -128,15 +129,16 @@ func (c *cluster) GetDynamicClient() dynamic.Interface {
 }
 
 // GetGVRs returns cluster GroupVersionResource to query kubernetes, receives
-// a boolean to determine if returns namespaced GVRs only or all GVRs
-func (c *cluster) GetGVRs(namespaced bool) ([]schema.GroupVersionResource, error) {
+// a boolean to determine if returns namespaced GVRs only or all GVRs, unless
+// resources is passed to filter
+func (c *cluster) GetGVRs(namespaced bool, resources []string) ([]schema.GroupVersionResource, error) {
 	grvs := make([]schema.GroupVersionResource, 0)
-
-	resources := getNamespaceResources()
-	if !namespaced {
-		resources = append(resources, getClusterResources()...)
+	if len(resources) == 0 {
+		resources = getNamespaceResources()
+		if !namespaced {
+			resources = append(resources, getClusterResources()...)
+		}
 	}
-
 	for _, resource := range resources {
 		gvr, err := c.GetGVR(resource)
 		if err != nil {

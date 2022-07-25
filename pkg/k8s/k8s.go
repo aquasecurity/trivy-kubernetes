@@ -2,6 +2,7 @@ package k8s
 
 import (
 	"k8s.io/apimachinery/pkg/api/meta"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/dynamic"
@@ -10,10 +11,14 @@ import (
 )
 
 const (
-	KindPod        = "Pod"
-	KindJob        = "Job"
-	KindCronJob    = "CronJob"
-	KindReplicaSet = "ReplicaSet"
+	KindPod                   = "Pod"
+	KindJob                   = "Job"
+	KindCronJob               = "CronJob"
+	KindReplicaSet            = "ReplicaSet"
+	KindReplicationController = "ReplicationController"
+	KindStatefulSet           = "StatefulSet"
+	KindDaemonSet             = "DaemonSet"
+	KindDeployment            = "Deployment"
 
 	Deployments            = "deployments"
 	ReplicaSets            = "replicasets"
@@ -163,6 +168,19 @@ func IsClusterResource(gvr schema.GroupVersionResource) bool {
 		}
 	}
 	return false
+}
+
+// IsBuiltInWorkload returns true if the specified v1.OwnerReference
+// is a built-in Kubernetes workload, false otherwise.
+func IsBuiltInWorkload(resource *v1.OwnerReference) bool {
+	return resource != nil &&
+		(resource.Kind == string(KindReplicaSet) ||
+			resource.Kind == string(KindReplicationController) ||
+			resource.Kind == string(KindStatefulSet) ||
+			resource.Kind == string(KindDeployment) ||
+			resource.Kind == string(KindCronJob) ||
+			resource.Kind == string(KindDaemonSet) ||
+			resource.Kind == string(KindJob))
 }
 
 func getClusterResources() []string {

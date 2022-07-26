@@ -12,6 +12,7 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+
 	"k8s.io/client-go/dynamic"
 
 	// import auth plugins
@@ -145,10 +146,8 @@ func (c *client) ignoreResource(resource unstructured.Unstructured) bool {
 		return false
 	}
 
-	switch resource.GetKind() {
-	case k8s.KindPod, k8s.KindJob, k8s.KindReplicaSet:
-		metadata := resource.GetOwnerReferences()
-		if metadata != nil {
+	for _, owner := range resource.GetOwnerReferences() {
+		if k8s.IsBuiltInWorkload(&owner) {
 			return true
 		}
 	}

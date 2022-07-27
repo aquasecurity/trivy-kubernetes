@@ -65,12 +65,28 @@ type cluster struct {
 	restMapper       meta.RESTMapper
 }
 
-// GetCluster returns a current configured cluster,
-// receives context to use, if empty uses default
-func GetCluster(context string) (Cluster, error) {
-	cf := genericclioptions.NewConfigFlags(true)
+type ClusterOption func(*genericclioptions.ConfigFlags)
 
-	cf.Context = &context
+// Specify the context to use, if empty uses default
+func WithContext(context string) ClusterOption {
+	return func(c *genericclioptions.ConfigFlags) {
+		c.Context = &context
+	}
+}
+
+// kubeconfig can be used to specify the config file path (overrides KUBECONFIG env)
+func WithKubeConfig(kubeConfig string) ClusterOption {
+	return func(c *genericclioptions.ConfigFlags) {
+		c.KubeConfig = &kubeConfig
+	}
+}
+
+// GetCluster returns a current configured cluster,
+func GetCluster(opts ...ClusterOption) (Cluster, error) {
+	cf := genericclioptions.NewConfigFlags(true)
+	for _, opt := range opts {
+		opt(cf)
+	}
 
 	// disable warnings
 	rest.SetDefaultWarningHandler(rest.NoWarnings{})

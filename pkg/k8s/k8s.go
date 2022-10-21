@@ -38,7 +38,6 @@ const (
 	LimitRanges            = "limitranges"
 	ClusterRoles           = "clusterroles"
 	ClusterRoleBindings    = "clusterrolebindings"
-	PodSecurityPolicies    = "podsecuritypolicies"
 )
 
 // Cluster interface represents the operations needed to scan a cluster
@@ -203,7 +202,6 @@ func getClusterResources() []string {
 	return []string{
 		ClusterRoles,
 		ClusterRoleBindings,
-		PodSecurityPolicies,
 	}
 }
 

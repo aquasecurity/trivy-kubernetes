@@ -2,10 +2,12 @@ package trivyk8s
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 
 	"github.com/aquasecurity/trivy-kubernetes/pkg/artifacts"
+	"github.com/aquasecurity/trivy-kubernetes/pkg/jobs"
 	"github.com/aquasecurity/trivy-kubernetes/pkg/k8s"
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -32,6 +34,8 @@ type ArtifactsK8S interface {
 	ListArtifacts(context.Context) ([]*artifacts.Artifact, error)
 	// GetArtifact return kubernete scanable artifact
 	GetArtifact(context.Context, string, string) (*artifacts.Artifact, error)
+	// ListArtifactAndNodeInfo return kubernete scanable artifact an node info
+	ListArtifactAndNodeInfo(context.Context) ([]*artifacts.Artifact, error)
 }
 
 type client struct {
@@ -105,6 +109,33 @@ func (c *client) ListArtifacts(ctx context.Context) ([]*artifacts.Artifact, erro
 	return artifactList, nil
 }
 
+// ListArtifacts returns kubernetes scannable artifacs.
+func (c *client) ListArtifactAndNodeInfo(ctx context.Context) ([]*artifacts.Artifact, error) {
+	artifactList, err := c.ListArtifacts(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// collect node info
+	for _, resource := range artifactList {
+		if resource.Kind != "Node" {
+			continue
+		}
+		jc := jobs.NewCollector(c.cluster)
+		output, err := jc.ApplyAndCollect(ctx, "node-collector", resource.Name, "default")
+		if err != nil {
+			return nil, err
+		}
+		var nodeInfo map[string]interface{}
+		err = json.Unmarshal([]byte(output), &nodeInfo)
+		if err != nil {
+			return nil, err
+		}
+		artifactList = append(artifactList, &artifacts.Artifact{Kind: "NodeInfo", Name: resource.Name, RawResource: nodeInfo})
+	}
+	return artifactList, err
+}
+
 // GetArtifact return kubernetes scannable artifac.
 func (c *client) GetArtifact(ctx context.Context, kind, name string) (*artifacts.Artifact, error) {
 	gvr, err := c.cluster.GetGVR(kind)
@@ -142,6 +173,9 @@ func (c *client) getDynamicClient(gvr schema.GroupVersionResource) dynamic.Resou
 // when a resource has an owner, the image/iac will be scanned on the owner itself
 func (c *client) ignoreResource(resource unstructured.Unstructured) bool {
 	// if we are filtering resources, don't ignore
+	if resource.GetKind() == "Node" {
+		return false
+	}
 	if len(c.resources) > 0 {
 		return false
 	}

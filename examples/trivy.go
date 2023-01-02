@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"github.com/aquasecurity/trivy-kubernetes/pkg/artifacts"
+	"github.com/aquasecurity/trivy-kubernetes/pkg/jobs"
 	"github.com/aquasecurity/trivy-kubernetes/pkg/k8s"
 	"github.com/aquasecurity/trivy-kubernetes/pkg/trivyk8s"
 	"go.uber.org/zap"
@@ -71,6 +72,19 @@ func main() {
 		log.Fatal(err)
 	}
 	printArtifacts(artifacts)
+
+	// collect node info
+	for _, resource := range artifacts {
+		if resource.Kind != "Node" {
+			continue
+		}
+		jc := jobs.NewCollector(cluster)
+		output, err := jc.ApplyAndCollect(ctx, "node-collector", resource.Name, "default")
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Println(output)
+	}
 }
 
 func printArtifacts(artifacts []*artifacts.Artifact) {

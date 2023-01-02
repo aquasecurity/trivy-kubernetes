@@ -30,7 +30,7 @@ func TestGetCurrentNamespace(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.Name, func(t *testing.T) {
 			fakeConfig := createValidTestConfig(test.Namespace)
-			cluster, err := getCluster(fakeConfig, nil)
+			cluster, err := getCluster(fakeConfig, nil, nil)
 			assert.NoError(t, err)
 			assert.Equal(t, test.ExpectedNamespace, cluster.GetCurrentNamespace())
 		})
@@ -62,7 +62,7 @@ func TestGetGVR(t *testing.T) {
 
 		fakeConfig := createValidTestConfig("")
 
-		cluster, err := getCluster(fakeConfig, mapper)
+		cluster, err := getCluster(fakeConfig, mapper, nil)
 		assert.NoError(t, err)
 
 		gvr, err := cluster.GetGVR(test.Resource)

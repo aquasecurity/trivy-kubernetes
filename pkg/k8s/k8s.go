@@ -38,6 +38,7 @@ const (
 	LimitRanges            = "limitranges"
 	ClusterRoles           = "clusterroles"
 	ClusterRoleBindings    = "clusterrolebindings"
+	Nodes                  = "nodes"
 )
 
 // Cluster interface represents the operations needed to scan a cluster
@@ -202,6 +203,7 @@ func getClusterResources() []string {
 	return []string{
 		ClusterRoles,
 		ClusterRoleBindings,
+		Nodes,
 	}
 }
 

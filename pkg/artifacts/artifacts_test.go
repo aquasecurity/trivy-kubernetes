@@ -1,8 +1,8 @@
 package artifacts
 
 import (
-	"io/ioutil"
 	"log"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -49,7 +49,7 @@ func TestFromResource(t *testing.T) {
 func resourceFromFile(fixture string) unstructured.Unstructured {
 	fixture = filepath.Join("testdata", "fixtures", fixture)
 
-	content, err := ioutil.ReadFile(fixture)
+	content, err := os.ReadFile(fixture)
 	if err != nil {
 		log.Fatalf("error reading fixture: %v", err)
 	}

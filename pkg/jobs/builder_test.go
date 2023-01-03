@@ -23,7 +23,7 @@ func TestLoadBuilder(t *testing.T) {
 					Kind:       "Job",
 					APIVersion: "batch/v1",
 				},
-				ObjectMeta: v1.ObjectMeta{Name: "node-collector"},
+				ObjectMeta: v1.ObjectMeta{Name: "node-collector", Namespace: "default"},
 				Spec: batchv1.JobSpec{
 					Template: corev1.PodTemplateSpec{
 						ObjectMeta: v1.ObjectMeta{Labels: map[string]string{"app": "node-collector"}},
@@ -149,8 +149,7 @@ func TestLoadBuilder(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			template := GetTemplate(tt.templateName)
-			gotJob, err := GetJob(WithTemplate(template))
+			gotJob, err := GetJob(WithTemplate(tt.templateName))
 			assert.NoError(t, err)
 			assert.True(t, reflect.DeepEqual(gotJob, tt.wantJob))
 		})

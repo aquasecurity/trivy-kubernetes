@@ -142,6 +142,9 @@ func (c *client) getDynamicClient(gvr schema.GroupVersionResource) dynamic.Resou
 // when a resource has an owner, the image/iac will be scanned on the owner itself
 func (c *client) ignoreResource(resource unstructured.Unstructured) bool {
 	// if we are filtering resources, don't ignore
+	if resource.GetKind() == "Node" {
+		return false
+	}
 	if len(c.resources) > 0 {
 		return false
 	}

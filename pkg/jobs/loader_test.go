@@ -21,10 +21,10 @@ func TestLoadSpecs(t *testing.T) {
 			if tt.wantSpecPath != "" {
 				wantSpecData, err := os.ReadFile(tt.wantSpecPath)
 				assert.NoError(t, err)
-				gotSpecData := GetTemplate(tt.specName)
+				gotSpecData := getTemplate(tt.specName)
 				assert.Equal(t, gotSpecData, string(wantSpecData))
 			} else {
-				assert.Empty(t, GetTemplate(tt.specName), tt.name)
+				assert.Empty(t, getTemplate(tt.specName), tt.name)
 			}
 		})
 	}

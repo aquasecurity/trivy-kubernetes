@@ -48,7 +48,7 @@ func init() {
 }
 
 // GetTemplate returns the spec content
-func GetTemplate(name string) string {
+func getTemplate(name string) string {
 	if template, ok := jobTemplateMap[name]; ok { // use embedded spec
 		return template
 	}

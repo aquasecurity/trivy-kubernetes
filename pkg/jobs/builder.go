@@ -39,14 +39,17 @@ type JobBuilder struct {
 }
 
 func (b *JobBuilder) build() (*batchv1.Job, error) {
+	template := getTemplate(b.template)
 	var job batchv1.Job
 
-	err := yaml.Unmarshal([]byte(b.template), &job)
+	err := yaml.Unmarshal([]byte(template), &job)
 	if err != nil {
 		return nil, err
 	}
 	if len(b.namespace) > 0 {
 		job.Namespace = b.namespace
+	} else {
+		job.Namespace = "default"
 	}
 	if len(b.nodeSelector) > 0 {
 		job.Spec.Template.Spec.NodeName = b.nodeSelector

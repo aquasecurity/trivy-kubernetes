@@ -21,31 +21,23 @@ var defaultResyncDuration = 30 * time.Minute
 type runnableJob struct {
 	clientset  kubernetes.Interface
 	logsReader LogsReader
-
-	job     *batchv1.Job     // job to be run
-	secrets []*corev1.Secret // secrets that the job references
+	job        *batchv1.Job // job to be run
 }
 
 // NewRunnableJob constructs a new Runnable task defined as Kubernetes
-// job configuration and secrets that it references.
 func NewRunnableJob(
 	clientset kubernetes.Interface,
 	job *batchv1.Job,
-	secrets ...*corev1.Secret,
 ) Runnable {
 	return &runnableJob{
 		clientset:  clientset,
 		logsReader: NewLogsReader(clientset),
 		job:        job,
-		secrets:    secrets,
 	}
 }
 
 // Run runs synchronously the task as Kubernetes job.
-// It creates Kubernetes job and secrets provided as constructor parameters.
 // This method blocks and waits for the job completion or failure.
-// For each secret it also sets the owner reference that points to the job
-// so when the job is deleted secrets are garbage collected.
 func (r *runnableJob) Run(ctx context.Context) error {
 	var err error
 	r.job, err = r.clientset.BatchV1().Jobs(r.job.Namespace).Create(ctx, r.job, metav1.CreateOptions{})
@@ -90,10 +82,6 @@ func (r *runnableJob) Run(ctx context.Context) error {
 	_, err = eventsInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			event := obj.(*corev1.Event)
-
-			// TODO We might want to look into events associate with the pod controlled by the current scan job.
-			// For example, when a pod cannot be scheduled due to insufficient resource requests,
-			// the event will be attached to the pod, not the job.
 			if event.InvolvedObject.UID != r.job.UID {
 				return
 			}

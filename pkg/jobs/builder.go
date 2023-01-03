@@ -5,8 +5,31 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-func NewJobBuilder() *JobBuilder {
-	return &JobBuilder{}
+type JobOption func(*JobBuilder)
+
+func WithTemplate(template string) JobOption {
+	return func(j *JobBuilder) {
+		j.template = template
+	}
+}
+
+func WithNodeSelector(nodeSelector string) JobOption {
+	return func(j *JobBuilder) {
+		j.nodeSelector = nodeSelector
+	}
+}
+func WithNamespace(namespace string) JobOption {
+	return func(j *JobBuilder) {
+		j.namespace = namespace
+	}
+}
+
+func GetJob(opts ...JobOption) (*batchv1.Job, error) {
+	jb := &JobBuilder{}
+	for _, opt := range opts {
+		opt(jb)
+	}
+	return jb.build()
 }
 
 type JobBuilder struct {
@@ -15,22 +38,18 @@ type JobBuilder struct {
 	namespace    string
 }
 
-func (b *JobBuilder) JobTemplate(template string) *JobBuilder {
-	b.template = template
-	return b
-}
-
-func (b *JobBuilder) NodeSelector(nodeSelector string) *JobBuilder {
-	b.nodeSelector = nodeSelector
-	return b
-}
-
-func (b *JobBuilder) Get() (*batchv1.Job, error) {
+func (b *JobBuilder) build() (*batchv1.Job, error) {
 	var job batchv1.Job
 
 	err := yaml.Unmarshal([]byte(b.template), &job)
 	if err != nil {
 		return nil, err
+	}
+	if len(b.namespace) > 0 {
+		job.Namespace = b.namespace
+	}
+	if len(b.nodeSelector) > 0 {
+		job.Spec.Template.Spec.NodeName = b.nodeSelector
 	}
 	return &job, nil
 }

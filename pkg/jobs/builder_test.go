@@ -150,7 +150,7 @@ func TestLoadBuilder(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			template := GetTemplate(tt.templateName)
-			gotJob, err := NewJobBuilder().JobTemplate(template).Get()
+			gotJob, err := GetJob(WithTemplate(template))
 			assert.NoError(t, err)
 			assert.True(t, reflect.DeepEqual(gotJob, tt.wantJob))
 		})

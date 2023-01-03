@@ -17,3 +17,5 @@
 coverage.txt
 
 dist/
+vendor/
+.vscode/

@@ -33,18 +33,19 @@ func NewCollector(
 	}
 }
 
-// ApplyAndCollect apply job , take care of cleanup and collect it output
+// ApplyAndCollect apply k8s job by template and read pod logs and return it as output 
+// also taking care for job cleanup 
 func (jb *jobCollector) ApplyAndCollect(ctx context.Context, templateName string, nodeName string, namespace string) (string, error) {
 	job, err := GetJob(WithTemplate(templateName), WithNodeSelector(nodeName), WithNamespace(namespace))
 	if err != nil {
-		return "", fmt.Errorf("running kube-bench job: %w", err)
+		return "", fmt.Errorf("running node-collector job: %w", err)
 	}
 	err = New().Run(ctx, NewRunnableJob(jb.cluster.GetK8sClientSet(), job))
 	if err != nil {
-		return "", fmt.Errorf("running kube-bench job: %w", err)
+		return "", fmt.Errorf("running node-collector job: %w", err)
 	}
 	if err != nil {
-		return "", fmt.Errorf("running kube-bench job: %w", err)
+		return "", fmt.Errorf("running node-collector job: %w", err)
 	}
 	defer func() {
 		background := metav1.DeletePropagationBackground
@@ -67,7 +68,7 @@ func (jb *jobCollector) ApplyAndCollect(ctx context.Context, templateName string
 	return string(output), nil
 }
 
-// ApplyAndCollect apply job only
+// ApplyAndCollect apply k8s job by template only 
 func (jb *jobCollector) Apply(ctx context.Context, templateName string, nodeName string, namespace string) (*batchv1.Job, error) {
 	job, err := GetJob(WithTemplate(templateName), WithNodeSelector(nodeName), WithNamespace(namespace))
 	if err != nil {

@@ -33,8 +33,8 @@ func NewCollector(
 	}
 }
 
-// ApplyAndCollect apply k8s job by template and read pod logs and return it as output 
-// also taking care for job cleanup 
+// ApplyAndCollect deploy k8s job by template to  specific node  and namespace, it read pod logs 
+// cleaning up job and returning it output 
 func (jb *jobCollector) ApplyAndCollect(ctx context.Context, templateName string, nodeName string, namespace string) (string, error) {
 	job, err := GetJob(WithTemplate(templateName), WithNodeSelector(nodeName), WithNamespace(namespace))
 	if err != nil {
@@ -68,7 +68,7 @@ func (jb *jobCollector) ApplyAndCollect(ctx context.Context, templateName string
 	return string(output), nil
 }
 
-// ApplyAndCollect apply k8s job by template only 
+// Apply deploy k8s job by template to specific node and namespace 
 func (jb *jobCollector) Apply(ctx context.Context, templateName string, nodeName string, namespace string) (*batchv1.Job, error) {
 	job, err := GetJob(WithTemplate(templateName), WithNodeSelector(nodeName), WithNamespace(namespace))
 	if err != nil {

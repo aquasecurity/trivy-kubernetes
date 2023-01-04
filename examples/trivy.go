@@ -39,7 +39,6 @@ func main() {
 	printArtifacts(artifacts)
 
 	fmt.Println("Scanning namespace 'default'")
-
 	//trivy k8s --namespace default
 	artifacts, err = trivyk8s.Namespace("default").ListArtifacts(ctx)
 	if err != nil {
@@ -72,14 +71,13 @@ func main() {
 		log.Fatal(err)
 	}
 	printArtifacts(artifacts)
-
 	// collect node info
 	for _, resource := range artifacts {
 		if resource.Kind != "Node" {
 			continue
 		}
 		jc := jobs.NewCollector(cluster)
-		output, err := jc.ApplyAndCollect(ctx, "node-collector", resource.Name, "default")
+		output, err := jc.ApplyAndCollect(ctx, "node-collector", resource.Name)
 		if err != nil {
 			log.Fatal(err)
 		}

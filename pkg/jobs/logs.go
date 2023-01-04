@@ -14,6 +14,7 @@ import (
 
 var podControlledByJobNotFoundErr = errors.New("pod for job not found")
 
+// LogsReader responsible for collecting container status and logs
 type LogsReader interface {
 	GetLogsByJobAndContainerName(ctx context.Context, job *batchv1.Job, containerName string) (io.ReadCloser, error)
 	GetTerminatedContainersStatusesByJob(ctx context.Context, job *batchv1.Job) (map[string]*corev1.ContainerStateTerminated, error)
@@ -23,12 +24,14 @@ type logsReader struct {
 	clientset kubernetes.Interface
 }
 
+// NewLogsReader instansiate new log reader
 func NewLogsReader(clientset kubernetes.Interface) LogsReader {
 	return &logsReader{
 		clientset: clientset,
 	}
 }
 
+// GetLogsByJobAndContainerName collect logs from container and return it reader
 func (r *logsReader) GetLogsByJobAndContainerName(ctx context.Context, job *batchv1.Job, containerName string) (io.ReadCloser, error) {
 	pod, err := r.getPodByJob(ctx, job)
 	if err != nil {
@@ -45,6 +48,7 @@ func (r *logsReader) GetLogsByJobAndContainerName(ctx context.Context, job *batc
 		}).Stream(ctx)
 }
 
+// GetTerminatedContainersStatusesByJob collect information about contianer status by job
 func (r *logsReader) GetTerminatedContainersStatusesByJob(ctx context.Context, job *batchv1.Job) (map[string]*corev1.ContainerStateTerminated, error) {
 	pod, err := r.getPodByJob(ctx, job)
 	if err != nil {
@@ -71,6 +75,7 @@ func (r *logsReader) getPodByJob(ctx context.Context, job *batchv1.Job) (*corev1
 	return nil, nil
 }
 
+// GetTerminatedContainersStatusesByPod collect information about contianer status by pod
 func GetTerminatedContainersStatusesByPod(pod *corev1.Pod) map[string]*corev1.ContainerStateTerminated {
 	states := make(map[string]*corev1.ContainerStateTerminated)
 	if pod == nil {

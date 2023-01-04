@@ -23,7 +23,7 @@ func TestLoadBuilder(t *testing.T) {
 					Kind:       "Job",
 					APIVersion: "batch/v1",
 				},
-				ObjectMeta: v1.ObjectMeta{Name: "node-collector", Namespace: "default"},
+				ObjectMeta: v1.ObjectMeta{Name: "node-collector"},
 				Spec: batchv1.JobSpec{
 					Template: corev1.PodTemplateSpec{
 						ObjectMeta: v1.ObjectMeta{Labels: map[string]string{"app": "node-collector"}},

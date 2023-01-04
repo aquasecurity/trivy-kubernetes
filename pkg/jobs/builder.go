@@ -46,11 +46,8 @@ func (b *JobBuilder) build() (*batchv1.Job, error) {
 	if err != nil {
 		return nil, err
 	}
-	if len(b.namespace) > 0 {
-		job.Namespace = b.namespace
-	} else {
-		job.Namespace = "default"
-	}
+	job.Namespace = b.namespace
+
 	if len(b.nodeSelector) > 0 {
 		job.Spec.Template.Spec.NodeName = b.nodeSelector
 	}

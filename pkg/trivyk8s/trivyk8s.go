@@ -34,7 +34,7 @@ type ArtifactsK8S interface {
 	ListArtifacts(context.Context) ([]*artifacts.Artifact, error)
 	// GetArtifact return kubernete scanable artifact
 	GetArtifact(context.Context, string, string) (*artifacts.Artifact, error)
-	// ListArtifactAndNodeInfo return kubernete scanable artifact an node info
+	// ListArtifactAndNodeInfo return kubernete scanable artifact and node info
 	ListArtifactAndNodeInfo(context.Context) ([]*artifacts.Artifact, error)
 }
 
@@ -122,7 +122,7 @@ func (c *client) ListArtifactAndNodeInfo(ctx context.Context) ([]*artifacts.Arti
 			continue
 		}
 		jc := jobs.NewCollector(c.cluster)
-		output, err := jc.ApplyAndCollect(ctx, "node-collector", resource.Name, "default")
+		output, err := jc.ApplyAndCollect(ctx, jobs.ContainerName, resource.Name)
 		if err != nil {
 			return nil, err
 		}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"time"
 
 	"github.com/aquasecurity/trivy-kubernetes/pkg/k8s"
 	batchv1 "k8s.io/api/batch/v1"
@@ -22,17 +23,33 @@ type Collector interface {
 }
 
 type jobCollector struct {
-	cluster    k8s.Cluster
+	cluster k8s.Cluster
+	// timeout duration for collection job to complete it task before is cancelled default 0
+	timeout    time.Duration
 	logsReader LogsReader
+}
+
+type CollectorOption func(*jobCollector)
+
+func WithTimetout(timeout time.Duration) CollectorOption {
+	return func(jc *jobCollector) {
+		jc.timeout = timeout
+	}
 }
 
 func NewCollector(
 	cluster k8s.Cluster,
+	opts ...CollectorOption,
 ) Collector {
-	return &jobCollector{
+	jc := &jobCollector{
 		cluster:    cluster,
+		timeout:    0,
 		logsReader: NewLogsReader(cluster.GetK8sClientSet()),
 	}
+	for _, opt := range opts {
+		opt(jc)
+	}
+	return jc
 }
 
 // ApplyAndCollect deploy k8s job by template to  specific node  and namespace, it read pod logs
@@ -53,7 +70,7 @@ func (jb *jobCollector) ApplyAndCollect(ctx context.Context, templateName string
 		jb.deleteTrivyNamespace(ctx)
 	}()
 
-	err = New().Run(ctx, NewRunnableJob(jb.cluster.GetK8sClientSet(), job))
+	err = New(WithTimeout(jb.timeout)).Run(ctx, NewRunnableJob(jb.cluster.GetK8sClientSet(), job))
 	if err != nil {
 		return "", fmt.Errorf("running node-collector job: %w", err)
 	}

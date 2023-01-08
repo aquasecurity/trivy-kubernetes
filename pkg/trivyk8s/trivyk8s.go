@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/aquasecurity/trivy-kubernetes/pkg/artifacts"
 	"github.com/aquasecurity/trivy-kubernetes/pkg/jobs"
@@ -121,7 +122,7 @@ func (c *client) ListArtifactAndNodeInfo(ctx context.Context) ([]*artifacts.Arti
 		if resource.Kind != "Node" {
 			continue
 		}
-		jc := jobs.NewCollector(c.cluster)
+		jc := jobs.NewCollector(c.cluster, jobs.WithTimetout(time.Minute*5))
 		output, err := jc.ApplyAndCollect(ctx, jobs.ContainerName, resource.Name)
 		if err != nil {
 			return nil, err

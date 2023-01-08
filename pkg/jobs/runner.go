@@ -35,19 +35,25 @@ type Runner interface {
 }
 
 // New constructs a new ready-to-use Runner for running a Runnable task.
-func New() Runner {
-	return &runner{
+func New(opts ...RunnerOption) Runner {
+	r := &runner{
 		complete:        make(chan error),
 		timeoutDuration: 0,
 	}
+	for _, opt := range opts {
+		opt(r)
+	}
+	if r.timeoutDuration > 0 {
+		r.timeout = time.After(r.timeoutDuration)
+	}
+	return r
 }
 
-// NewWithTimeout constructs a new ready-to-use Runner with the specified timeout for running a Runnable task.
-func NewWithTimeout(d time.Duration) Runner {
-	return &runner{
-		complete:        make(chan error),
-		timeoutDuration: d,
-		timeout:         time.After(d),
+type RunnerOption func(*runner)
+
+func WithTimeout(timeout time.Duration) RunnerOption {
+	return func(j *runner) {
+		j.timeoutDuration = timeout
 	}
 }
 
@@ -61,25 +67,22 @@ type runner struct {
 }
 
 // Run runs the specified task and monitors channel events.
-func (r *runner) Run(ctx context.Context, task Runnable) (err error) {
+func (r *runner) Run(ctx context.Context, task Runnable) error {
 	go func() {
 		r.complete <- task.Run(ctx)
 	}()
-
 	if r.timeoutDuration > 0 {
-		err = r.runWithTimeout()
-		return
-	} else {
-		err = r.runAndWaitForever()
-		return
+		return r.runWithTimeout()
 	}
+	return r.runAndWaitForever()
+
 }
 
 func (r *runner) runAndWaitForever() error {
 	return <-r.complete
 }
 
-func (r *runner) runWithTimeout() (err error) {
+func (r *runner) runWithTimeout() error {
 	klog.V(3).Infof("Running task with timeout: %v", r.timeoutDuration)
 	select {
 	// Signaled when processing is done.

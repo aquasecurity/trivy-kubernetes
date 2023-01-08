@@ -50,7 +50,6 @@ func (r *runnableJob) Run(ctx context.Context) error {
 		informers.WithNamespace(r.job.Namespace),
 	)
 	jobsInformer := informerFactory.Batch().V1().Jobs()
-	eventsInformer := informerFactory.Core().V1().Events()
 	complete := make(chan error)
 
 	_, err = jobsInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -78,7 +77,7 @@ func (r *runnableJob) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-
+	eventsInformer := informerFactory.Core().V1().Events()
 	_, err = eventsInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			event := obj.(*corev1.Event)

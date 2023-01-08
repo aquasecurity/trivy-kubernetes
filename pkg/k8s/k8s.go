@@ -101,14 +101,11 @@ func GetCluster(opts ...ClusterOption) (Cluster, error) {
 	if err != nil {
 		return nil, err
 	}
-	restConfig, err := cf.ToRESTConfig()
-	if err != nil {
-		return nil, err
-	}
-	return getCluster(clientConfig, restMapper, restConfig)
+
+	return getCluster(clientConfig, restMapper)
 }
 
-func getCluster(clientConfig clientcmd.ClientConfig, restMapper meta.RESTMapper, restConfig *rest.Config) (*cluster, error) {
+func getCluster(clientConfig clientcmd.ClientConfig, restMapper meta.RESTMapper) (*cluster, error) {
 	kubeConfig, err := clientConfig.ClientConfig()
 	if err != nil {
 		return nil, err
@@ -119,12 +116,12 @@ func getCluster(clientConfig clientcmd.ClientConfig, restMapper meta.RESTMapper,
 		return nil, err
 	}
 	var kubeClientset *kubernetes.Clientset
-	if restConfig != nil {
-		kubeClientset, err = kubernetes.NewForConfig(restConfig)
-		if err != nil {
-			return nil, err
-		}
+
+	kubeClientset, err = kubernetes.NewForConfig(kubeConfig)
+	if err != nil {
+		return nil, err
 	}
+
 	rawCfg, err := clientConfig.RawConfig()
 	if err != nil {
 		return nil, err

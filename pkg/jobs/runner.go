@@ -78,7 +78,7 @@ func (r *runner) runAndWaitForever() error {
 }
 
 func (r *runner) runWithTimeout(ctx context.Context) error {
-	ctx, cancel := context.WithTimeout(context.Background(), r.timeoutDuration)
+	ctxWithTimeout, cancel := context.WithTimeout(context.Background(), r.timeoutDuration)
 	defer cancel()
 	klog.V(3).Infof("Running task with timeout: %v", r.timeoutDuration)
 	select {
@@ -87,7 +87,7 @@ func (r *runner) runWithTimeout(ctx context.Context) error {
 		klog.V(3).Infof("Stopping runner on task completion with error: %v", err)
 		return err
 	// Signaled when we run out of time.
-	case <-ctx.Done():
+	case <-ctxWithTimeout.Done():
 		klog.V(3).Info("Stopping runner on timeout")
 		return ErrTimeout
 	}

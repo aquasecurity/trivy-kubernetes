@@ -78,7 +78,7 @@ func (r *runner) runAndWaitForever() error {
 }
 
 func (r *runner) runWithTimeout(ctx context.Context) error {
-	ctxWithTimeout, cancel := context.WithTimeout(context.Background(), r.timeoutDuration)
+	ctxWithTimeout, cancel := context.WithTimeout(ctx, r.timeoutDuration)
 	defer cancel()
 	klog.V(3).Infof("Running task with timeout: %v", r.timeoutDuration)
 	select {

@@ -43,9 +43,6 @@ func New(opts ...RunnerOption) Runner {
 	for _, opt := range opts {
 		opt(r)
 	}
-	if r.timeoutDuration > 0 {
-		r.timeout = time.After(r.timeoutDuration)
-	}
 	return r
 }
 
@@ -62,8 +59,6 @@ type runner struct {
 	complete chan error
 	// timeout duration
 	timeoutDuration time.Duration
-	// timeout channel reports that time has run out
-	timeout <-chan time.Time
 }
 
 // Run runs the specified task and monitors channel events.
@@ -72,7 +67,7 @@ func (r *runner) Run(ctx context.Context, task Runnable) error {
 		r.complete <- task.Run(ctx)
 	}()
 	if r.timeoutDuration > 0 {
-		return r.runWithTimeout()
+		return r.runWithTimeout(ctx)
 	}
 	return r.runAndWaitForever()
 
@@ -82,7 +77,9 @@ func (r *runner) runAndWaitForever() error {
 	return <-r.complete
 }
 
-func (r *runner) runWithTimeout() error {
+func (r *runner) runWithTimeout(ctx context.Context) error {
+	ctx, cancel := context.WithTimeout(context.Background(), r.timeoutDuration)
+	defer cancel()
 	klog.V(3).Infof("Running task with timeout: %v", r.timeoutDuration)
 	select {
 	// Signaled when processing is done.
@@ -90,7 +87,7 @@ func (r *runner) runWithTimeout() error {
 		klog.V(3).Infof("Stopping runner on task completion with error: %v", err)
 		return err
 	// Signaled when we run out of time.
-	case <-r.timeout:
+	case <-ctx.Done():
 		klog.V(3).Info("Stopping runner on timeout")
 		return ErrTimeout
 	}

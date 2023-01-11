@@ -65,7 +65,14 @@ func (b *JobBuilder) build() (*batchv1.Job, error) {
 	if len(b.nodeSelector) > 0 {
 		job.Spec.Template.Spec.NodeName = b.nodeSelector
 	}
-	job.Labels = b.labels
-	job.Annotations = b.annotations
+	// append lables
+	for key, val := range b.labels {
+		job.Labels[key] = val
+	}
+	// append annotation
+	for key, val := range b.annotations {
+		job.Annotations[key] = val
+	}
+
 	return &job, nil
 }

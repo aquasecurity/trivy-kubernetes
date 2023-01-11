@@ -24,6 +24,12 @@ func WithNamespace(namespace string) JobOption {
 	}
 }
 
+func WithLabels(labels map[string]string) JobOption {
+	return func(j *JobBuilder) {
+		j.labels = labels
+	}
+}
+
 func GetJob(opts ...JobOption) (*batchv1.Job, error) {
 	jb := &JobBuilder{}
 	for _, opt := range opts {
@@ -36,6 +42,7 @@ type JobBuilder struct {
 	template     string
 	nodeSelector string
 	namespace    string
+	labels       map[string]string
 }
 
 func (b *JobBuilder) build() (*batchv1.Job, error) {
@@ -51,5 +58,6 @@ func (b *JobBuilder) build() (*batchv1.Job, error) {
 	if len(b.nodeSelector) > 0 {
 		job.Spec.Template.Spec.NodeName = b.nodeSelector
 	}
+	job.Labels = b.labels
 	return &job, nil
 }

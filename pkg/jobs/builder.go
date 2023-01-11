@@ -30,6 +30,12 @@ func WithLabels(labels map[string]string) JobOption {
 	}
 }
 
+func WithAnnotation(annotations map[string]string) JobOption {
+	return func(j *JobBuilder) {
+		j.annotations = annotations
+	}
+}
+
 func GetJob(opts ...JobOption) (*batchv1.Job, error) {
 	jb := &JobBuilder{}
 	for _, opt := range opts {
@@ -43,6 +49,7 @@ type JobBuilder struct {
 	nodeSelector string
 	namespace    string
 	labels       map[string]string
+	annotations  map[string]string
 }
 
 func (b *JobBuilder) build() (*batchv1.Job, error) {
@@ -59,5 +66,6 @@ func (b *JobBuilder) build() (*batchv1.Job, error) {
 		job.Spec.Template.Spec.NodeName = b.nodeSelector
 	}
 	job.Labels = b.labels
+	job.Annotations = b.annotations
 	return &job, nil
 }

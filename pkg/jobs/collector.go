@@ -13,20 +13,24 @@ import (
 )
 
 const (
-	ContainerName  = "node-collector"
-	TrivyNamespace = "trivy-system"
+	NodeCollectorName = "node-collector"
+	TrivyNamespace    = "trivy-system"
 )
 
 type Collector interface {
-	ApplyAndCollect(ctx context.Context, templateName string, nodeName string) (string, error)
-	Apply(ctx context.Context, templateName string, nodeName string, namespace string) (*batchv1.Job, error)
+	ApplyAndCollect(ctx context.Context, nodeName string) (string, error)
+	Apply(ctx context.Context, nodeName string) (*batchv1.Job, error)
 }
 
 type jobCollector struct {
 	cluster k8s.Cluster
 	// timeout duration for collection job to complete it task before is cancelled default 0
-	timeout    time.Duration
-	logsReader LogsReader
+	timeout      time.Duration
+	logsReader   LogsReader
+	labels       map[string]string
+	annotation   map[string]string
+	templateName string
+	namespace    string
 }
 
 type CollectorOption func(*jobCollector)
@@ -34,6 +38,30 @@ type CollectorOption func(*jobCollector)
 func WithTimetout(timeout time.Duration) CollectorOption {
 	return func(jc *jobCollector) {
 		jc.timeout = timeout
+	}
+}
+
+func WithJobLabels(labels map[string]string) CollectorOption {
+	return func(jc *jobCollector) {
+		jc.labels = labels
+	}
+}
+
+func WithJoAnnotation(annotation map[string]string) CollectorOption {
+	return func(jc *jobCollector) {
+		jc.annotation = annotation
+	}
+}
+
+func WithJobNamespace(namespace string) CollectorOption {
+	return func(jc *jobCollector) {
+		jc.namespace = namespace
+	}
+}
+
+func WithJobTemplateName(name string) CollectorOption {
+	return func(jc *jobCollector) {
+		jc.templateName = name
 	}
 }
 
@@ -54,8 +82,8 @@ func NewCollector(
 
 // ApplyAndCollect deploy k8s job by template to  specific node  and namespace, it read pod logs
 // cleaning up job and returning it output (for cli use-case)
-func (jb *jobCollector) ApplyAndCollect(ctx context.Context, templateName string, nodeName string) (string, error) {
-	job, err := GetJob(WithTemplate(templateName), WithNodeSelector(nodeName), WithNamespace(TrivyNamespace))
+func (jb *jobCollector) ApplyAndCollect(ctx context.Context, nodeName string) (string, error) {
+	job, err := GetJob(WithTemplate(jb.templateName), WithNodeSelector(nodeName), WithNamespace(TrivyNamespace))
 	if err != nil {
 		return "", fmt.Errorf("running node-collector job: %w", err)
 	}
@@ -81,7 +109,7 @@ func (jb *jobCollector) ApplyAndCollect(ctx context.Context, templateName string
 		})
 	}()
 
-	logsStream, err := jb.logsReader.GetLogsByJobAndContainerName(ctx, job, ContainerName)
+	logsStream, err := jb.logsReader.GetLogsByJobAndContainerName(ctx, job, NodeCollectorName)
 	if err != nil {
 		return "", fmt.Errorf("getting logs: %w", err)
 	}
@@ -96,8 +124,14 @@ func (jb *jobCollector) ApplyAndCollect(ctx context.Context, templateName string
 }
 
 // Apply deploy k8s job by template to specific node and namespace (for operator use case)
-func (jb *jobCollector) Apply(ctx context.Context, templateName string, nodeName string, namespace string) (*batchv1.Job, error) {
-	job, err := GetJob(WithTemplate(templateName), WithNodeSelector(nodeName), WithNamespace(namespace))
+func (jb *jobCollector) Apply(ctx context.Context, nodeName string) (*batchv1.Job, error) {
+	job, err := GetJob(
+		WithNodeSelector(nodeName),
+		WithNamespace(jb.namespace),
+		WithLabels(jb.labels),
+		WithAnnotation(jb.annotation),
+		WithTemplate(jb.templateName),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("running node-collector job: %w", err)
 	}

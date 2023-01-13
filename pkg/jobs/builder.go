@@ -18,6 +18,11 @@ func WithNodeSelector(nodeSelector string) JobOption {
 		j.nodeSelector = nodeSelector
 	}
 }
+func WithJobName(name string) JobOption {
+	return func(j *JobBuilder) {
+		j.name = name
+	}
+}
 func WithNamespace(namespace string) JobOption {
 	return func(j *JobBuilder) {
 		j.namespace = namespace
@@ -48,6 +53,7 @@ type JobBuilder struct {
 	template     string
 	nodeSelector string
 	namespace    string
+	name         string
 	labels       map[string]string
 	annotations  map[string]string
 }
@@ -61,6 +67,9 @@ func (b *JobBuilder) build() (*batchv1.Job, error) {
 		return nil, err
 	}
 	job.Namespace = b.namespace
+	if len(b.name) > 0 {
+		job.Name = b.name
+	}
 
 	if len(b.nodeSelector) > 0 {
 		job.Spec.Template.Spec.NodeName = b.nodeSelector

@@ -9,6 +9,7 @@ import (
 	"github.com/aquasecurity/trivy-kubernetes/pkg/k8s"
 	batchv1 "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
+	k8sapierror "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -20,6 +21,7 @@ const (
 type Collector interface {
 	ApplyAndCollect(ctx context.Context, nodeName string) (string, error)
 	Apply(ctx context.Context, nodeName string) (*batchv1.Job, error)
+	Cleanup(ctx context.Context)
 }
 
 type jobCollector struct {
@@ -83,21 +85,25 @@ func NewCollector(
 // ApplyAndCollect deploy k8s job by template to  specific node  and namespace, it read pod logs
 // cleaning up job and returning it output (for cli use-case)
 func (jb *jobCollector) ApplyAndCollect(ctx context.Context, nodeName string) (string, error) {
-	job, err := GetJob(WithTemplate(jb.templateName), WithNodeSelector(nodeName), WithNamespace(TrivyNamespace))
+	job, err := GetJob(
+		WithTemplate(jb.templateName),
+		WithNodeSelector(nodeName),
+		WithNamespace(TrivyNamespace),
+		WithJobName(fmt.Sprintf("%s-%s", jb.templateName, nodeName)))
 	if err != nil {
 		return "", fmt.Errorf("running node-collector job: %w", err)
 	}
-	// start with cleaning up namespace and jobs
-	jb.deleteTrivyNamespace(ctx)
-	trivyNamespace := &v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: TrivyNamespace}}
-	_, err = jb.cluster.GetK8sClientSet().CoreV1().Namespaces().Create(ctx, trivyNamespace, metav1.CreateOptions{})
-	if err != nil {
-		return "", err
-	}
-	defer func() {
-		jb.deleteTrivyNamespace(ctx)
-	}()
 
+	_, err = jb.getTrivyNamespace(ctx)
+	if err != nil {
+		if k8sapierror.IsNotFound(err) {
+			trivyNamespace := &v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: TrivyNamespace}}
+			_, err = jb.cluster.GetK8sClientSet().CoreV1().Namespaces().Create(ctx, trivyNamespace, metav1.CreateOptions{})
+			if err != nil {
+				return "", err
+			}
+		}
+	}
 	err = New(WithTimeout(jb.timeout)).Run(ctx, NewRunnableJob(jb.cluster.GetK8sClientSet(), job))
 	if err != nil {
 		return "", fmt.Errorf("running node-collector job: %w", err)
@@ -148,4 +154,12 @@ func (jb *jobCollector) deleteTrivyNamespace(ctx context.Context) {
 	_ = jb.cluster.GetK8sClientSet().CoreV1().Namespaces().Delete(ctx, TrivyNamespace, metav1.DeleteOptions{
 		PropagationPolicy: &background,
 	})
+}
+
+func (jb *jobCollector) getTrivyNamespace(ctx context.Context) (*v1.Namespace, error) {
+	return jb.cluster.GetK8sClientSet().CoreV1().Namespaces().Get(ctx, TrivyNamespace, metav1.GetOptions{})
+}
+
+func (jb *jobCollector) Cleanup(ctx context.Context) {
+	jb.deleteTrivyNamespace(ctx)
 }

@@ -116,13 +116,15 @@ func (c *client) ListArtifactAndNodeInfo(ctx context.Context) ([]*artifacts.Arti
 	if err != nil {
 		return nil, err
 	}
+	jc := jobs.NewCollector(c.cluster, jobs.WithTimetout(time.Minute*5), jobs.WithJobTemplateName(jobs.NodeCollectorName))
+	// delete trivy namespace
+	defer jc.Cleanup(ctx)
 
 	// collect node info
 	for _, resource := range artifactList {
 		if resource.Kind != "Node" {
 			continue
 		}
-		jc := jobs.NewCollector(c.cluster, jobs.WithTimetout(time.Minute*5), jobs.WithJobTemplateName(jobs.NodeCollectorName))
 		output, err := jc.ApplyAndCollect(ctx, resource.Name)
 		if err != nil {
 			return nil, err

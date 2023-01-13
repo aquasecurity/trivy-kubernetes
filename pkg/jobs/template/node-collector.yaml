@@ -12,7 +12,7 @@ spec:
       hostPID: true
       containers:
         - name: node-collector
-          image: ghcr.io/aquasecurity/node-collector:0.0.4
+          image: ghcr.io/aquasecurity/node-collector:0.0.5
           command:
             - node-collector
           volumeMounts:

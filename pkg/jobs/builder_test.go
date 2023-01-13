@@ -32,7 +32,7 @@ func TestLoadBuilder(t *testing.T) {
 							Containers: []corev1.Container{
 								{
 									Name:    "node-collector",
-									Image:   "ghcr.io/aquasecurity/node-collector:0.0.3",
+									Image:   "ghcr.io/aquasecurity/node-collector:0.0.4",
 									Command: []string{"node-collector"},
 									VolumeMounts: []corev1.VolumeMount{
 										{

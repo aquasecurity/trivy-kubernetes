@@ -33,6 +33,7 @@ type jobCollector struct {
 	annotation   map[string]string
 	templateName string
 	namespace    string
+	name         string
 }
 
 type CollectorOption func(*jobCollector)
@@ -58,6 +59,12 @@ func WithJoAnnotation(annotation map[string]string) CollectorOption {
 func WithJobNamespace(namespace string) CollectorOption {
 	return func(jc *jobCollector) {
 		jc.namespace = namespace
+	}
+}
+
+func WithName(name string) CollectorOption {
+	return func(jc *jobCollector) {
+		jc.name = name
 	}
 }
 
@@ -89,7 +96,7 @@ func (jb *jobCollector) ApplyAndCollect(ctx context.Context, nodeName string) (s
 		WithTemplate(jb.templateName),
 		WithNodeSelector(nodeName),
 		WithNamespace(TrivyNamespace),
-		WithJobName(fmt.Sprintf("%s-%s", jb.templateName, nodeName)))
+		WithJobName(jb.name))
 	if err != nil {
 		return "", fmt.Errorf("running node-collector job: %w", err)
 	}

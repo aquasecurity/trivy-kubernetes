@@ -137,6 +137,7 @@ func (jb *jobCollector) Apply(ctx context.Context, nodeName string) (*batchv1.Jo
 		WithLabels(jb.labels),
 		WithAnnotation(jb.annotation),
 		WithTemplate(jb.templateName),
+		WithJobName(fmt.Sprintf("%s-%s", jb.templateName, nodeName)),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("running node-collector job: %w", err)

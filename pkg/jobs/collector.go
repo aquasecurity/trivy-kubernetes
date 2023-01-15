@@ -96,7 +96,7 @@ func (jb *jobCollector) ApplyAndCollect(ctx context.Context, nodeName string) (s
 		WithTemplate(jb.templateName),
 		WithNodeSelector(nodeName),
 		WithNamespace(TrivyNamespace),
-		WithJobName(jb.name))
+		WithJobName(fmt.Sprintf("%s-%s", jb.templateName, nodeName)))
 	if err != nil {
 		return "", fmt.Errorf("running node-collector job: %w", err)
 	}
@@ -144,7 +144,7 @@ func (jb *jobCollector) Apply(ctx context.Context, nodeName string) (*batchv1.Jo
 		WithLabels(jb.labels),
 		WithAnnotation(jb.annotation),
 		WithTemplate(jb.templateName),
-		WithJobName(fmt.Sprintf("%s-%s", jb.templateName, nodeName)),
+		WithJobName(jb.name),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("running node-collector job: %w", err)

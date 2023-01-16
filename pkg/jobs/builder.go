@@ -29,6 +29,12 @@ func WithNamespace(namespace string) JobOption {
 	}
 }
 
+func WithJobServiceAccount(sa string) JobOption {
+	return func(j *JobBuilder) {
+		j.serviceAccount = sa
+	}
+}
+
 func WithLabels(labels map[string]string) JobOption {
 	return func(j *JobBuilder) {
 		j.labels = labels
@@ -50,12 +56,13 @@ func GetJob(opts ...JobOption) (*batchv1.Job, error) {
 }
 
 type JobBuilder struct {
-	template     string
-	nodeSelector string
-	namespace    string
-	name         string
-	labels       map[string]string
-	annotations  map[string]string
+	template       string
+	nodeSelector   string
+	namespace      string
+	serviceAccount string
+	name           string
+	labels         map[string]string
+	annotations    map[string]string
 }
 
 func (b *JobBuilder) build() (*batchv1.Job, error) {
@@ -87,6 +94,9 @@ func (b *JobBuilder) build() (*batchv1.Job, error) {
 			job.Annotations = make(map[string]string)
 		}
 		job.Annotations[key] = val
+	}
+	if len(b.serviceAccount) > 0 {
+		job.Spec.Template.Spec.ServiceAccountName = b.serviceAccount
 	}
 
 	return &job, nil

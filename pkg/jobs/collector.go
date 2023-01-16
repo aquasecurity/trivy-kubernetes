@@ -27,13 +27,14 @@ type Collector interface {
 type jobCollector struct {
 	cluster k8s.Cluster
 	// timeout duration for collection job to complete it task before is cancelled default 0
-	timeout      time.Duration
-	logsReader   LogsReader
-	labels       map[string]string
-	annotation   map[string]string
-	templateName string
-	namespace    string
-	name         string
+	timeout        time.Duration
+	logsReader     LogsReader
+	labels         map[string]string
+	annotation     map[string]string
+	templateName   string
+	namespace      string
+	name           string
+	serviceAccount string
 }
 
 type CollectorOption func(*jobCollector)
@@ -68,6 +69,12 @@ func WithName(name string) CollectorOption {
 	}
 }
 
+func WithServiceAccount(sa string) CollectorOption {
+	return func(jc *jobCollector) {
+		jc.serviceAccount = sa
+	}
+}
+
 func WithJobTemplateName(name string) CollectorOption {
 	return func(jc *jobCollector) {
 		jc.templateName = name
@@ -96,6 +103,7 @@ func (jb *jobCollector) ApplyAndCollect(ctx context.Context, nodeName string) (s
 		WithTemplate(jb.templateName),
 		WithNodeSelector(nodeName),
 		WithNamespace(TrivyNamespace),
+		WithJobServiceAccount(jb.serviceAccount),
 		WithJobName(fmt.Sprintf("%s-%s", jb.templateName, nodeName)))
 	if err != nil {
 		return "", fmt.Errorf("running node-collector job: %w", err)

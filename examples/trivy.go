@@ -36,41 +36,41 @@ func main() {
 		log.Fatal(err)
 	}
 	printArtifacts(artifacts)
-	/*
-		fmt.Println("Scanning namespace 'default'")
-		//trivy k8s --namespace default
-		artifacts, err = trivyk8s.Namespace("default").ListArtifacts(ctx)
-		if err != nil {
-			log.Fatal(err)
-		}
-		printArtifacts(artifacts)
 
-		fmt.Println("Scanning namespace 'default', resource 'deployment/orion'")
+	fmt.Println("Scanning namespace 'default'")
+	//trivy k8s --namespace default
+	artifacts, err = trivyk8s.Namespace("default").ListArtifacts(ctx)
+	if err != nil {
+		log.Fatal(err)
+	}
+	printArtifacts(artifacts)
 
-		//trivy k8s --namespace default deployment/orion
-		artifact, err := trivyk8s.Namespace("default").GetArtifact(ctx, "deploy", "orion")
-		if err != nil {
-			log.Fatal(err)
-		}
-		printArtifact(artifact)
+	fmt.Println("Scanning namespace 'default', resource 'deployment/orion'")
 
-		fmt.Println("Scanning 'deployments'")
+	//trivy k8s --namespace default deployment/orion
+	artifact, err := trivyk8s.Namespace("default").GetArtifact(ctx, "deploy", "orion")
+	if err != nil {
+		log.Fatal(err)
+	}
+	printArtifact(artifact)
 
-		//trivy k8s deployment
-		artifacts, err = trivyk8s.Namespace("default").Resources("deployment").ListArtifacts(ctx)
-		if err != nil {
-			log.Fatal(err)
-		}
-		printArtifacts(artifacts)
+	fmt.Println("Scanning 'deployments'")
 
-		fmt.Println("Scanning 'cm,pods'")
-		//trivy k8s clusterroles,pods
-		artifacts, err = trivyk8s.Namespace("default").Resources("cm,pods").ListArtifacts(ctx)
-		if err != nil {
-			log.Fatal(err)
-		}
-		printArtifacts(artifacts)
-	*/
+	//trivy k8s deployment
+	artifacts, err = trivyk8s.Namespace("default").Resources("deployment").ListArtifacts(ctx)
+	if err != nil {
+		log.Fatal(err)
+	}
+	printArtifacts(artifacts)
+
+	fmt.Println("Scanning 'cm,pods'")
+	//trivy k8s clusterroles,pods
+	artifacts, err = trivyk8s.Namespace("default").Resources("cm,pods").ListArtifacts(ctx)
+	if err != nil {
+		log.Fatal(err)
+	}
+	printArtifacts(artifacts)
+
 	// collect node info
 
 	ar, err := trivyk8s.ListArtifactAndNodeInfo(ctx)

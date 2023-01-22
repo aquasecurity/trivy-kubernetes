@@ -14,13 +14,18 @@ import (
 )
 
 const (
-	NodeCollectorName = "node-collector"
-	TrivyNamespace    = "trivy-system"
+	NodeCollectorName  = "node-collector"
+	TrivyNamespace     = "trivy"
+	TrivyCollectorName = "trivy.collector.name"
+	TrivyAutoCreated   = "trivy.automatic.created"
+	TrivyResourceName  = "trivy.resource.name"
+	TrivyResourceKind  = "trivy.resource.kind"
 )
 
 type Collector interface {
 	ApplyAndCollect(ctx context.Context, nodeName string) (string, error)
 	Apply(ctx context.Context, nodeName string) (*batchv1.Job, error)
+	AppendLabels(opts ...CollectorOption)
 	Cleanup(ctx context.Context)
 }
 
@@ -47,7 +52,12 @@ func WithTimetout(timeout time.Duration) CollectorOption {
 
 func WithJobLabels(labels map[string]string) CollectorOption {
 	return func(jc *jobCollector) {
-		jc.labels = labels
+		if jc.labels == nil {
+			jc.labels = make(map[string]string)
+		}
+		for name, value := range labels {
+			jc.labels[name] = value
+		}
 	}
 }
 
@@ -96,13 +106,21 @@ func NewCollector(
 	return jc
 }
 
+// AppendLabels Append labels to job
+func (jb *jobCollector) AppendLabels(opts ...CollectorOption) {
+	for _, opt := range opts {
+		opt(jb)
+	}
+}
+
 // ApplyAndCollect deploy k8s job by template to  specific node  and namespace, it read pod logs
 // cleaning up job and returning it output (for cli use-case)
 func (jb *jobCollector) ApplyAndCollect(ctx context.Context, nodeName string) (string, error) {
 	job, err := GetJob(
 		WithTemplate(jb.templateName),
+		WithNamespace(jb.namespace),
 		WithNodeSelector(nodeName),
-		WithNamespace(TrivyNamespace),
+		WithLabels(jb.labels),
 		WithJobServiceAccount(jb.serviceAccount),
 		WithJobName(fmt.Sprintf("%s-%s", jb.templateName, nodeName)))
 	if err != nil {
@@ -112,7 +130,7 @@ func (jb *jobCollector) ApplyAndCollect(ctx context.Context, nodeName string) (s
 	_, err = jb.getTrivyNamespace(ctx)
 	if err != nil {
 		if k8sapierror.IsNotFound(err) {
-			trivyNamespace := &v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: TrivyNamespace}}
+			trivyNamespace := &v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: jb.namespace}}
 			_, err = jb.cluster.GetK8sClientSet().CoreV1().Namespaces().Create(ctx, trivyNamespace, metav1.CreateOptions{})
 			if err != nil {
 				return "", err
@@ -167,13 +185,13 @@ func (jb *jobCollector) Apply(ctx context.Context, nodeName string) (*batchv1.Jo
 
 func (jb *jobCollector) deleteTrivyNamespace(ctx context.Context) {
 	background := metav1.DeletePropagationBackground
-	_ = jb.cluster.GetK8sClientSet().CoreV1().Namespaces().Delete(ctx, TrivyNamespace, metav1.DeleteOptions{
+	_ = jb.cluster.GetK8sClientSet().CoreV1().Namespaces().Delete(ctx, jb.namespace, metav1.DeleteOptions{
 		PropagationPolicy: &background,
 	})
 }
 
 func (jb *jobCollector) getTrivyNamespace(ctx context.Context) (*v1.Namespace, error) {
-	return jb.cluster.GetK8sClientSet().CoreV1().Namespaces().Get(ctx, TrivyNamespace, metav1.GetOptions{})
+	return jb.cluster.GetK8sClientSet().CoreV1().Namespaces().Get(ctx, jb.namespace, metav1.GetOptions{})
 }
 
 func (jb *jobCollector) Cleanup(ctx context.Context) {

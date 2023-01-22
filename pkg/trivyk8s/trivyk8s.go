@@ -116,7 +116,17 @@ func (c *client) ListArtifactAndNodeInfo(ctx context.Context) ([]*artifacts.Arti
 	if err != nil {
 		return nil, err
 	}
-	jc := jobs.NewCollector(c.cluster, jobs.WithTimetout(time.Minute*5), jobs.WithJobTemplateName(jobs.NodeCollectorName))
+	labels := map[string]string{
+		jobs.TrivyCollectorName: jobs.NodeCollectorName,
+		jobs.TrivyAutoCreated:   "true",
+	}
+	jc := jobs.NewCollector(
+		c.cluster,
+		jobs.WithTimetout(time.Minute*5),
+		jobs.WithJobTemplateName(jobs.NodeCollectorName),
+		jobs.WithJobNamespace(jobs.TrivyNamespace),
+		jobs.WithJobLabels(labels),
+	)
 	// delete trivy namespace
 	defer jc.Cleanup(ctx)
 
@@ -125,6 +135,12 @@ func (c *client) ListArtifactAndNodeInfo(ctx context.Context) ([]*artifacts.Arti
 		if resource.Kind != "Node" {
 			continue
 		}
+		nodeLabels := map[string]string{
+			jobs.TrivyResourceName: resource.Name,
+			jobs.TrivyResourceKind: resource.Kind,
+		}
+		// append node labels
+		jc.AppendLabels(jobs.WithJobLabels(nodeLabels))
 		output, err := jc.ApplyAndCollect(ctx, resource.Name)
 		if err != nil {
 			return nil, err

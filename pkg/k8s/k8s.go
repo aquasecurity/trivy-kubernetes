@@ -6,6 +6,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 )
@@ -38,6 +39,7 @@ const (
 	LimitRanges            = "limitranges"
 	ClusterRoles           = "clusterroles"
 	ClusterRoleBindings    = "clusterrolebindings"
+	Nodes                  = "nodes"
 )
 
 // Cluster interface represents the operations needed to scan a cluster
@@ -48,6 +50,8 @@ type Cluster interface {
 	GetCurrentNamespace() string
 	// GetDynamicClient returns a dynamic k8s client
 	GetDynamicClient() dynamic.Interface
+	// GetK8sClientSet returns a k8s client set
+	GetK8sClientSet() *kubernetes.Clientset
 	// GetGVRs returns cluster GroupVersionResource to query kubernetes, receives
 	// a boolean to determine if returns namespaced GVRs only or all GVRs, unless
 	// resources is passed to filter
@@ -62,6 +66,7 @@ type cluster struct {
 	currentNamespace string
 	dynamicClient    dynamic.Interface
 	restMapper       meta.RESTMapper
+	clientset        *kubernetes.Clientset
 }
 
 type ClusterOption func(*genericclioptions.ConfigFlags)
@@ -110,6 +115,12 @@ func getCluster(clientConfig clientcmd.ClientConfig, restMapper meta.RESTMapper)
 	if err != nil {
 		return nil, err
 	}
+	var kubeClientset *kubernetes.Clientset
+
+	kubeClientset, err = kubernetes.NewForConfig(kubeConfig)
+	if err != nil {
+		return nil, err
+	}
 
 	rawCfg, err := clientConfig.RawConfig()
 	if err != nil {
@@ -130,6 +141,7 @@ func getCluster(clientConfig clientcmd.ClientConfig, restMapper meta.RESTMapper)
 		currentNamespace: namespace,
 		dynamicClient:    k8sDynamicClient,
 		restMapper:       restMapper,
+		clientset:        kubeClientset,
 	}, nil
 }
 
@@ -146,6 +158,11 @@ func (c *cluster) GetCurrentNamespace() string {
 // GetDynamicClient returns a dynamic k8s client
 func (c *cluster) GetDynamicClient() dynamic.Interface {
 	return c.dynamicClient
+}
+
+// GetK8sClientSet returns k8s clientSet
+func (c *cluster) GetK8sClientSet() *kubernetes.Clientset {
+	return c.clientset
 }
 
 // GetGVRs returns cluster GroupVersionResource to query kubernetes, receives
@@ -202,6 +219,7 @@ func getClusterResources() []string {
 	return []string{
 		ClusterRoles,
 		ClusterRoleBindings,
+		Nodes,
 	}
 }
 

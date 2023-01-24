@@ -38,7 +38,6 @@ func main() {
 	printArtifacts(artifacts)
 
 	fmt.Println("Scanning namespace 'default'")
-
 	//trivy k8s --namespace default
 	artifacts, err = trivyk8s.Namespace("default").ListArtifacts(ctx)
 	if err != nil {
@@ -71,6 +70,19 @@ func main() {
 		log.Fatal(err)
 	}
 	printArtifacts(artifacts)
+
+	// collect node info
+
+	ar, err := trivyk8s.ListArtifactAndNodeInfo(ctx)
+	if err != nil {
+		log.Fatal(err)
+	}
+	for _, a := range ar {
+		if a.Kind != "NodeInfo" {
+			continue
+		}
+		fmt.Println(a.RawResource)
+	}
 }
 
 func printArtifacts(artifacts []*artifacts.Artifact) {

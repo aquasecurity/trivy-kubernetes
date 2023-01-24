@@ -16,6 +16,8 @@ import (
 const (
 	NodeCollectorName  = "node-collector"
 	TrivyNamespace     = "trivy"
+
+	// job headers
 	TrivyCollectorName = "trivy.collector.name"
 	TrivyAutoCreated   = "trivy.automatic.created"
 	TrivyResourceName  = "trivy.resource.name"

@@ -9,12 +9,28 @@ spec:
       labels:
         app: node-collector
     spec:
+      dnsPolicy: ClusterFirst
       hostPID: true
+      automountServiceAccountToken: true
       containers:
         - name: node-collector
           image: ghcr.io/aquasecurity/node-collector:0.0.5
           command:
             - node-collector
+          resources:
+          limits:
+            cpu: 300m
+            memory: 300M
+          requests:
+            cpu: 50m
+            memory: 50M
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+              - all
+            privileged: false
+            readOnlyRootFilesystem: true
           volumeMounts:
             - name: var-lib-etcd
               mountPath: /var/lib/etcd
@@ -34,9 +50,6 @@ spec:
             - name: lib-systemd
               mountPath: /lib/systemd/
               readOnly: true
-            - name: srv-kubernetes
-              mountPath: /srv/kubernetes/
-              readOnly: true
             - name: etc-kubernetes
               mountPath: /etc/kubernetes
               readOnly: true
@@ -50,6 +63,11 @@ spec:
               mountPath: /opt/cni/bin/
               readOnly: true
       restartPolicy: Never
+      securityContext:
+        runAsGroup: 0
+        runAsUser: 0
+        seccompProfile:
+          type: RuntimeDefault
       volumes:
         - name: var-lib-etcd
           hostPath:
@@ -69,9 +87,6 @@ spec:
         - name: lib-systemd
           hostPath:
             path: /lib/systemd
-        - name: srv-kubernetes
-          hostPath:
-            path: /srv/kubernetes
         - name: etc-kubernetes
           hostPath:
             path: /etc/kubernetes

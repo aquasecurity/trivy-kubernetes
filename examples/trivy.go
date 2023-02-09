@@ -72,7 +72,6 @@ func main() {
 	printArtifacts(artifacts)
 
 	// collect node info
-
 	ar, err := trivyk8s.ListArtifactAndNodeInfo(ctx)
 	if err != nil {
 		log.Fatal(err)

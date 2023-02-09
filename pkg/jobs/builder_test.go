@@ -7,7 +7,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/pointer"
 )
 
 func TestLoadBuilder(t *testing.T) {
@@ -28,9 +30,38 @@ func TestLoadBuilder(t *testing.T) {
 					Template: corev1.PodTemplateSpec{
 						ObjectMeta: v1.ObjectMeta{Labels: map[string]string{"app": "node-collector"}},
 						Spec: corev1.PodSpec{
+							DNSPolicy:                    corev1.DNSClusterFirst,
+							AutomountServiceAccountToken: pointer.Bool(true),
+							SecurityContext: &corev1.PodSecurityContext{
+								RunAsGroup: pointer.Int64(0),
+								RunAsUser:  pointer.Int64(0),
+								SeccompProfile: &corev1.SeccompProfile{
+									Type: corev1.SeccompProfileTypeRuntimeDefault,
+								},
+							},
 							HostPID: true,
 							Containers: []corev1.Container{
 								{
+									Resources: corev1.ResourceRequirements{
+										Limits: corev1.ResourceList{
+											corev1.ResourceCPU:    resource.MustParse("300m"),
+											corev1.ResourceMemory: resource.MustParse("300M"),
+										},
+										Requests: corev1.ResourceList{
+											corev1.ResourceCPU:    resource.MustParse("50m"),
+											corev1.ResourceMemory: resource.MustParse("50M"),
+										},
+									},
+									SecurityContext: &corev1.SecurityContext{
+										AllowPrivilegeEscalation: pointer.Bool(false),
+										Capabilities: &corev1.Capabilities{
+											Drop: []corev1.Capability{
+												"all",
+											},
+										},
+										Privileged:             pointer.Bool(false),
+										ReadOnlyRootFilesystem: pointer.Bool(true),
+									},
 									Name:    "node-collector",
 									Image:   "ghcr.io/aquasecurity/node-collector:0.0.5",
 									Command: []string{"node-collector"},
@@ -66,11 +97,6 @@ func TestLoadBuilder(t *testing.T) {
 											ReadOnly:  true,
 										},
 										{
-											Name:      "srv-kubernetes",
-											MountPath: "/srv/kubernetes/",
-											ReadOnly:  true,
-										},
-										{
 											Name:      "etc-kubernetes",
 											MountPath: "/etc/kubernetes",
 											ReadOnly:  true,
@@ -93,7 +119,7 @@ func TestLoadBuilder(t *testing.T) {
 									},
 								},
 							},
-							RestartPolicy: "Never",
+							RestartPolicy: corev1.RestartPolicyNever,
 							Volumes: []corev1.Volume{
 								{
 									Name:         "var-lib-etcd",
@@ -118,10 +144,6 @@ func TestLoadBuilder(t *testing.T) {
 								{
 									Name:         "lib-systemd",
 									VolumeSource: corev1.VolumeSource{HostPath: &corev1.HostPathVolumeSource{Path: "/lib/systemd"}},
-								},
-								{
-									Name:         "srv-kubernetes",
-									VolumeSource: corev1.VolumeSource{HostPath: &corev1.HostPathVolumeSource{Path: "/srv/kubernetes"}},
 								},
 								{
 									Name:         "etc-kubernetes",

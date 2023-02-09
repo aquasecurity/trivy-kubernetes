@@ -18,12 +18,12 @@ spec:
           command:
             - node-collector
           resources:
-          limits:
-            cpu: 300m
-            memory: 300M
-          requests:
-            cpu: 50m
-            memory: 50M
+            limits:
+              cpu: 300m
+              memory: 300M
+            requests:
+              cpu: 50m
+              memory: 50M
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:

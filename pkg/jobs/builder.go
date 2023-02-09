@@ -2,6 +2,7 @@ package jobs
 
 import (
 	batchv1 "k8s.io/api/batch/v1"
+	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/yaml"
 )
 
@@ -47,6 +48,12 @@ func WithAnnotation(annotations map[string]string) JobOption {
 	}
 }
 
+func WithTolerations(tolerations []corev1.Toleration) JobOption {
+	return func(j *JobBuilder) {
+		j.tolerations = tolerations
+	}
+}
+
 func GetJob(opts ...JobOption) (*batchv1.Job, error) {
 	jb := &JobBuilder{}
 	for _, opt := range opts {
@@ -63,6 +70,7 @@ type JobBuilder struct {
 	name           string
 	labels         map[string]string
 	annotations    map[string]string
+	tolerations    []corev1.Toleration
 }
 
 func (b *JobBuilder) build() (*batchv1.Job, error) {
@@ -97,6 +105,9 @@ func (b *JobBuilder) build() (*batchv1.Job, error) {
 	}
 	if len(b.serviceAccount) > 0 {
 		job.Spec.Template.Spec.ServiceAccountName = b.serviceAccount
+	}
+	if len(b.tolerations) > 0 {
+		job.Spec.Template.Spec.Tolerations = b.tolerations
 	}
 
 	return &job, nil

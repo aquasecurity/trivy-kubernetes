@@ -28,7 +28,7 @@ spec:
             allowPrivilegeEscalation: false
             capabilities:
               drop:
-              - all
+                - all
             privileged: false
             readOnlyRootFilesystem: true
           volumeMounts:

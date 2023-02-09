@@ -11,10 +11,12 @@ import (
 	"github.com/aquasecurity/trivy-kubernetes/pkg/jobs"
 	"github.com/aquasecurity/trivy-kubernetes/pkg/k8s"
 	"go.uber.org/zap"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/utils/pointer"
 
 	"k8s.io/client-go/dynamic"
 
@@ -120,12 +122,35 @@ func (c *client) ListArtifactAndNodeInfo(ctx context.Context) ([]*artifacts.Arti
 		jobs.TrivyCollectorName: jobs.NodeCollectorName,
 		jobs.TrivyAutoCreated:   "true",
 	}
+	tolerations := []corev1.Toleration{
+		{
+			Effect:   corev1.TaintEffectNoSchedule,
+			Operator: corev1.TolerationOperator(corev1.NodeSelectorOpExists),
+		},
+		{
+			Effect:   corev1.TaintEffectNoExecute,
+			Operator: corev1.TolerationOperator(corev1.NodeSelectorOpExists),
+		},
+		{
+			Effect:            corev1.TaintEffectNoExecute,
+			Key:               "node.kubernetes.io/not-ready",
+			Operator:          corev1.TolerationOperator(corev1.NodeSelectorOpExists),
+			TolerationSeconds: pointer.Int64(300),
+		},
+		{
+			Effect:            corev1.TaintEffectNoExecute,
+			Key:               "node.kubernetes.io/unreachable",
+			Operator:          corev1.TolerationOperator(corev1.NodeSelectorOpExists),
+			TolerationSeconds: pointer.Int64(300),
+		},
+	}
 	jc := jobs.NewCollector(
 		c.cluster,
 		jobs.WithTimetout(time.Minute*5),
 		jobs.WithJobTemplateName(jobs.NodeCollectorName),
 		jobs.WithJobNamespace(jobs.TrivyNamespace),
 		jobs.WithJobLabels(labels),
+		jobs.WithJobTolerations(tolerations),
 	)
 	// delete trivy namespace
 	defer jc.Cleanup(ctx)

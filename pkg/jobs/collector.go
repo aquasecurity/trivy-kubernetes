@@ -8,14 +8,15 @@ import (
 
 	"github.com/aquasecurity/trivy-kubernetes/pkg/k8s"
 	batchv1 "k8s.io/api/batch/v1"
+	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	k8sapierror "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
-	NodeCollectorName  = "node-collector"
-	TrivyNamespace     = "trivy"
+	NodeCollectorName = "node-collector"
+	TrivyNamespace    = "trivy"
 
 	// job headers
 	TrivyCollectorName = "trivy.collector.name"
@@ -42,6 +43,7 @@ type jobCollector struct {
 	namespace      string
 	name           string
 	serviceAccount string
+	tolerations    []corev1.Toleration
 }
 
 type CollectorOption func(*jobCollector)
@@ -72,6 +74,12 @@ func WithJoAnnotation(annotation map[string]string) CollectorOption {
 func WithJobNamespace(namespace string) CollectorOption {
 	return func(jc *jobCollector) {
 		jc.namespace = namespace
+	}
+}
+
+func WithJobTolerations(tolerations []corev1.Toleration) CollectorOption {
+	return func(jc *jobCollector) {
+		jc.tolerations = tolerations
 	}
 }
 
@@ -122,8 +130,10 @@ func (jb *jobCollector) ApplyAndCollect(ctx context.Context, nodeName string) (s
 		WithTemplate(jb.templateName),
 		WithNamespace(jb.namespace),
 		WithNodeSelector(nodeName),
-		WithLabels(jb.labels),
+		WithAnnotation(jb.annotation),
 		WithJobServiceAccount(jb.serviceAccount),
+		WithLabels(jb.labels),
+		WithTolerations(jb.tolerations),
 		WithJobName(fmt.Sprintf("%s-%s", jb.templateName, nodeName)))
 	if err != nil {
 		return "", fmt.Errorf("running node-collector job: %w", err)
@@ -170,6 +180,8 @@ func (jb *jobCollector) Apply(ctx context.Context, nodeName string) (*batchv1.Jo
 		WithNodeSelector(nodeName),
 		WithNamespace(jb.namespace),
 		WithLabels(jb.labels),
+		WithTolerations(jb.tolerations),
+		WithJobServiceAccount(jb.serviceAccount),
 		WithAnnotation(jb.annotation),
 		WithTemplate(jb.templateName),
 		WithJobName(jb.name),

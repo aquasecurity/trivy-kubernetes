@@ -54,6 +54,12 @@ func WithTolerations(tolerations []corev1.Toleration) JobOption {
 	}
 }
 
+func WithNodeCollectorImageRef(imageRef string) JobOption {
+	return func(j *JobBuilder) {
+		j.imageRef = imageRef
+	}
+}
+
 func GetJob(opts ...JobOption) (*batchv1.Job, error) {
 	jb := &JobBuilder{}
 	for _, opt := range opts {
@@ -66,6 +72,7 @@ type JobBuilder struct {
 	template       string
 	nodeSelector   string
 	namespace      string
+	imageRef       string
 	serviceAccount string
 	name           string
 	labels         map[string]string
@@ -84,6 +91,9 @@ func (b *JobBuilder) build() (*batchv1.Job, error) {
 	job.Namespace = b.namespace
 	if len(b.name) > 0 {
 		job.Name = b.name
+	}
+	if len(b.imageRef) > 0 {
+		job.Spec.Template.Spec.Containers[0].Image = b.imageRef
 	}
 
 	if len(b.nodeSelector) > 0 {

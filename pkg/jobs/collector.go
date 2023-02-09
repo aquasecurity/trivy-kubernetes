@@ -43,6 +43,7 @@ type jobCollector struct {
 	namespace      string
 	name           string
 	serviceAccount string
+	imageRef       string
 	tolerations    []corev1.Toleration
 }
 
@@ -86,6 +87,12 @@ func WithJobTolerations(tolerations []corev1.Toleration) CollectorOption {
 func WithName(name string) CollectorOption {
 	return func(jc *jobCollector) {
 		jc.name = name
+	}
+}
+
+func WithImageRef(imageRef string) CollectorOption {
+	return func(jc *jobCollector) {
+		jc.imageRef = imageRef
 	}
 }
 
@@ -133,6 +140,7 @@ func (jb *jobCollector) ApplyAndCollect(ctx context.Context, nodeName string) (s
 		WithAnnotation(jb.annotation),
 		WithJobServiceAccount(jb.serviceAccount),
 		WithLabels(jb.labels),
+		WithNodeCollectorImageRef(jb.imageRef),
 		WithTolerations(jb.tolerations),
 		WithJobName(fmt.Sprintf("%s-%s", jb.templateName, nodeName)))
 	if err != nil {

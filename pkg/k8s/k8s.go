@@ -28,6 +28,7 @@ const (
 	DaemonSets             = "daemonsets"
 	CronJobs               = "cronjobs"
 	Services               = "services"
+	ServiceAccounts        = "serviceaccounts"
 	Jobs                   = "jobs"
 	Pods                   = "pods"
 	ConfigMaps             = "configmaps"
@@ -234,6 +235,7 @@ func getNamespaceResources() []string {
 		CronJobs,
 		Jobs,
 		Services,
+		ServiceAccounts,
 		ConfigMaps,
 		Roles,
 		RoleBindings,

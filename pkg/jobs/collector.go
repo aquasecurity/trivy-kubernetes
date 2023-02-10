@@ -190,6 +190,7 @@ func (jb *jobCollector) Apply(ctx context.Context, nodeName string) (*batchv1.Jo
 		WithLabels(jb.labels),
 		WithTolerations(jb.tolerations),
 		WithJobServiceAccount(jb.serviceAccount),
+		WithNodeCollectorImageRef(jb.imageRef),
 		WithAnnotation(jb.annotation),
 		WithTemplate(jb.templateName),
 		WithJobName(jb.name),

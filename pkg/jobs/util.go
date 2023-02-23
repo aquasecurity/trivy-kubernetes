@@ -14,14 +14,14 @@ import (
 // The hash will be safe encoded to avoid bad words.
 func ComputeHash(obj interface{}) string {
 	podSpecHasher := fnv.New32a()
-	DeepHashObject(podSpecHasher, obj)
+	deepHashObject(podSpecHasher, obj)
 	return rand.SafeEncodeString(fmt.Sprint(podSpecHasher.Sum32()))
 }
 
-// DeepHashObject writes specified object to hash using the spew library
+// deepHashObject writes specified object to hash using the spew library
 // which follows pointers and prints actual values of the nested objects
 // ensuring the hash does not change when a pointer changes.
-func DeepHashObject(hasher hash.Hash, objectToWrite interface{}) {
+func deepHashObject(hasher hash.Hash, objectToWrite interface{}) {
 	hasher.Reset()
 	printer := spew.ConfigState{
 		Indent:         " ",

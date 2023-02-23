@@ -130,6 +130,12 @@ func (jb *jobCollector) AppendLabels(opts ...CollectorOption) {
 	}
 }
 
+type ObjectRef struct {
+	Kind      string
+	Name      string
+	Namespace string
+}
+
 // ApplyAndCollect deploy k8s job by template to  specific node  and namespace, it read pod logs
 // cleaning up job and returning it output (for cli use-case)
 func (jb *jobCollector) ApplyAndCollect(ctx context.Context, nodeName string) (string, error) {
@@ -142,7 +148,12 @@ func (jb *jobCollector) ApplyAndCollect(ctx context.Context, nodeName string) (s
 		WithLabels(jb.labels),
 		WithNodeCollectorImageRef(jb.imageRef),
 		WithTolerations(jb.tolerations),
-		WithJobName(fmt.Sprintf("%s-%s", jb.templateName, nodeName)))
+		WithJobName(fmt.Sprintf("%s-%s", jb.templateName, ComputeHash(
+			ObjectRef{
+				Kind:      "Node-Info",
+				Name:      nodeName,
+				Namespace: jb.namespace,
+			}))))
 	if err != nil {
 		return "", fmt.Errorf("running node-collector job: %w", err)
 	}

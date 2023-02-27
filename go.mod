@@ -3,7 +3,8 @@ module github.com/aquasecurity/trivy-kubernetes
 go 1.18
 
 require (
-	github.com/stretchr/testify v1.8.1
+	github.com/davecgh/go-spew v1.1.1
+	github.com/stretchr/testify v1.8.2
 	go.uber.org/zap v1.24.0
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/api v0.26.1
@@ -17,7 +18,6 @@ require (
 )
 
 require (
-	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/emicklei/go-restful/v3 v3.9.0 // indirect
 	github.com/evanphx/json-patch v4.12.0+incompatible // indirect
 	github.com/go-errors/errors v1.0.1 // indirect

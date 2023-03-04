@@ -8,5 +8,13 @@ Trivy Kubernetes Library.
 
 Supports trivy <-> kubernetes communication for resources scanning.
 
+# Description
+
+This Lib purpose is to extend trivy capabilities with kubernetes context:
+
+- Listing resources
+- Run k8s jobs
+
 # Documentation
+
 Please check `trivy` documentation, which provides detailed installation, configuration, and quick start guides, available at [Trivy Kubernetes](https://aquasecurity.github.io/trivy/latest/docs/kubernetes/cli/scanning/)

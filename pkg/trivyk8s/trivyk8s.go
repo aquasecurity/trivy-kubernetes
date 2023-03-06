@@ -15,6 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/utils/pointer"
 
@@ -217,9 +218,11 @@ func (c *client) getDynamicClient(gvr schema.GroupVersionResource) dynamic.Resou
 // when a resource has an owner, the image/iac will be scanned on the owner itself
 func (c *client) ignoreResource(resource unstructured.Unstructured) bool {
 	// if we are filtering resources, don't ignore
+
 	if resource.GetKind() == "Node" {
-		return false
+		return isNodeStatusUnknown(resource)
 	}
+
 	if len(c.resources) > 0 {
 		return false
 	}
@@ -231,4 +234,21 @@ func (c *client) ignoreResource(resource unstructured.Unstructured) bool {
 	}
 
 	return false
+}
+
+// isNodeStatusUnknown check weathre the node status is Ready otherwise ignore it
+func isNodeStatusUnknown(resource unstructured.Unstructured) bool {
+	var node corev1.Node
+	err := runtime.DefaultUnstructuredConverter.FromUnstructured(resource.Object, &node)
+	if err != nil {
+		return true
+	}
+	for _, condition := range node.Status.Conditions {
+		if condition.Type == corev1.NodeReady {
+			if condition.Status == corev1.ConditionTrue {
+				return false
+			}
+		}
+	}
+	return true
 }

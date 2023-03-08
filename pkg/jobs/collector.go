@@ -12,7 +12,6 @@ import (
 	v1 "k8s.io/api/core/v1"
 	k8sapierror "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/pointer"
 )
 
 const (
@@ -111,13 +110,13 @@ func WithJobTemplateName(name string) CollectorOption {
 	}
 }
 
-func withContainerSecurityContext(securityContext *corev1.SecurityContext) CollectorOption {
+func WithContainerSecurityContext(securityContext *corev1.SecurityContext) CollectorOption {
 	return func(jc *jobCollector) {
 		jc.securityContext = securityContext
 	}
 }
 
-func withPodSpecSecurityContext(podSecurityContext *corev1.PodSecurityContext) CollectorOption {
+func WithPodSpecSecurityContext(podSecurityContext *corev1.PodSecurityContext) CollectorOption {
 	return func(jc *jobCollector) {
 		jc.podSecurityContext = podSecurityContext
 	}
@@ -161,15 +160,7 @@ func (jb *jobCollector) ApplyAndCollect(ctx context.Context, nodeName string) (s
 		WithAnnotation(jb.annotation),
 		WithJobServiceAccount(jb.serviceAccount),
 		WithLabels(jb.labels),
-		withSecurityContext(&corev1.SecurityContext{
-			Privileged:               pointer.BoolPtr(false),
-			AllowPrivilegeEscalation: pointer.BoolPtr(false),
-			Capabilities: &corev1.Capabilities{
-				Drop: []corev1.Capability{"all"},
-			},
-			ReadOnlyRootFilesystem: pointer.BoolPtr(true),
-		},
-		),
+		withSecurityContext(jb.securityContext),
 		withPodSecurityContext(jb.podSecurityContext),
 		WithNodeCollectorImageRef(jb.imageRef),
 		WithTolerations(jb.tolerations),

@@ -60,6 +60,18 @@ func WithNodeCollectorImageRef(imageRef string) JobOption {
 	}
 }
 
+func withSecurityContext(securityContext *corev1.SecurityContext) JobOption {
+	return func(j *JobBuilder) {
+		j.securityContext = securityContext
+	}
+}
+
+func withPodSecurityContext(podSecurityContext *corev1.PodSecurityContext) JobOption {
+	return func(j *JobBuilder) {
+		j.podSecurityContext = podSecurityContext
+	}
+}
+
 func GetJob(opts ...JobOption) (*batchv1.Job, error) {
 	jb := &JobBuilder{}
 	for _, opt := range opts {
@@ -69,15 +81,17 @@ func GetJob(opts ...JobOption) (*batchv1.Job, error) {
 }
 
 type JobBuilder struct {
-	template       string
-	nodeSelector   string
-	namespace      string
-	imageRef       string
-	serviceAccount string
-	name           string
-	labels         map[string]string
-	annotations    map[string]string
-	tolerations    []corev1.Toleration
+	template           string
+	nodeSelector       string
+	namespace          string
+	imageRef           string
+	serviceAccount     string
+	name               string
+	labels             map[string]string
+	podSecurityContext *corev1.PodSecurityContext
+	securityContext    *corev1.SecurityContext
+	annotations        map[string]string
+	tolerations        []corev1.Toleration
 }
 
 func (b *JobBuilder) build() (*batchv1.Job, error) {
@@ -119,6 +133,11 @@ func (b *JobBuilder) build() (*batchv1.Job, error) {
 	if len(b.tolerations) > 0 {
 		job.Spec.Template.Spec.Tolerations = b.tolerations
 	}
-
+	if b.podSecurityContext != nil {
+		job.Spec.Template.Spec.SecurityContext = b.podSecurityContext
+	}
+	if b.securityContext != nil {
+		job.Spec.Template.Spec.Containers[0].SecurityContext = b.securityContext
+	}
 	return &job, nil
 }

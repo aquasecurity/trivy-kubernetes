@@ -12,6 +12,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	k8sapierror "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/pointer"
 )
 
 const (
@@ -35,16 +36,18 @@ type Collector interface {
 type jobCollector struct {
 	cluster k8s.Cluster
 	// timeout duration for collection job to complete it task before is cancelled default 0
-	timeout        time.Duration
-	logsReader     LogsReader
-	labels         map[string]string
-	annotation     map[string]string
-	templateName   string
-	namespace      string
-	name           string
-	serviceAccount string
-	imageRef       string
-	tolerations    []corev1.Toleration
+	timeout            time.Duration
+	logsReader         LogsReader
+	labels             map[string]string
+	annotation         map[string]string
+	templateName       string
+	namespace          string
+	name               string
+	serviceAccount     string
+	podSecurityContext *corev1.PodSecurityContext
+	securityContext    *corev1.SecurityContext
+	imageRef           string
+	tolerations        []corev1.Toleration
 }
 
 type CollectorOption func(*jobCollector)
@@ -108,6 +111,18 @@ func WithJobTemplateName(name string) CollectorOption {
 	}
 }
 
+func withContainerSecurityContext(securityContext *corev1.SecurityContext) CollectorOption {
+	return func(jc *jobCollector) {
+		jc.securityContext = securityContext
+	}
+}
+
+func withPodSpecSecurityContext(podSecurityContext *corev1.PodSecurityContext) CollectorOption {
+	return func(jc *jobCollector) {
+		jc.podSecurityContext = podSecurityContext
+	}
+}
+
 func NewCollector(
 	cluster k8s.Cluster,
 	opts ...CollectorOption,
@@ -146,6 +161,16 @@ func (jb *jobCollector) ApplyAndCollect(ctx context.Context, nodeName string) (s
 		WithAnnotation(jb.annotation),
 		WithJobServiceAccount(jb.serviceAccount),
 		WithLabels(jb.labels),
+		withSecurityContext(&corev1.SecurityContext{
+			Privileged:               pointer.BoolPtr(false),
+			AllowPrivilegeEscalation: pointer.BoolPtr(false),
+			Capabilities: &corev1.Capabilities{
+				Drop: []corev1.Capability{"all"},
+			},
+			ReadOnlyRootFilesystem: pointer.BoolPtr(true),
+		},
+		),
+		withPodSecurityContext(jb.podSecurityContext),
 		WithNodeCollectorImageRef(jb.imageRef),
 		WithTolerations(jb.tolerations),
 		WithJobName(fmt.Sprintf("%s-%s", jb.templateName, ComputeHash(
@@ -199,6 +224,8 @@ func (jb *jobCollector) Apply(ctx context.Context, nodeName string) (*batchv1.Jo
 		WithNodeSelector(nodeName),
 		WithNamespace(jb.namespace),
 		WithLabels(jb.labels),
+		withPodSecurityContext(jb.podSecurityContext),
+		withSecurityContext(jb.securityContext),
 		WithTolerations(jb.tolerations),
 		WithJobServiceAccount(jb.serviceAccount),
 		WithNodeCollectorImageRef(jb.imageRef),

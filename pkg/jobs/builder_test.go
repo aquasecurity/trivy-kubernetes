@@ -44,8 +44,8 @@ func TestLoadBuilder(t *testing.T) {
 								{
 									Resources: corev1.ResourceRequirements{
 										Limits: corev1.ResourceList{
-											corev1.ResourceCPU:    resource.MustParse("300m"),
-											corev1.ResourceMemory: resource.MustParse("300M"),
+											corev1.ResourceCPU:    resource.MustParse("100m"),
+											corev1.ResourceMemory: resource.MustParse("100M"),
 										},
 										Requests: corev1.ResourceList{
 											corev1.ResourceCPU:    resource.MustParse("50m"),

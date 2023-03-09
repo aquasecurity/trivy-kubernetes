@@ -19,8 +19,8 @@ spec:
             - node-collector
           resources:
             limits:
-              cpu: 300m
-              memory: 300M
+              cpu: 100m
+              memory: 100M
             requests:
               cpu: 50m
               memory: 50M

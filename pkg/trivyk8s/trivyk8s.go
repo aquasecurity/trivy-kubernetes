@@ -17,7 +17,6 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/utils/pointer"
 
 	"k8s.io/client-go/dynamic"
 
@@ -39,7 +38,7 @@ type ArtifactsK8S interface {
 	// GetArtifact return kubernete scanable artifact
 	GetArtifact(context.Context, string, string) (*artifacts.Artifact, error)
 	// ListArtifactAndNodeInfo return kubernete scanable artifact and node info
-	ListArtifactAndNodeInfo(context.Context) ([]*artifacts.Artifact, error)
+	ListArtifactAndNodeInfo(context.Context, ...corev1.Toleration) ([]*artifacts.Artifact, error)
 }
 
 type client struct {
@@ -114,7 +113,7 @@ func (c *client) ListArtifacts(ctx context.Context) ([]*artifacts.Artifact, erro
 }
 
 // ListArtifacts returns kubernetes scannable artifacs.
-func (c *client) ListArtifactAndNodeInfo(ctx context.Context) ([]*artifacts.Artifact, error) {
+func (c *client) ListArtifactAndNodeInfo(ctx context.Context, tolerations ...corev1.Toleration) ([]*artifacts.Artifact, error) {
 	artifactList, err := c.ListArtifacts(ctx)
 	if err != nil {
 		return nil, err
@@ -123,28 +122,7 @@ func (c *client) ListArtifactAndNodeInfo(ctx context.Context) ([]*artifacts.Arti
 		jobs.TrivyCollectorName: jobs.NodeCollectorName,
 		jobs.TrivyAutoCreated:   "true",
 	}
-	tolerations := []corev1.Toleration{
-		{
-			Effect:   corev1.TaintEffectNoSchedule,
-			Operator: corev1.TolerationOperator(corev1.NodeSelectorOpExists),
-		},
-		{
-			Effect:   corev1.TaintEffectNoExecute,
-			Operator: corev1.TolerationOperator(corev1.NodeSelectorOpExists),
-		},
-		{
-			Effect:            corev1.TaintEffectNoExecute,
-			Key:               "node.kubernetes.io/not-ready",
-			Operator:          corev1.TolerationOperator(corev1.NodeSelectorOpExists),
-			TolerationSeconds: pointer.Int64(300),
-		},
-		{
-			Effect:            corev1.TaintEffectNoExecute,
-			Key:               "node.kubernetes.io/unreachable",
-			Operator:          corev1.TolerationOperator(corev1.NodeSelectorOpExists),
-			TolerationSeconds: pointer.Int64(300),
-		},
-	}
+
 	jc := jobs.NewCollector(
 		c.cluster,
 		jobs.WithTimetout(time.Minute*5),
@@ -161,6 +139,7 @@ func (c *client) ListArtifactAndNodeInfo(ctx context.Context) ([]*artifacts.Arti
 		if resource.Kind != "Node" {
 			continue
 		}
+		time.Sleep(time.Second)
 		nodeLabels := map[string]string{
 			jobs.TrivyResourceName: resource.Name,
 			jobs.TrivyResourceKind: resource.Kind,

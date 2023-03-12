@@ -8,6 +8,8 @@ import (
 	"github.com/aquasecurity/trivy-kubernetes/pkg/k8s"
 	"github.com/aquasecurity/trivy-kubernetes/pkg/trivyk8s"
 	"go.uber.org/zap"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/utils/pointer"
 
 	"context"
 )
@@ -71,8 +73,31 @@ func main() {
 	}
 	printArtifacts(artifacts)
 
+	tolerations := []corev1.Toleration{
+		{
+			Effect:   corev1.TaintEffectNoSchedule,
+			Operator: corev1.TolerationOperator(corev1.NodeSelectorOpExists),
+		},
+		{
+			Effect:   corev1.TaintEffectNoExecute,
+			Operator: corev1.TolerationOperator(corev1.NodeSelectorOpExists),
+		},
+		{
+			Effect:            corev1.TaintEffectNoExecute,
+			Key:               "node.kubernetes.io/not-ready",
+			Operator:          corev1.TolerationOperator(corev1.NodeSelectorOpExists),
+			TolerationSeconds: pointer.Int64(300),
+		},
+		{
+			Effect:            corev1.TaintEffectNoExecute,
+			Key:               "node.kubernetes.io/unreachable",
+			Operator:          corev1.TolerationOperator(corev1.NodeSelectorOpExists),
+			TolerationSeconds: pointer.Int64(300),
+		},
+	}
+
 	// collect node info
-	ar, err := trivyk8s.ListArtifactAndNodeInfo(ctx)
+	ar, err := trivyk8s.ListArtifactAndNodeInfo(ctx, tolerations...)
 	if err != nil {
 		log.Fatal(err)
 	}

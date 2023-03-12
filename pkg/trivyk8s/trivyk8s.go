@@ -139,7 +139,6 @@ func (c *client) ListArtifactAndNodeInfo(ctx context.Context, tolerations ...cor
 		if resource.Kind != "Node" {
 			continue
 		}
-		time.Sleep(time.Second)
 		nodeLabels := map[string]string{
 			jobs.TrivyResourceName: resource.Name,
 			jobs.TrivyResourceKind: resource.Kind,

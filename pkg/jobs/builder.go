@@ -77,9 +77,9 @@ func WithPodVolumes(volumes []corev1.Volume) JobOption {
 		j.volumes = volumes
 	}
 }
-func WithContainerVolumesMount(volumesMount []corev1.VolumeMount) JobOption {
+func WithContainerVolumeMounts(volumeMounts []corev1.VolumeMount) JobOption {
 	return func(j *JobBuilder) {
-		j.volumesMount = volumesMount
+		j.volumeMounts = volumeMounts
 	}
 }
 
@@ -104,7 +104,7 @@ type JobBuilder struct {
 	annotations        map[string]string
 	tolerations        []corev1.Toleration
 	volumes            []corev1.Volume
-	volumesMount       []corev1.VolumeMount
+	volumeMounts       []corev1.VolumeMount
 }
 
 func (b *JobBuilder) build() (*batchv1.Job, error) {
@@ -155,8 +155,8 @@ func (b *JobBuilder) build() (*batchv1.Job, error) {
 	if len(b.volumes) > 0 {
 		job.Spec.Template.Spec.Volumes = b.volumes
 	}
-	if len(b.volumesMount) > 0 {
-		job.Spec.Template.Spec.Containers[0].VolumeMounts = b.volumesMount
+	if len(b.volumeMounts) > 0 {
+		job.Spec.Template.Spec.Containers[0].VolumeMounts = b.volumeMounts
 	}
 	return &job, nil
 }

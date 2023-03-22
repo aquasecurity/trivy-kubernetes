@@ -48,7 +48,7 @@ type jobCollector struct {
 	imageRef           string
 	tolerations        []corev1.Toleration
 	volumes            []corev1.Volume
-	volumesMount       []corev1.VolumeMount
+	volumeMounts       []corev1.VolumeMount
 }
 
 type CollectorOption func(*jobCollector)
@@ -131,7 +131,7 @@ func WithVolumes(volumes []corev1.Volume) CollectorOption {
 }
 func WithVolumesMount(volumesMount []corev1.VolumeMount) CollectorOption {
 	return func(jc *jobCollector) {
-		jc.volumesMount = volumesMount
+		jc.volumeMounts = volumesMount
 	}
 }
 
@@ -178,7 +178,7 @@ func (jb *jobCollector) ApplyAndCollect(ctx context.Context, nodeName string) (s
 		WithNodeCollectorImageRef(jb.imageRef),
 		WithTolerations(jb.tolerations),
 		WithPodVolumes(jb.volumes),
-		WithContainerVolumesMount(jb.volumesMount),
+		WithContainerVolumeMounts(jb.volumeMounts),
 		WithJobName(fmt.Sprintf("%s-%s", jb.templateName, ComputeHash(
 			ObjectRef{
 				Kind:      "Node-Info",
@@ -238,7 +238,7 @@ func (jb *jobCollector) Apply(ctx context.Context, nodeName string) (*batchv1.Jo
 		WithAnnotation(jb.annotation),
 		WithTemplate(jb.templateName),
 		WithPodVolumes(jb.volumes),
-		WithContainerVolumesMount(jb.volumesMount),
+		WithContainerVolumeMounts(jb.volumeMounts),
 		WithJobName(jb.name),
 	)
 	if err != nil {

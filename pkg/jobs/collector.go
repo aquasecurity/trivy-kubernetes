@@ -124,12 +124,12 @@ func WithPodSpecSecurityContext(podSecurityContext *corev1.PodSecurityContext) C
 	}
 }
 
-func withVolumes(volumes []corev1.Volume) CollectorOption {
+func WithVolumes(volumes []corev1.Volume) CollectorOption {
 	return func(jc *jobCollector) {
 		jc.volumes = volumes
 	}
 }
-func withVolumesMount(volumesMount []corev1.VolumeMount) CollectorOption {
+func WithVolumesMount(volumesMount []corev1.VolumeMount) CollectorOption {
 	return func(jc *jobCollector) {
 		jc.volumesMount = volumesMount
 	}

@@ -47,6 +47,8 @@ type jobCollector struct {
 	securityContext    *corev1.SecurityContext
 	imageRef           string
 	tolerations        []corev1.Toleration
+	volumes            []corev1.Volume
+	volumesMount       []corev1.VolumeMount
 }
 
 type CollectorOption func(*jobCollector)
@@ -122,6 +124,17 @@ func WithPodSpecSecurityContext(podSecurityContext *corev1.PodSecurityContext) C
 	}
 }
 
+func WithVolumes(volumes []corev1.Volume) CollectorOption {
+	return func(jc *jobCollector) {
+		jc.volumes = volumes
+	}
+}
+func WithVolumesMount(volumesMount []corev1.VolumeMount) CollectorOption {
+	return func(jc *jobCollector) {
+		jc.volumesMount = volumesMount
+	}
+}
+
 func NewCollector(
 	cluster k8s.Cluster,
 	opts ...CollectorOption,
@@ -164,6 +177,8 @@ func (jb *jobCollector) ApplyAndCollect(ctx context.Context, nodeName string) (s
 		withPodSecurityContext(jb.podSecurityContext),
 		WithNodeCollectorImageRef(jb.imageRef),
 		WithTolerations(jb.tolerations),
+		WithPodVolumes(jb.volumes),
+		WithContainerVolumesMount(jb.volumesMount),
 		WithJobName(fmt.Sprintf("%s-%s", jb.templateName, ComputeHash(
 			ObjectRef{
 				Kind:      "Node-Info",
@@ -222,6 +237,8 @@ func (jb *jobCollector) Apply(ctx context.Context, nodeName string) (*batchv1.Jo
 		WithNodeCollectorImageRef(jb.imageRef),
 		WithAnnotation(jb.annotation),
 		WithTemplate(jb.templateName),
+		WithPodVolumes(jb.volumes),
+		WithContainerVolumesMount(jb.volumesMount),
 		WithJobName(jb.name),
 	)
 	if err != nil {

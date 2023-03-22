@@ -72,6 +72,17 @@ func withPodSecurityContext(podSecurityContext *corev1.PodSecurityContext) JobOp
 	}
 }
 
+func WithPodVolumes(volumes []corev1.Volume) JobOption {
+	return func(j *JobBuilder) {
+		j.volumes = volumes
+	}
+}
+func WithContainerVolumesMount(volumesMount []corev1.VolumeMount) JobOption {
+	return func(j *JobBuilder) {
+		j.volumesMount = volumesMount
+	}
+}
+
 func GetJob(opts ...JobOption) (*batchv1.Job, error) {
 	jb := &JobBuilder{}
 	for _, opt := range opts {
@@ -92,6 +103,8 @@ type JobBuilder struct {
 	securityContext    *corev1.SecurityContext
 	annotations        map[string]string
 	tolerations        []corev1.Toleration
+	volumes            []corev1.Volume
+	volumesMount       []corev1.VolumeMount
 }
 
 func (b *JobBuilder) build() (*batchv1.Job, error) {
@@ -138,6 +151,12 @@ func (b *JobBuilder) build() (*batchv1.Job, error) {
 	}
 	if b.securityContext != nil {
 		job.Spec.Template.Spec.Containers[0].SecurityContext = b.securityContext
+	}
+	if len(b.volumes) > 0 {
+		job.Spec.Template.Spec.Volumes = b.volumes
+	}
+	if len(b.volumesMount) > 0 {
+		job.Spec.Template.Spec.Containers[0].VolumeMounts = b.volumesMount
 	}
 	return &job, nil
 }

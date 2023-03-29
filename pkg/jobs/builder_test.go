@@ -102,18 +102,8 @@ func TestLoadBuilder(t *testing.T) {
 											ReadOnly:  true,
 										},
 										{
-											Name:      "usr-bin",
-											MountPath: "/usr/local/mount-from-host/bin",
-											ReadOnly:  true,
-										},
-										{
 											Name:      "etc-cni-netd",
 											MountPath: "/etc/cni/net.d/",
-											ReadOnly:  true,
-										},
-										{
-											Name:      "opt-cni-bin",
-											MountPath: "/opt/cni/bin/",
 											ReadOnly:  true,
 										},
 									},
@@ -150,16 +140,8 @@ func TestLoadBuilder(t *testing.T) {
 									VolumeSource: corev1.VolumeSource{HostPath: &corev1.HostPathVolumeSource{Path: "/etc/kubernetes"}},
 								},
 								{
-									Name:         "usr-bin",
-									VolumeSource: corev1.VolumeSource{HostPath: &corev1.HostPathVolumeSource{Path: "/usr/bin"}},
-								},
-								{
 									Name:         "etc-cni-netd",
 									VolumeSource: corev1.VolumeSource{HostPath: &corev1.HostPathVolumeSource{Path: "/etc/cni/net.d/"}},
-								},
-								{
-									Name:         "opt-cni-bin",
-									VolumeSource: corev1.VolumeSource{HostPath: &corev1.HostPathVolumeSource{Path: "/opt/cni/bin/"}},
 								},
 							},
 						},

@@ -103,10 +103,10 @@ func GetCluster(opts ...ClusterOption) (Cluster, error) {
 		return nil, err
 	}
 
-	return getCluster(clientConfig, restMapper)
+	return getCluster(clientConfig, restMapper, *cf.Context)
 }
 
-func getCluster(clientConfig clientcmd.ClientConfig, restMapper meta.RESTMapper) (*cluster, error) {
+func getCluster(clientConfig clientcmd.ClientConfig, restMapper meta.RESTMapper, currentContext string) (*cluster, error) {
 	kubeConfig, err := clientConfig.ClientConfig()
 	if err != nil {
 		return nil, err
@@ -129,7 +129,11 @@ func getCluster(clientConfig clientcmd.ClientConfig, restMapper meta.RESTMapper)
 	}
 
 	var namespace string
-	if context, ok := rawCfg.Contexts[rawCfg.CurrentContext]; ok {
+
+	if len(currentContext) == 0 {
+		currentContext = rawCfg.CurrentContext
+	}
+	if context, ok := rawCfg.Contexts[currentContext]; ok {
 		namespace = context.Namespace
 	}
 
@@ -138,7 +142,7 @@ func getCluster(clientConfig clientcmd.ClientConfig, restMapper meta.RESTMapper)
 	}
 
 	return &cluster{
-		currentContext:   rawCfg.CurrentContext,
+		currentContext:   currentContext,
 		currentNamespace: namespace,
 		dynamicClient:    k8sDynamicClient,
 		restMapper:       restMapper,

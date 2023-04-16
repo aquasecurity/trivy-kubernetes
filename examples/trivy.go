@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 
@@ -107,6 +108,16 @@ func main() {
 		}
 		fmt.Println(a.RawResource)
 	}
+
+	b, err := cluster.CreateClusterPkgBom(ctx)
+	if err != nil {
+		log.Fatal(err)
+	}
+	bb, err := json.Marshal(b)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Print(string(bb))
 }
 
 func printArtifacts(artifacts []*artifacts.Artifact) {

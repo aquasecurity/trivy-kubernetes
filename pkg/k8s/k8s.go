@@ -1,7 +1,17 @@
 package k8s
 
 import (
+	"context"
+	"fmt"
+	"strings"
+
+	"github.com/aquasecurity/trivy-kubernetes/pkg/bom"
+	"github.com/google/go-containerregistry/pkg/name"
+	containerimage "github.com/google/go-containerregistry/pkg/name"
+	corev1 "k8s.io/api/core/v1"
+	k8sapierror "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
@@ -41,6 +51,7 @@ const (
 	ClusterRoles           = "clusterroles"
 	ClusterRoleBindings    = "clusterrolebindings"
 	Nodes                  = "nodes"
+	k8sComponentNamespace  = "kube-system"
 )
 
 // Cluster interface represents the operations needed to scan a cluster
@@ -60,6 +71,8 @@ type Cluster interface {
 	// GetGVR returns resource GroupVersionResource to query kubernetes, receives
 	// a string with the resource kind
 	GetGVR(string) (schema.GroupVersionResource, error)
+	// CreatePkgBom returns a k8s client set
+	CreateClusterPkgBom(ctx context.Context) (*bom.Result, error)
 }
 
 type cluster struct {
@@ -68,6 +81,7 @@ type cluster struct {
 	dynamicClient    dynamic.Interface
 	restMapper       meta.RESTMapper
 	clientset        *kubernetes.Clientset
+	cConfig          clientcmd.ClientConfig
 }
 
 type ClusterOption func(*genericclioptions.ConfigFlags)
@@ -147,6 +161,7 @@ func getCluster(clientConfig clientcmd.ClientConfig, restMapper meta.RESTMapper,
 		dynamicClient:    k8sDynamicClient,
 		restMapper:       restMapper,
 		clientset:        kubeClientset,
+		cConfig:          clientConfig,
 	}, nil
 }
 
@@ -248,4 +263,231 @@ func getNamespaceResources() []string {
 		ResourceQuotas,
 		LimitRanges,
 	}
+}
+
+func (c *cluster) CreateClusterPkgBom(ctx context.Context) (*bom.Result, error) {
+	nodesInfo := c.CollectNodes()
+	// collect addons info
+	var components []bom.Component
+	var err error
+	labels := map[string]string{
+		k8sComponentNamespace: "component",
+	}
+	if c.isOpenShift() {
+		labels = map[string]string{
+			"openshift-kube-apiserver":          "apiserver",
+			"openshift-kube-controller-manager": "kube-controller-manager",
+			"openshift-kube-scheduler":          "scheduler",
+			"openshift-etcd":                    "etcd",
+		}
+	}
+	components, err = c.collectComponents(ctx, labels)
+	if err != nil {
+		return nil, err
+	}
+	metadata, err := c.targetMetadata()
+	if err != nil {
+		return nil, err
+	}
+	addonLabels := map[string]string{
+		k8sComponentNamespace: "k8s-app",
+	}
+	addons, err := c.collectComponents(ctx, addonLabels)
+	if err != nil {
+		return nil, err
+	}
+	return c.getClusterPackages(metadata, components, addons, nodesInfo), nil
+}
+
+func (c *cluster) GetBaseComponent(imageRef name.Reference, imageName name.Reference) (bom.Component, error) {
+	repoName := imageRef.Context().RepositoryStr()
+	registryName := imageRef.Context().RegistryStr()
+	if strings.HasPrefix(repoName, "library/sha256") {
+		repoName = imageName.Context().RepositoryStr()
+		registryName = imageName.Context().RegistryStr()
+	}
+
+	return bom.Component{
+		Repository: repoName,
+		Registry:   registryName,
+		Name:       fmt.Sprintf("%s:%s", repoName, imageName.Identifier()),
+		Digest:     imageRef.Context().Digest(imageRef.Identifier()).DigestStr(),
+		Version:    imageName.Identifier(),
+	}, nil
+}
+
+func (c *cluster) CollectNodes() []bom.NodeInfo {
+	nodes, err := c.clientset.CoreV1().Nodes().List(context.Background(), metav1.ListOptions{})
+	if err != nil {
+		panic(err.Error())
+	}
+	nodesInfo := make([]bom.NodeInfo, 0)
+	for _, node := range nodes.Items {
+		nodeRole := "worker"
+		if _, ok := node.Labels["node-role.kubernetes.io/control-plane"]; ok {
+			nodeRole = "master"
+		}
+		if _, ok := node.Labels["node-role.kubernetes.io/master"]; ok {
+			nodeRole = "master"
+		}
+		nodesInfo = append(nodesInfo, bom.NodeInfo{
+			NodeName:                node.Name,
+			KubeletVersion:          node.Status.NodeInfo.KubeletVersion,
+			ContainerRuntimeVersion: node.Status.NodeInfo.ContainerRuntimeVersion,
+			OsImage:                 node.Status.NodeInfo.OSImage,
+			Hostname:                node.ObjectMeta.Name,
+			KernelVersion:           node.Status.NodeInfo.KernelVersion,
+			KubeProxyVersion:        node.Status.NodeInfo.KernelVersion,
+			OperatingSystem:         node.Status.NodeInfo.OperatingSystem,
+			Architecture:            node.Status.NodeInfo.Architecture,
+			NodeRole:                nodeRole,
+		})
+	}
+	return nodesInfo
+}
+
+func getPodsInfo(ctx context.Context, clientset *kubernetes.Clientset, labelSelector string, namespace string) *corev1.PodList {
+	pods, err := clientset.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{LabelSelector: labelSelector})
+	if err != nil {
+		panic(err.Error())
+	}
+	return pods
+}
+
+func (c *cluster) collectComponents(ctx context.Context, labels map[string]string) ([]bom.Component, error) {
+	components := make([]bom.Component, 0)
+	for namespace, labelSelector := range labels {
+		pods := getPodsInfo(ctx, c.clientset, labelSelector, namespace)
+		for _, pod := range pods.Items {
+			for _, s := range pod.Status.ContainerStatuses {
+				imageRef, err := containerimage.ParseReference(s.ImageID)
+				if err != nil {
+					return nil, err
+				}
+				imageName, err := containerimage.ParseReference(s.Image)
+				if err != nil {
+					return nil, err
+				}
+				c, err := c.GetBaseComponent(imageRef, imageName)
+				if err != nil {
+					continue
+				}
+				components = append(components, c)
+			}
+
+		}
+	}
+	return components, nil
+}
+
+func (c *cluster) isOpenShift() bool {
+	ctx := context.Background()
+	_, err := c.clientset.CoreV1().Namespaces().Get(ctx, "openshift-kube-apiserver", metav1.GetOptions{})
+	return !k8sapierror.IsNotFound(err)
+}
+
+func (c *cluster) getClusterPackages(metadata bom.TargetMetadata, components []bom.Component, Addons []bom.Component, nodeInfo []bom.NodeInfo) *bom.Result {
+	packages := make([]bom.Package, 0)
+	components = append(components, Addons...)
+	for _, c := range components {
+		packages = append(packages, bom.Package{
+			ID:      fmt.Sprintf("%s@%s", c.Name, c.Version),
+			Name:    c.Name,
+			Version: c.Version,
+			Digest:  c.Digest,
+		})
+	}
+	nodePkgs := c.nodeInfoToPkg(nodeInfo, metadata.Version)
+	packages = append(packages, nodePkgs...)
+	br := &bom.Result{
+		Packages: packages,
+		Target:   fmt.Sprintf("%s@%s", metadata.Name, metadata.Version),
+		Type:     "Cluster",
+		Class:    "Kubertnetes",
+	}
+	return br
+}
+
+func (c *cluster) nodeInfoToPkg(nodesInfo []bom.NodeInfo, version string) []bom.Package {
+	packages := make([]bom.Package, 0)
+	for _, n := range nodesInfo {
+		kubeletPkg := bom.Package{
+			ID:      fmt.Sprintf("%s@%s", "kubelet", n.KubeletVersion),
+			Name:    "kubelet",
+			Version: n.KubeletVersion,
+		}
+		packages = append(packages, kubeletPkg)
+		kubeProxyPkg := bom.Package{
+			ID:      fmt.Sprintf("%s@%s", "kube-proxy", n.KubeProxyVersion),
+			Name:    "kube-proxy",
+			Version: n.KubeProxyVersion,
+		}
+		packages = append(packages, kubeProxyPkg)
+		runtimeParts := strings.Split(n.ContainerRuntimeVersion, "://")
+		runtimeName := strings.TrimSpace(runtimeParts[0])
+		runtimeVersion := strings.TrimSpace(runtimeParts[1])
+		containerdPkg := bom.Package{
+			ID:      fmt.Sprintf("pkg:%s@v%s", runtimeName, runtimeVersion),
+			Name:    runtimeName,
+			Version: runtimeVersion,
+		}
+		packages = append(packages, containerdPkg)
+		osParts := strings.Split(n.OsImage, " ")
+		osName := strings.TrimSpace(osParts[0])
+		osVersion := strings.TrimSpace(osParts[1])
+		osPkg := bom.Package{
+			ID:        fmt.Sprintf("%s@%s", osName, osVersion),
+			Name:      osName,
+			Version:   osVersion,
+			DependsOn: []string{kubeletPkg.Name, kubeProxyPkg.Name, containerdPkg.Name},
+			Properties: []bom.KeyValue{
+				{
+					Name:  "architecture",
+					Value: n.Architecture,
+				},
+				{
+					Name:  "kernel_version",
+					Value: n.KernelVersion,
+				},
+				{
+					Name:  "operating_system",
+					Value: n.OperatingSystem,
+				},
+			},
+		}
+		packages = append(packages, osPkg)
+		packages = append(packages, bom.Package{
+			ID:        fmt.Sprintf("%s@%s", n.NodeName, version),
+			Name:      n.NodeName,
+			Version:   version,
+			DependsOn: []string{osPkg.Name},
+			Properties: []bom.KeyValue{
+				{
+					Name:  "node-role",
+					Value: n.NodeRole,
+				},
+				{
+					Name:  "host_name",
+					Value: n.Hostname,
+				},
+			},
+		})
+	}
+	return packages
+}
+
+func (c *cluster) targetMetadata() (bom.TargetMetadata, error) {
+	rawCfg, err := c.cConfig.RawConfig()
+	if err != nil {
+		return bom.TargetMetadata{}, err
+	}
+	clusterName := rawCfg.Contexts[rawCfg.CurrentContext].Cluster
+	version, err := c.clientset.ServerVersion()
+	if err != nil {
+		return bom.TargetMetadata{}, err
+	}
+	return bom.TargetMetadata{
+		Name:    clusterName,
+		Version: version.GitVersion,
+	}, nil
 }

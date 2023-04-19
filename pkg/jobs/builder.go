@@ -83,6 +83,12 @@ func WithContainerVolumeMounts(volumeMounts []corev1.VolumeMount) JobOption {
 	}
 }
 
+func WithImagePullSecrets(imagePullSecrets []corev1.LocalObjectReference) JobOption {
+	return func(j *JobBuilder) {
+		j.imagePullSecrets = imagePullSecrets
+	}
+}
+
 func GetJob(opts ...JobOption) (*batchv1.Job, error) {
 	jb := &JobBuilder{}
 	for _, opt := range opts {
@@ -105,6 +111,7 @@ type JobBuilder struct {
 	tolerations        []corev1.Toleration
 	volumes            []corev1.Volume
 	volumeMounts       []corev1.VolumeMount
+	imagePullSecrets   []corev1.LocalObjectReference
 }
 
 func (b *JobBuilder) build() (*batchv1.Job, error) {
@@ -154,6 +161,9 @@ func (b *JobBuilder) build() (*batchv1.Job, error) {
 	}
 	if len(b.volumes) > 0 {
 		job.Spec.Template.Spec.Volumes = b.volumes
+	}
+	if len(b.imagePullSecrets) > 0 {
+		job.Spec.Template.Spec.ImagePullSecrets = b.imagePullSecrets
 	}
 	if len(b.volumeMounts) > 0 {
 		job.Spec.Template.Spec.Containers[0].VolumeMounts = b.volumeMounts

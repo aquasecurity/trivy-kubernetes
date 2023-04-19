@@ -49,6 +49,7 @@ type jobCollector struct {
 	tolerations        []corev1.Toleration
 	volumes            []corev1.Volume
 	volumeMounts       []corev1.VolumeMount
+	imagePullSecrets   []corev1.LocalObjectReference
 }
 
 type CollectorOption func(*jobCollector)
@@ -135,6 +136,12 @@ func WithVolumesMount(volumesMount []corev1.VolumeMount) CollectorOption {
 	}
 }
 
+func WithPodImagePullSecrets(imagePullSecrets []corev1.LocalObjectReference) CollectorOption {
+	return func(jc *jobCollector) {
+		jc.imagePullSecrets = imagePullSecrets
+	}
+}
+
 func NewCollector(
 	cluster k8s.Cluster,
 	opts ...CollectorOption,
@@ -178,6 +185,7 @@ func (jb *jobCollector) ApplyAndCollect(ctx context.Context, nodeName string) (s
 		WithNodeCollectorImageRef(jb.imageRef),
 		WithTolerations(jb.tolerations),
 		WithPodVolumes(jb.volumes),
+		WithImagePullSecrets(jb.imagePullSecrets),
 		WithContainerVolumeMounts(jb.volumeMounts),
 		WithJobName(fmt.Sprintf("%s-%s", jb.templateName, ComputeHash(
 			ObjectRef{
@@ -238,6 +246,7 @@ func (jb *jobCollector) Apply(ctx context.Context, nodeName string) (*batchv1.Jo
 		WithAnnotation(jb.annotation),
 		WithTemplate(jb.templateName),
 		WithPodVolumes(jb.volumes),
+		WithImagePullSecrets(jb.imagePullSecrets),
 		WithContainerVolumeMounts(jb.volumeMounts),
 		WithJobName(jb.name),
 	)

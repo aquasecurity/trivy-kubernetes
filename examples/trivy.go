@@ -47,7 +47,13 @@ func main() {
 		log.Fatal(err)
 	}
 	printArtifacts(artifacts)
-
+	fmt.Println("Scanning all namespaces ")
+	artifacts, err = trivyk8s.AllNamespaces().ListArtifacts(ctx)
+	if err != nil {
+		log.Fatal(err)
+	}
+	printArtifacts(artifacts)
+	
 	fmt.Println("Scanning namespace 'default', resource 'deployment/orion'")
 
 	//trivy k8s --namespace default deployment/orion

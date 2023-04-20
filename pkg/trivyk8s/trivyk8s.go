@@ -27,6 +27,7 @@ import (
 // TrivyK8S interface represents the operations supported by the library
 type TrivyK8S interface {
 	Namespace(string) TrivyK8S
+	AllNamespaces() TrivyK8S
 	Resources(string) TrivyK8S
 	ArtifactsK8S
 }
@@ -42,10 +43,11 @@ type ArtifactsK8S interface {
 }
 
 type client struct {
-	cluster   k8s.Cluster
-	namespace string
-	resources []string
-	logger    *zap.SugaredLogger
+	cluster       k8s.Cluster
+	namespace     string
+	resources     []string
+	allNamespaces bool
+	logger        *zap.SugaredLogger
 }
 
 // New creates a trivyK8S client
@@ -56,6 +58,12 @@ func New(cluster k8s.Cluster, logger *zap.SugaredLogger) TrivyK8S {
 // Namespace configure the namespace to execute the queries
 func (c *client) Namespace(namespace string) TrivyK8S {
 	c.namespace = namespace
+	return c
+}
+
+// Namespace configure the namespace to execute the queries
+func (c *client) AllNamespaces() TrivyK8S {
+	c.allNamespaces = true
 	return c
 }
 
@@ -70,11 +78,18 @@ func (c *client) Resources(resources string) TrivyK8S {
 	return c
 }
 
+func isNamspaced(namespace string, allNamespace bool) bool {
+	if len(namespace) != 0 || (len(namespace) == 0 && allNamespace) {
+		return true
+	}
+	return false
+}
+
 // ListArtifacts returns kubernetes scannable artifacs.
 func (c *client) ListArtifacts(ctx context.Context) ([]*artifacts.Artifact, error) {
 	artifactList := make([]*artifacts.Artifact, 0)
 
-	namespaced := len(c.namespace) != 0
+	namespaced := isNamspaced(c.namespace, c.allNamespaces)
 	grvs, err := c.cluster.GetGVRs(namespaced, c.resources)
 	if err != nil {
 		return nil, err

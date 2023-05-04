@@ -53,7 +53,7 @@ func main() {
 		log.Fatal(err)
 	}
 	printArtifacts(artifacts)
-	
+
 	fmt.Println("Scanning namespace 'default', resource 'deployment/orion'")
 
 	//trivy k8s --namespace default deployment/orion
@@ -115,7 +115,7 @@ func main() {
 		fmt.Println(a.RawResource)
 	}
 
-	b, err := cluster.CreateClusterPkgBom(ctx)
+	b, err := cluster.CreateClusterBom(ctx)
 	if err != nil {
 		log.Fatal(err)
 	}

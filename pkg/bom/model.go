@@ -21,11 +21,6 @@ type KeyValue struct {
 	Value string
 }
 
-type TargetMetadata struct {
-	Name    string `json:"name,omitempty"`
-	Version string `json:"version,omitempty"`
-}
-
 type Component struct {
 	Type       string   `json:"type,omitempty"`
 	Parents    []string `json:"parents,omitempty"`

@@ -296,7 +296,7 @@ func (c *cluster) CreateClusterBom(ctx context.Context) (*bom.Result, error) {
 	if err != nil {
 		return nil, err
 	}
-	return c.getClusterPackages(components, nodesInfo)
+	return c.getClusterBomInfo(components, nodesInfo)
 }
 
 func (c *cluster) GetBaseComponent(imageRef name.Reference, imageName name.Reference) (bom.Component, error) {
@@ -402,7 +402,7 @@ func (c *cluster) isOpenShift() bool {
 	return !k8sapierror.IsNotFound(err)
 }
 
-func (c *cluster) getClusterPackages(components []bom.Component, nodeInfo []bom.NodeInfo) (*bom.Result, error) {
+func (c *cluster) getClusterBomInfo(components []bom.Component, nodeInfo []bom.NodeInfo) (*bom.Result, error) {
 	name, version, err := c.ClusterNameVersion()
 	if err != nil {
 		return nil, err

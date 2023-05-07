@@ -1,10 +1,10 @@
 package bom
 
 type Result struct {
-	Target   string    `json:"Target"`
-	Class    string    `json:"Class,omitempty"`
-	Type     string    `json:"Type,omitempty"`
-	Packages []Package `json:"Packages,omitempty"`
+	ID        string      `json:"name"`
+	Type      string      `json:"type,omitempty"`
+	Coponents []Component `json:"packages,omitempty"`
+	NodesInfo []NodeInfo  `json:"NodesInfo,omitempty"`
 }
 
 type Package struct {
@@ -21,29 +21,27 @@ type KeyValue struct {
 	Value string
 }
 
-type TargetMetadata struct {
-	Name    string `json:"name,omitempty"`
-	Version string `json:"version,omitempty"`
-}
-
 type Component struct {
-	Type       string `json:"type,omitempty"`
-	Name       string `json:"name,omitempty"`
-	Version    string `json:"version,omitempty"`
-	Repository string `json:"repository,omitempty"`
-	Registry   string `json:"registry,omitempty"`
-	Digest     string `json:"digest,omitempty"`
+	Type       string   `json:"type,omitempty"`
+	Parents    []string `json:"parents,omitempty"`
+	ID         string   `json:"id,omitempty"`
+	Version    string   `json:"version,omitempty"`
+	Repository string   `json:"repository,omitempty"`
+	Registry   string   `json:"registry,omitempty"`
+	Digest     string   `json:"digest,omitempty"`
 }
 
 type NodeInfo struct {
-	NodeRole                string `json:"node_role,omitempty"`
-	NodeName                string `json:"node_name,omitempty"`
-	KubeletVersion          string `json:"kubelet_version,omitempty"`
-	ContainerRuntimeVersion string `json:"container_runtime_version,omitempty"`
-	OsImage                 string `json:"os_image,omitempty"`
-	Hostname                string `json:"host_name,omitempty"`
-	KernelVersion           string `json:"kernel_version,omitempty"`
-	KubeProxyVersion        string `json:"kube_proxy_version,omitempty"`
-	OperatingSystem         string `json:"operating_system,omitempty"`
-	Architecture            string `json:"architecture,omitempty"`
+	NodeRole                string   `json:"node_role,omitempty"`
+	NodeName                string   `json:"node_name,omitempty"`
+	Parents                 []string `json:"parents,omitempty"`
+	KubeletVersion          string   `json:"kubelet_version,omitempty"`
+	ContainerRuntimeVersion string   `json:"container_runtime_version,omitempty"`
+	OsImage                 string   `json:"os_image,omitempty"`
+	Hostname                string   `json:"host_name,omitempty"`
+	KernelVersion           string   `json:"kernel_version,omitempty"`
+	KubeProxyVersion        string   `json:"kube_proxy_version,omitempty"`
+	OperatingSystem         string   `json:"operating_system,omitempty"`
+	Architecture            string   `json:"architecture,omitempty"`
+	Images                  []string `json:"images,omitempty"`
 }

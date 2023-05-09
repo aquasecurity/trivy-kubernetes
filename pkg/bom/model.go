@@ -12,7 +12,6 @@ type Package struct {
 	Name       string     `json:",omitempty"`
 	Version    string     `json:",omitempty"`
 	Properties []KeyValue `json:",omitempty"`
-	DependsOn  []string   `json:",omitempty"`
 	Digest     string     `json:",omitempty"`
 }
 
@@ -23,7 +22,6 @@ type KeyValue struct {
 
 type Component struct {
 	Type       string   `json:"type,omitempty"`
-	Parents    []string `json:"parents,omitempty"`
 	ID         string   `json:"id,omitempty"`
 	Version    string   `json:"version,omitempty"`
 	Repository string   `json:"repository,omitempty"`
@@ -34,7 +32,6 @@ type Component struct {
 type NodeInfo struct {
 	NodeRole                string   `json:"node_role,omitempty"`
 	NodeName                string   `json:"node_name,omitempty"`
-	Parents                 []string `json:"parents,omitempty"`
 	KubeletVersion          string   `json:"kubelet_version,omitempty"`
 	ContainerRuntimeVersion string   `json:"container_runtime_version,omitempty"`
 	OsImage                 string   `json:"os_image,omitempty"`

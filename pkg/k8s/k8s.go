@@ -317,11 +317,6 @@ func (c *cluster) GetBaseComponent(imageRef name.Reference, imageName name.Refer
 }
 
 func (c *cluster) CollectNodes(components []bom.Component) ([]bom.NodeInfo, error) {
-	name, version, err := c.ClusterNameVersion()
-	if err != nil {
-		return []bom.NodeInfo{}, err
-	}
-	parent := fmt.Sprintf("%s:%s", name, version)
 	nodes, err := c.clientset.CoreV1().Nodes().List(context.Background(), metav1.ListOptions{})
 	if err != nil {
 		return []bom.NodeInfo{}, err
@@ -356,7 +351,6 @@ func (c *cluster) CollectNodes(components []bom.Component) ([]bom.NodeInfo, erro
 			Architecture:            node.Status.NodeInfo.Architecture,
 			NodeRole:                nodeRole,
 			Images:                  images,
-			Parents:                 []string{parent},
 		})
 	}
 	return nodesInfo, nil
@@ -408,10 +402,10 @@ func (c *cluster) getClusterBomInfo(components []bom.Component, nodeInfo []bom.N
 		return nil, err
 	}
 	br := &bom.Result{
-		Coponents: components,
-		ID:        fmt.Sprintf("%s@%s", name, version),
-		Type:      "Cluster",
-		NodesInfo: nodeInfo,
+		Components: components,
+		ID:         fmt.Sprintf("%s@%s", name, version),
+		Type:       "Cluster",
+		NodesInfo:  nodeInfo,
 	}
 	return br, nil
 }

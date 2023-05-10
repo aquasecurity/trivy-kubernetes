@@ -40,6 +40,8 @@ type ArtifactsK8S interface {
 	GetArtifact(context.Context, string, string) (*artifacts.Artifact, error)
 	// ListArtifactAndNodeInfo return kubernete scanable artifact and node info
 	ListArtifactAndNodeInfo(context.Context, ...corev1.Toleration) ([]*artifacts.Artifact, error)
+	// ListBomInfo returns kubernetes Bom (node,core components) information.
+	ListBomInfo(context.Context) ([]*artifacts.Artifact, error)
 }
 
 type client struct {
@@ -172,6 +174,45 @@ func (c *client) ListArtifactAndNodeInfo(ctx context.Context, tolerations ...cor
 		artifactList = append(artifactList, &artifacts.Artifact{Kind: "NodeInfo", Name: resource.Name, RawResource: nodeInfo})
 	}
 	return artifactList, err
+}
+
+// ListBomInfo returns kubernetes Bom (node,core components and etc) information.
+func (c *client) ListBomInfo(ctx context.Context) ([]*artifacts.Artifact, error) {
+	artifactList := make([]*artifacts.Artifact, 0)
+	bom, err := c.cluster.CreateClusterBom(ctx)
+	if err != nil {
+		return []*artifacts.Artifact{}, err
+	}
+
+	for _, c := range bom.Components {
+		rawResource, err := rawResource(&c)
+		if err != nil {
+			return []*artifacts.Artifact{}, err
+		}
+		artifactList = append(artifactList, &artifacts.Artifact{Kind: "Pod", Name: c.ID, RawResource: rawResource})
+	}
+	for _, ni := range bom.NodesInfo {
+		rawResource, err := rawResource(&ni)
+		if err != nil {
+			return []*artifacts.Artifact{}, err
+		}
+		artifactList = append(artifactList, &artifacts.Artifact{Kind: "NodeInfo", Name: ni.NodeName, RawResource: rawResource})
+	}
+	return artifactList, err
+
+}
+
+func rawResource(resource interface{}) (map[string]interface{}, error) {
+	b, err := json.Marshal(resource)
+	if err != nil {
+		return nil, err
+	}
+	var rawResource map[string]interface{}
+	err = json.Unmarshal(b, &rawResource)
+	if err != nil {
+		return nil, err
+	}
+	return rawResource, nil
 }
 
 // GetArtifact return kubernetes scannable artifac.

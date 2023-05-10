@@ -1,10 +1,10 @@
 package bom
 
 type Result struct {
-	ID        string      `json:"name"`
-	Type      string      `json:"type,omitempty"`
-	Coponents []Component `json:"packages,omitempty"`
-	NodesInfo []NodeInfo  `json:"NodesInfo,omitempty"`
+	ID         string      `json:"name"`
+	Type       string      `json:"type,omitempty"`
+	Components []Component `json:"components,omitempty"`
+	NodesInfo  []NodeInfo  `json:"nodesInfo,omitempty"`
 }
 
 type Package struct {
@@ -21,12 +21,12 @@ type KeyValue struct {
 }
 
 type Component struct {
-	Type       string   `json:"type,omitempty"`
-	ID         string   `json:"id,omitempty"`
-	Version    string   `json:"version,omitempty"`
-	Repository string   `json:"repository,omitempty"`
-	Registry   string   `json:"registry,omitempty"`
-	Digest     string   `json:"digest,omitempty"`
+	Type       string `json:"type,omitempty"`
+	ID         string `json:"id,omitempty"`
+	Version    string `json:"version,omitempty"`
+	Repository string `json:"repository,omitempty"`
+	Registry   string `json:"registry,omitempty"`
+	Digest     string `json:"digest,omitempty"`
 }
 
 type NodeInfo struct {

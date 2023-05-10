@@ -8,6 +8,7 @@ import (
 	"github.com/aquasecurity/trivy-kubernetes/pkg/artifacts"
 	"github.com/aquasecurity/trivy-kubernetes/pkg/k8s"
 	"github.com/aquasecurity/trivy-kubernetes/pkg/trivyk8s"
+
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/utils/pointer"
@@ -115,11 +116,11 @@ func main() {
 		fmt.Println(a.RawResource)
 	}
 
-	b, err := cluster.CreateClusterBom(ctx)
+	bi, err := trivyk8s.ListBomInfo(ctx)
 	if err != nil {
 		log.Fatal(err)
 	}
-	bb, err := json.Marshal(b)
+	bb, err := json.Marshal(bi)
 	if err != nil {
 		log.Fatal(err)
 	}

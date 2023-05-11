@@ -60,8 +60,6 @@ jobs:
         with:
           args: --verbose --deadline=5m
           version: latest
-          skip-pkg-cache: true
-          skip-build-cache: true
       - name: Verify YAML code
         uses: ibiqlik/action-yamllint@v3
       - name: Vendor Go modules

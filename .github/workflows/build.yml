@@ -59,7 +59,8 @@ jobs:
         uses: golangci/golangci-lint-action@v3.4.0
         with:
           args: --verbose --deadline=5m
-          version: v1.52
+          version: v1.52.2
+          skip-go-installation: true
           skip-pkg-cache: true
           skip-build-cache: true
       - name: Verify YAML code

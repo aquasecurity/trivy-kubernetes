@@ -9,7 +9,6 @@ import (
 	"github.com/aquasecurity/trivy-kubernetes/pkg/k8s"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	k8sapierror "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -200,7 +199,7 @@ func (jb *jobCollector) ApplyAndCollect(ctx context.Context, nodeName string) (s
 	_, err = jb.getTrivyNamespace(ctx)
 	if err != nil {
 		if k8sapierror.IsNotFound(err) {
-			trivyNamespace := &v1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: jb.namespace}}
+			trivyNamespace := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: jb.namespace}}
 			_, err = jb.cluster.GetK8sClientSet().CoreV1().Namespaces().Create(ctx, trivyNamespace, metav1.CreateOptions{})
 			if err != nil {
 				return "", err
@@ -268,7 +267,7 @@ func (jb *jobCollector) deleteTrivyNamespace(ctx context.Context) {
 	})
 }
 
-func (jb *jobCollector) getTrivyNamespace(ctx context.Context) (*v1.Namespace, error) {
+func (jb *jobCollector) getTrivyNamespace(ctx context.Context) (*corev1.Namespace, error) {
 	return jb.cluster.GetK8sClientSet().CoreV1().Namespaces().Get(ctx, jb.namespace, metav1.GetOptions{})
 }
 

@@ -6,13 +6,11 @@ import (
 	"strings"
 
 	"github.com/aquasecurity/trivy-kubernetes/pkg/bom"
-	"github.com/google/go-containerregistry/pkg/name"
 	containerimage "github.com/google/go-containerregistry/pkg/name"
 	corev1 "k8s.io/api/core/v1"
 	k8sapierror "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/dynamic"
@@ -225,7 +223,7 @@ func IsClusterResource(gvr schema.GroupVersionResource) bool {
 
 // IsBuiltInWorkload returns true if the specified v1.OwnerReference
 // is a built-in Kubernetes workload, false otherwise.
-func IsBuiltInWorkload(resource *v1.OwnerReference) bool {
+func IsBuiltInWorkload(resource *metav1.OwnerReference) bool {
 	return resource != nil &&
 		(resource.Kind == string(KindReplicaSet) ||
 			resource.Kind == string(KindReplicationController) ||
@@ -299,7 +297,7 @@ func (c *cluster) CreateClusterBom(ctx context.Context) (*bom.Result, error) {
 	return c.getClusterBomInfo(components, nodesInfo)
 }
 
-func (c *cluster) GetBaseComponent(imageRef name.Reference, imageName name.Reference) (bom.Component, error) {
+func (c *cluster) GetBaseComponent(imageRef containerimage.Reference, imageName containerimage.Reference) (bom.Component, error) {
 	repoName := imageRef.Context().RepositoryStr()
 	registryName := imageRef.Context().RegistryStr()
 	if strings.HasPrefix(repoName, "library/sha256") {

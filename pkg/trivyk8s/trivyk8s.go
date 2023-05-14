@@ -189,7 +189,7 @@ func (c *client) ListBomInfo(ctx context.Context) ([]*artifacts.Artifact, error)
 		if err != nil {
 			return []*artifacts.Artifact{}, err
 		}
-		artifactList = append(artifactList, &artifacts.Artifact{Kind: "Pod", Name: c.ID, RawResource: rawResource})
+		artifactList = append(artifactList, &artifacts.Artifact{Kind: "PodInfo", Name: c.ID, RawResource: rawResource})
 	}
 	for _, ni := range bom.NodesInfo {
 		rawResource, err := rawResource(&ni)

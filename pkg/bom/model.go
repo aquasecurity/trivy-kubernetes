@@ -8,7 +8,11 @@ type Result struct {
 }
 
 type Component struct {
-	Type       string
+	Name       string
+	Containers []Container
+}
+
+type Container struct {
 	ID         string
 	Version    string
 	Repository string

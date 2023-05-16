@@ -39,7 +39,7 @@ type ArtifactsK8S interface {
 	// GetArtifact return kubernete scanable artifact
 	GetArtifact(context.Context, string, string) (*artifacts.Artifact, error)
 	// ListArtifactAndNodeInfo return kubernete scanable artifact and node info
-	ListArtifactAndNodeInfo(context.Context, ...corev1.Toleration) ([]*artifacts.Artifact, error)
+	ListArtifactAndNodeInfo(context.Context, string, ...corev1.Toleration) ([]*artifacts.Artifact, error)
 	// ListBomInfo returns kubernetes Bom (node,core components) information.
 	ListBomInfo(context.Context) ([]*artifacts.Artifact, error)
 }
@@ -130,7 +130,7 @@ func (c *client) ListArtifacts(ctx context.Context) ([]*artifacts.Artifact, erro
 }
 
 // ListArtifacts returns kubernetes scannable artifacs.
-func (c *client) ListArtifactAndNodeInfo(ctx context.Context, tolerations ...corev1.Toleration) ([]*artifacts.Artifact, error) {
+func (c *client) ListArtifactAndNodeInfo(ctx context.Context, namespace string, tolerations ...corev1.Toleration) ([]*artifacts.Artifact, error) {
 	artifactList, err := c.ListArtifacts(ctx)
 	if err != nil {
 		return nil, err
@@ -144,7 +144,7 @@ func (c *client) ListArtifactAndNodeInfo(ctx context.Context, tolerations ...cor
 		c.cluster,
 		jobs.WithTimetout(time.Minute*5),
 		jobs.WithJobTemplateName(jobs.NodeCollectorName),
-		jobs.WithJobNamespace(jobs.TrivyNamespace),
+		jobs.WithJobNamespace(namespace),
 		jobs.WithJobLabels(labels),
 		jobs.WithJobTolerations(tolerations),
 	)

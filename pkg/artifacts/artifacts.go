@@ -10,6 +10,7 @@ import (
 type Artifact struct {
 	Namespace   string
 	Kind        string
+	Labels      map[string]string
 	Name        string
 	Images      []string
 	RawResource map[string]interface{}
@@ -35,10 +36,15 @@ func FromResource(resource unstructured.Unstructured) (*Artifact, error) {
 	if err != nil {
 		return nil, err
 	}
+	var labels map[string]string
+	if resource.GetKind() == "Node" {
+		labels = resource.GetLabels()
+	}
 
 	return &Artifact{
 		Namespace:   resource.GetNamespace(),
 		Kind:        resource.GetKind(),
+		Labels:      labels,
 		Name:        name,
 		Images:      images,
 		RawResource: resource.Object,

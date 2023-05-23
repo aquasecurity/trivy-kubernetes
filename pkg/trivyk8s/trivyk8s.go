@@ -39,7 +39,7 @@ type ArtifactsK8S interface {
 	// GetArtifact return kubernete scanable artifact
 	GetArtifact(context.Context, string, string) (*artifacts.Artifact, error)
 	// ListArtifactAndNodeInfo return kubernete scanable artifact and node info
-	ListArtifactAndNodeInfo(context.Context, string, ...corev1.Toleration) ([]*artifacts.Artifact, error)
+	ListArtifactAndNodeInfo(context.Context, string, map[string]string, ...corev1.Toleration) ([]*artifacts.Artifact, error)
 	// ListBomInfo returns kubernetes Bom (node,core components) information.
 	ListBomInfo(context.Context) ([]*artifacts.Artifact, error)
 }
@@ -130,7 +130,7 @@ func (c *client) ListArtifacts(ctx context.Context) ([]*artifacts.Artifact, erro
 }
 
 // ListArtifacts returns kubernetes scannable artifacs.
-func (c *client) ListArtifactAndNodeInfo(ctx context.Context, namespace string, tolerations ...corev1.Toleration) ([]*artifacts.Artifact, error) {
+func (c *client) ListArtifactAndNodeInfo(ctx context.Context, namespace string, ignoreLabels map[string]string, tolerations ...corev1.Toleration) ([]*artifacts.Artifact, error) {
 	artifactList, err := c.ListArtifacts(ctx)
 	if err != nil {
 		return nil, err
@@ -156,6 +156,10 @@ func (c *client) ListArtifactAndNodeInfo(ctx context.Context, namespace string, 
 		if resource.Kind != "Node" {
 			continue
 		}
+		if ignoreNodeByLabel(resource, ignoreLabels) {
+			continue
+		}
+
 		nodeLabels := map[string]string{
 			jobs.TrivyResourceName: resource.Name,
 			jobs.TrivyResourceKind: resource.Kind,
@@ -282,6 +286,15 @@ func isNodeStatusUnknown(resource unstructured.Unstructured) bool {
 			if condition.Status == corev1.ConditionTrue {
 				return false
 			}
+		}
+	}
+	return true
+}
+
+func ignoreNodeByLabel(resource *artifacts.Artifact, ignoreLabels map[string]string) bool {
+	for key, val := range ignoreLabels {
+		if lVal, ok := resource.Labels[key]; !ok || lVal != val {
+			return false
 		}
 	}
 	return true

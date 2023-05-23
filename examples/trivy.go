@@ -105,7 +105,7 @@ func main() {
 	}
 
 	// collect node info
-	ar, err := trivyk8s.ListArtifactAndNodeInfo(ctx, "trivy-temp", tolerations...)
+	ar, err := trivyk8s.ListArtifactAndNodeInfo(ctx, "trivy-temp", map[string]string{"chen": "test"}, tolerations...)
 	if err != nil {
 		log.Fatal(err)
 	}

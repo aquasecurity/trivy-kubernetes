@@ -292,11 +292,11 @@ func isNodeStatusUnknown(resource unstructured.Unstructured) bool {
 }
 
 func ignoreNodeByLabel(resource *artifacts.Artifact, ignoreLabels map[string]string) bool {
-
+	var matchingLabels int
 	for key, val := range ignoreLabels {
-		if lVal, ok := resource.Labels[key]; !ok || lVal != val {
-			return false
+		if lVal, ok := resource.Labels[key]; ok && lVal == val {
+			matchingLabels++
 		}
 	}
-	return true
+	return matchingLabels == len(ignoreLabels)
 }

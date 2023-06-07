@@ -69,7 +69,7 @@ func WithJobLabels(labels map[string]string) CollectorOption {
 	}
 }
 
-func WithJoAnnotation(annotation map[string]string) CollectorOption {
+func WithJobAnnotation(annotation map[string]string) CollectorOption {
 	return func(jc *jobCollector) {
 		jc.annotation = annotation
 	}

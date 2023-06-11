@@ -10,6 +10,7 @@ type Result struct {
 type Component struct {
 	Namespace  string
 	Name       string
+	Properties map[string]string
 	Containers []Container
 }
 
@@ -22,15 +23,11 @@ type Container struct {
 }
 
 type NodeInfo struct {
-	NodeRole                string
 	NodeName                string
 	KubeletVersion          string
 	ContainerRuntimeVersion string
 	OsImage                 string
-	Hostname                string
-	KernelVersion           string
+	Properties              map[string]string
 	KubeProxyVersion        string
-	OperatingSystem         string
-	Architecture            string
 	Images                  []string
 }

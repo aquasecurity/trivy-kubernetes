@@ -278,14 +278,14 @@ func (c *cluster) CreateClusterBom(ctx context.Context) (*bom.Result, error) {
 			"openshift-etcd":                    "etcd",
 		}
 	}
-	components, err := c.collectComponents(ctx, labels)
+	components, err := c.collectComponents(ctx, labels, "control_plane_component")
 	if err != nil {
 		return nil, err
 	}
 	addonLabels := map[string]string{
 		k8sComponentNamespace: "k8s-app",
 	}
-	addons, err := c.collectComponents(ctx, addonLabels)
+	addons, err := c.collectComponents(ctx, addonLabels, "addons")
 	if err != nil {
 		return nil, err
 	}
@@ -344,30 +344,35 @@ func (c *cluster) CollectNodes(components []bom.Component) ([]bom.NodeInfo, erro
 			KubeletVersion:          node.Status.NodeInfo.KubeletVersion,
 			ContainerRuntimeVersion: node.Status.NodeInfo.ContainerRuntimeVersion,
 			OsImage:                 node.Status.NodeInfo.OSImage,
-			Hostname:                node.ObjectMeta.Name,
-			KernelVersion:           node.Status.NodeInfo.KernelVersion,
 			KubeProxyVersion:        node.Status.NodeInfo.KernelVersion,
-			OperatingSystem:         node.Status.NodeInfo.OperatingSystem,
-			Architecture:            node.Status.NodeInfo.Architecture,
-			NodeRole:                nodeRole,
-			Images:                  images,
+			Properties: map[string]string{
+				"node_role":        nodeRole,
+				"host_name":        node.ObjectMeta.Name,
+				"kernel_version":   node.Status.NodeInfo.KernelVersion,
+				"operating_system": node.Status.NodeInfo.OperatingSystem,
+				"architecture":     node.Status.NodeInfo.Architecture,
+			},
+			Images: images,
 		})
 	}
 	return nodesInfo, nil
 }
 
-func getPodsInfo(ctx context.Context, clientset *kubernetes.Clientset, labelSelector string, namespace string) *corev1.PodList {
+func getPodsInfo(ctx context.Context, clientset *kubernetes.Clientset, labelSelector string, namespace string) (*corev1.PodList, error) {
 	pods, err := clientset.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{LabelSelector: labelSelector})
 	if err != nil {
-		panic(err.Error())
+		return nil, err
 	}
-	return pods
+	return pods, nil
 }
 
-func (c *cluster) collectComponents(ctx context.Context, labels map[string]string) ([]bom.Component, error) {
+func (c *cluster) collectComponents(ctx context.Context, labels map[string]string, propertyKey string) ([]bom.Component, error) {
 	components := make([]bom.Component, 0)
 	for namespace, labelSelector := range labels {
-		pods := getPodsInfo(ctx, c.clientset, labelSelector, namespace)
+		pods, err := getPodsInfo(ctx, c.clientset, labelSelector, namespace)
+		if err != nil {
+			continue
+		}
 		for _, pod := range pods.Items {
 			containers := make([]bom.Container, 0)
 			for _, s := range pod.Status.ContainerStatuses {
@@ -385,9 +390,14 @@ func (c *cluster) collectComponents(ctx context.Context, labels map[string]strin
 				}
 				containers = append(containers, c)
 			}
+			props := make(map[string]string)
+			if componentValue, ok := pod.GetLabels()[labelSelector]; ok {
+				props[propertyKey] = componentValue
+			}
 			components = append(components, bom.Component{
 				Namespace:  pod.Namespace,
 				Name:       pod.Name,
+				Properties: props,
 				Containers: containers,
 			})
 		}

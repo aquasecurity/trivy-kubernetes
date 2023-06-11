@@ -278,7 +278,7 @@ func (c *cluster) CreateClusterBom(ctx context.Context) (*bom.Result, error) {
 			"openshift-etcd":                    "etcd",
 		}
 	}
-	components, err := c.collectComponents(ctx, labels, "control_plane_component")
+	components, err := c.collectComponents(ctx, labels, "control_plane_components")
 	if err != nil {
 		return nil, err
 	}

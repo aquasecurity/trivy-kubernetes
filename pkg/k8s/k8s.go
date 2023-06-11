@@ -390,7 +390,7 @@ func (c *cluster) collectComponents(ctx context.Context, labels map[string]strin
 				}
 				containers = append(containers, c)
 			}
-			props := make(map[string]string, 0)
+			props := make(map[string]string)
 			if componentValue, ok := pod.GetLabels()[labelSelector]; ok {
 				props[propertyKey] = componentValue
 			}

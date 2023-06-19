@@ -278,14 +278,14 @@ func (c *cluster) CreateClusterBom(ctx context.Context) (*bom.Result, error) {
 			"openshift-etcd":                    "etcd",
 		}
 	}
-	components, err := c.collectComponents(ctx, labels, "control_plane_components")
+	components, err := c.collectComponents(ctx, labels, "ControlPlaneComponents")
 	if err != nil {
 		return nil, err
 	}
 	addonLabels := map[string]string{
 		k8sComponentNamespace: "k8s-app",
 	}
-	addons, err := c.collectComponents(ctx, addonLabels, "addons")
+	addons, err := c.collectComponents(ctx, addonLabels, "Addons")
 	if err != nil {
 		return nil, err
 	}
@@ -346,11 +346,11 @@ func (c *cluster) CollectNodes(components []bom.Component) ([]bom.NodeInfo, erro
 			OsImage:                 node.Status.NodeInfo.OSImage,
 			KubeProxyVersion:        node.Status.NodeInfo.KernelVersion,
 			Properties: map[string]string{
-				"node_role":        nodeRole,
-				"host_name":        node.ObjectMeta.Name,
-				"kernel_version":   node.Status.NodeInfo.KernelVersion,
-				"operating_system": node.Status.NodeInfo.OperatingSystem,
-				"architecture":     node.Status.NodeInfo.Architecture,
+				"NodeRole":        nodeRole,
+				"HostName":        node.ObjectMeta.Name,
+				"KernelVersion":   node.Status.NodeInfo.KernelVersion,
+				"OperatingSystem": node.Status.NodeInfo.OperatingSystem,
+				"Architecture":    node.Status.NodeInfo.Architecture,
 			},
 			Images: images,
 		})

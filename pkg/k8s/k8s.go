@@ -285,7 +285,7 @@ func (c *cluster) CreateClusterBom(ctx context.Context) (*bom.Result, error) {
 	addonLabels := map[string]string{
 		k8sComponentNamespace: "k8s-app",
 	}
-	addons, err := c.collectComponents(ctx, addonLabels, "Addons")
+	addons, err := c.collectComponents(ctx, addonLabels)
 	if err != nil {
 		return nil, err
 	}
@@ -366,7 +366,7 @@ func getPodsInfo(ctx context.Context, clientset *kubernetes.Clientset, labelSele
 	return pods, nil
 }
 
-func (c *cluster) collectComponents(ctx context.Context, labels map[string]string, propertyKey string) ([]bom.Component, error) {
+func (c *cluster) collectComponents(ctx context.Context, labels map[string]string, propertyKey ...string) ([]bom.Component, error) {
 	components := make([]bom.Component, 0)
 	for namespace, labelSelector := range labels {
 		pods, err := getPodsInfo(ctx, c.clientset, labelSelector, namespace)
@@ -391,8 +391,10 @@ func (c *cluster) collectComponents(ctx context.Context, labels map[string]strin
 				containers = append(containers, c)
 			}
 			props := make(map[string]string)
-			if componentValue, ok := pod.GetLabels()[labelSelector]; ok {
-				props[propertyKey] = componentValue
+			if len(propertyKey) > 0 {
+				if componentValue, ok := pod.GetLabels()[labelSelector]; ok {
+					props[propertyKey[0]] = componentValue
+				}
 			}
 			components = append(components, bom.Component{
 				Namespace:  pod.Namespace,

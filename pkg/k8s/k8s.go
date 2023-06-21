@@ -278,7 +278,7 @@ func (c *cluster) CreateClusterBom(ctx context.Context) (*bom.Result, error) {
 			"openshift-etcd":                    "etcd",
 		}
 	}
-	components, err := c.collectComponents(ctx, labels, "ControlPlaneComponents")
+	components, err := c.collectComponents(ctx, labels, "ControlPlane")
 	if err != nil {
 		return nil, err
 	}
@@ -391,10 +391,11 @@ func (c *cluster) collectComponents(ctx context.Context, labels map[string]strin
 				containers = append(containers, c)
 			}
 			props := make(map[string]string)
+			if componentValue, ok := pod.GetLabels()[labelSelector]; ok {
+				props["Name"] = componentValue
+			}
 			if len(propertyKey) > 0 {
-				if componentValue, ok := pod.GetLabels()[labelSelector]; ok {
-					props[propertyKey[0]] = componentValue
-				}
+				props["Type"] = propertyKey[0]
 			}
 			components = append(components, bom.Component{
 				Namespace:  pod.Namespace,

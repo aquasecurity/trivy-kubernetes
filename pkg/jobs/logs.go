@@ -63,7 +63,13 @@ func (r *logsReader) getPodByJob(ctx context.Context, job *batchv1.Job) (*corev1
 	if err != nil {
 		return nil, err
 	}
-	selector := fmt.Sprintf("controller-uid=%s", refreshedJob.Spec.Selector.MatchLabels["controller-uid"])
+	matchingLabelKey := "controller-uid"
+	matchingLabelValue := refreshedJob.Spec.Selector.MatchLabels[matchingLabelKey]
+	if len(matchingLabelValue) == 0 {
+		matchingLabelKey = "batch.kubernetes.io/controller-uid" // for k8s v1.27.x and above
+		matchingLabelValue = refreshedJob.Spec.Selector.MatchLabels[matchingLabelKey]
+	}
+	selector := fmt.Sprintf("%s=%s", matchingLabelKey, matchingLabelValue)
 	podList, err := r.clientset.CoreV1().Pods(job.Namespace).List(ctx, metav1.ListOptions{
 		LabelSelector: selector})
 	if err != nil {

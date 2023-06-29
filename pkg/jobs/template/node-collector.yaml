@@ -14,9 +14,11 @@ spec:
       automountServiceAccountToken: true
       containers:
         - name: node-collector
-          image: ghcr.io/aquasecurity/node-collector:0.0.5
+          image: ghcr.io/aquasecurity/node-collector:0.0.7
           command:
             - node-collector
+          args:
+            - k8s
           resources:
             limits:
               cpu: 100m

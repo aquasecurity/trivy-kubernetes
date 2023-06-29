@@ -16,8 +16,8 @@ spec:
         - name: node-collector
           image: ghcr.io/aquasecurity/node-collector:0.0.7
           command:
-            - node-collector 
-          args: 
+            - node-collector
+          args:
             - k8s
           resources:
             limits:

@@ -14,7 +14,6 @@ This Lib purpose is to extend trivy capabilities with kubernetes context:
 
 - Listing resources
 - Run k8s jobs
-- Listing [KBOM](https://blog.aquasec.com/introducing-kbom-kubernetes-bill-of-materials?_hsmi=264466512&_hsenc=p2ANqtz-9DJtsKBz4A4LToG20mmlCUYTZZa1frulphJ_HPS0FGtMvQ5E0UdSCMyvPX2ScYKr1QZ5tGeo4W3FN91xKZ2mcOa0pm6w)
 
 # Documentation
 

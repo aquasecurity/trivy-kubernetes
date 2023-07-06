@@ -72,11 +72,14 @@ type Cluster interface {
 	GetGVR(string) (schema.GroupVersionResource, error)
 	// CreatePkgBom returns a k8s client set
 	CreateClusterBom(ctx context.Context) (*bom.Result, error)
+	// GetClusterVersion return cluster git version
+	GetClusterVersion() string
 }
 
 type cluster struct {
 	currentContext   string
 	currentNamespace string
+	serverVersion    string
 	dynamicClient    dynamic.Interface
 	restMapper       meta.RESTMapper
 	clientset        *kubernetes.Clientset
@@ -135,7 +138,6 @@ func getCluster(clientConfig clientcmd.ClientConfig, restMapper meta.RESTMapper,
 	if err != nil {
 		return nil, err
 	}
-
 	rawCfg, err := clientConfig.RawConfig()
 	if err != nil {
 		return nil, err
@@ -153,7 +155,10 @@ func getCluster(clientConfig clientcmd.ClientConfig, restMapper meta.RESTMapper,
 	if len(namespace) == 0 {
 		namespace = "default"
 	}
-
+	serverVersion, err := kubeClientset.ServerVersion()
+	if err != nil {
+		return nil, err
+	}
 	return &cluster{
 		currentContext:   currentContext,
 		currentNamespace: namespace,
@@ -161,12 +166,18 @@ func getCluster(clientConfig clientcmd.ClientConfig, restMapper meta.RESTMapper,
 		restMapper:       restMapper,
 		clientset:        kubeClientset,
 		cConfig:          clientConfig,
+		serverVersion:    strings.TrimPrefix(serverVersion.GitVersion, "v"),
 	}, nil
 }
 
 // GetCurrentContext returns local kubernetes current-context
 func (c *cluster) GetCurrentContext() string {
 	return c.currentContext
+}
+
+// GetClusterVersion return cluster git version
+func (c *cluster) GetClusterVersion() string {
+	return c.serverVersion
 }
 
 // GetCurrentNamespace returns local kubernetes current namespace

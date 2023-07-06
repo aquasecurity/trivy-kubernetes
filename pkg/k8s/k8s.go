@@ -119,10 +119,10 @@ func GetCluster(opts ...ClusterOption) (Cluster, error) {
 		return nil, err
 	}
 
-	return getCluster(clientConfig, restMapper, *cf.Context)
+	return getCluster(clientConfig, restMapper, *cf.Context, false)
 }
 
-func getCluster(clientConfig clientcmd.ClientConfig, restMapper meta.RESTMapper, currentContext string) (*cluster, error) {
+func getCluster(clientConfig clientcmd.ClientConfig, restMapper meta.RESTMapper, currentContext string, fakeConfig bool) (*cluster, error) {
 	kubeConfig, err := clientConfig.ClientConfig()
 	if err != nil {
 		return nil, err
@@ -155,9 +155,13 @@ func getCluster(clientConfig clientcmd.ClientConfig, restMapper meta.RESTMapper,
 	if len(namespace) == 0 {
 		namespace = "default"
 	}
-	serverVersion, err := kubeClientset.ServerVersion()
-	if err != nil {
-		return nil, err
+	var serverVersion string
+	if !fakeConfig {
+		sv, err := kubeClientset.ServerVersion()
+		if err != nil {
+			return nil, err
+		}
+		serverVersion = strings.TrimPrefix(sv.GitVersion, "v")
 	}
 	return &cluster{
 		currentContext:   currentContext,
@@ -166,7 +170,7 @@ func getCluster(clientConfig clientcmd.ClientConfig, restMapper meta.RESTMapper,
 		restMapper:       restMapper,
 		clientset:        kubeClientset,
 		cConfig:          clientConfig,
-		serverVersion:    strings.TrimPrefix(serverVersion.GitVersion, "v"),
+		serverVersion:    serverVersion,
 	}, nil
 }
 

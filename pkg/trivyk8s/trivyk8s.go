@@ -114,10 +114,17 @@ func (c *client) ListArtifacts(ctx context.Context) ([]*artifacts.Artifact, erro
 		}
 
 		for _, resource := range resources.Items {
+			lastAppliedResource := resource
+			if jsonManifest, ok := resource.GetAnnotations()["kubectl.kubernetes.io/last-applied-configuration"]; ok { // required for outdated-api when k8s convert resources
+				err := json.Unmarshal([]byte(jsonManifest), &lastAppliedResource)
+				if err != nil {
+					continue
+				}
+			}
 			if c.ignoreResource(resource) {
 				continue
 			}
-			artifact, err := artifacts.FromResource(resource)
+			artifact, err := artifacts.FromResource(lastAppliedResource)
 			if err != nil {
 				return nil, err
 			}

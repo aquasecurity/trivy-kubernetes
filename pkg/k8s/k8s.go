@@ -77,6 +77,7 @@ type Cluster interface {
 	CreateClusterBom(ctx context.Context) (*bom.Result, error)
 	// GetClusterVersion return cluster git version
 	GetClusterVersion() string
+	// ListImagePullSecretsByPodSpec return image pull secrets by pod spec
 	ListImagePullSecretsByPodSpec(ctx context.Context, spec *corev1.PodSpec, ns string) (map[string]docker.Auth, error)
 }
 
@@ -460,6 +461,7 @@ func (c *cluster) ClusterNameVersion() (string, string, error) {
 	return clusterName, version.GitVersion, nil
 }
 
+// ListImagePullSecretsByPodSpec return image pull secrets by pod spec
 func (r *cluster) ListImagePullSecretsByPodSpec(ctx context.Context, spec *corev1.PodSpec, ns string) (map[string]docker.Auth, error) {
 	if spec == nil {
 		return map[string]docker.Auth{}, nil

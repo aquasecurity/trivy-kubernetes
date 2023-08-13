@@ -32,7 +32,7 @@ func TestFromResource(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.Name, func(t *testing.T) {
-			result, err := FromResource(test.Resource)
+			result, err := FromResource(test.Resource, nil)
 			if err != nil {
 				t.Fatal(err)
 			}

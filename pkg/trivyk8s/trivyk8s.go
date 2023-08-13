@@ -124,7 +124,7 @@ func (c *client) ListArtifacts(ctx context.Context) ([]*artifacts.Artifact, erro
 			if c.ignoreResource(resource) {
 				continue
 			}
-			artifact, err := artifacts.FromResource(lastAppliedResource)
+			artifact, err := artifacts.FromResource(lastAppliedResource, c.cluster)
 			if err != nil {
 				return nil, err
 			}
@@ -238,8 +238,7 @@ func (c *client) GetArtifact(ctx context.Context, kind, name string) (*artifacts
 	if err != nil {
 		return nil, fmt.Errorf("failed getting resource for gvr: %v - %w", gvr, err)
 	}
-
-	artifact, err := artifacts.FromResource(*resource)
+	artifact, err := artifacts.FromResource(*resource, c.cluster)
 	if err != nil {
 		return nil, err
 	}

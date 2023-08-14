@@ -35,7 +35,9 @@ func FromResource(resource unstructured.Unstructured, serverAuths map[string]doc
 			if err != nil {
 				return nil, err
 			}
-			credentials = append(credentials, as)
+			if as != nil {
+				credentials = append(credentials, *as)
+			}
 		}
 	}
 

@@ -559,26 +559,26 @@ func mapDockerRegistryServersToAuths(imagePullSecrets []*corev1.Secret, multiSec
 
 type ContainerImages map[string]string
 
-func MapContainerNamesToDockerAuths(imageRef string, auths map[string]docker.Auth) (docker.Auth, error) {
+func MapContainerNamesToDockerAuths(imageRef string, auths map[string]docker.Auth) (*docker.Auth, error) {
 	wildcardServers := GetWildcardServers(auths)
 
 	var authsCred docker.Auth
 	server, err := docker.GetServerFromImageRef(imageRef)
 	if err != nil {
-		return authsCred, err
+		return &authsCred, err
 	}
 	if auth, ok := auths[server]; ok {
-		return auth, nil
+		return &auth, nil
 	}
 	if len(wildcardServers) > 0 {
 		if wildcardDomain := matchSubDomain(wildcardServers, server); len(wildcardDomain) > 0 {
 			if auth, ok := auths[wildcardDomain]; ok {
-				return auth, nil
+				return &auth, nil
 			}
 		}
 	}
 
-	return authsCred, nil
+	return nil, nil
 }
 
 func GetWildcardServers(auths map[string]docker.Auth) []string {

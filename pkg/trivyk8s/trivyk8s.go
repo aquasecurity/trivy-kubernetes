@@ -124,7 +124,11 @@ func (c *client) ListArtifacts(ctx context.Context) ([]*artifacts.Artifact, erro
 			if c.ignoreResource(resource) {
 				continue
 			}
-			artifact, err := artifacts.FromResource(lastAppliedResource, c.cluster)
+			auths, err := c.cluster.AuthByResource(lastAppliedResource)
+			if err != nil {
+				return nil, fmt.Errorf("failed getting auth for gvr: %v - %w", gvr, err)
+			}
+			artifact, err := artifacts.FromResource(lastAppliedResource, auths)
 			if err != nil {
 				return nil, err
 			}
@@ -238,7 +242,11 @@ func (c *client) GetArtifact(ctx context.Context, kind, name string) (*artifacts
 	if err != nil {
 		return nil, fmt.Errorf("failed getting resource for gvr: %v - %w", gvr, err)
 	}
-	artifact, err := artifacts.FromResource(*resource, c.cluster)
+	auths, err := c.cluster.AuthByResource(*resource)
+	if err != nil {
+		return nil, fmt.Errorf("failed getting auth for gvr: %v - %w", gvr, err)
+	}
+	artifact, err := artifacts.FromResource(*resource, auths)
 	if err != nil {
 		return nil, err
 	}

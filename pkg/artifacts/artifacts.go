@@ -1,13 +1,8 @@
 package artifacts
 
 import (
-	"context"
-	"fmt"
-
 	"github.com/aquasecurity/trivy-kubernetes/pkg/k8s"
 	"github.com/aquasecurity/trivy-kubernetes/pkg/k8s/docker"
-	ms "github.com/mitchellh/mapstructure"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
@@ -23,22 +18,12 @@ type Artifact struct {
 }
 
 // FromResource is a factory method to create an Artifact from an unstructured.Unstructured
-func FromResource(resource unstructured.Unstructured, cluster k8s.Cluster) (*Artifact, error) {
+func FromResource(resource unstructured.Unstructured, serverAuths map[string]docker.Auth) (*Artifact, error) {
 	nestedKeys := getContainerNestedKeys(resource.GetKind())
 	images := make([]string, 0)
 	credentials := make([]docker.Auth, 0)
 	cTypes := []string{"containers", "ephemeralContainers", "initContainers"}
-	podSpec, err := getWorkloadPodSpec(resource)
-	if err != nil {
-		return nil, err
-	}
-	var serverAuths map[string]docker.Auth
-	if cluster != nil {
-		serverAuths, err = cluster.ListImagePullSecretsByPodSpec(context.Background(), podSpec, resource.GetNamespace())
-		if err != nil {
-			return nil, err
-		}
-	}
+
 	for _, t := range cTypes {
 		cTypeImages, err := extractImages(resource, append(nestedKeys, t))
 		if err != nil {
@@ -109,47 +94,4 @@ func getContainerNestedKeys(kind string) []string {
 	default:
 		return []string{"spec", "template", "spec"}
 	}
-}
-
-func getWorkloadPodSpec(un unstructured.Unstructured) (*corev1.PodSpec, error) {
-	switch un.GetKind() {
-	case k8s.KindPod:
-		objectMap, ok, err := unstructured.NestedMap(un.Object, []string{"spec"}...)
-		if err != nil {
-			return nil, err
-		}
-		if !ok {
-			return nil, fmt.Errorf("unstructured resource do not match Pod spec")
-		}
-		return mapToPodSpec(objectMap)
-	case k8s.KindCronJob:
-		objectMap, ok, err := unstructured.NestedMap(un.Object, []string{"spec", "jobTemplate", "spec", "template", "spec"}...)
-		if err != nil {
-			return nil, err
-		}
-		if !ok {
-			return nil, fmt.Errorf("unstructured resource do not match Pod spec")
-		}
-		return mapToPodSpec(objectMap)
-	case k8s.KindDeployment:
-		objectMap, ok, err := unstructured.NestedMap(un.Object, []string{"spec", "template", "spec"}...)
-		if err != nil {
-			return nil, err
-		}
-		if !ok {
-			return nil, fmt.Errorf("unstructured resource do not match Pod spec")
-		}
-		return mapToPodSpec(objectMap)
-	default:
-		return nil, nil
-	}
-}
-
-func mapToPodSpec(objectMap map[string]interface{}) (*corev1.PodSpec, error) {
-	ps := &corev1.PodSpec{}
-	err := ms.Decode(objectMap, ps)
-	if err != nil && len(ps.Containers) == 0 {
-		return nil, err
-	}
-	return ps, nil
 }

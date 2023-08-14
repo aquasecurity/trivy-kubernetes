@@ -8,10 +8,12 @@ import (
 	"github.com/aquasecurity/trivy-kubernetes/pkg/bom"
 	"github.com/aquasecurity/trivy-kubernetes/pkg/k8s/docker"
 	containerimage "github.com/google/go-containerregistry/pkg/name"
+	ms "github.com/mitchellh/mapstructure"
 	corev1 "k8s.io/api/core/v1"
 	k8sapierror "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/dynamic"
@@ -77,8 +79,8 @@ type Cluster interface {
 	CreateClusterBom(ctx context.Context) (*bom.Result, error)
 	// GetClusterVersion return cluster git version
 	GetClusterVersion() string
-	// ListImagePullSecretsByPodSpec return image pull secrets by pod spec
-	ListImagePullSecretsByPodSpec(ctx context.Context, spec *corev1.PodSpec, ns string) (map[string]docker.Auth, error)
+	// AuthByResource return image pull secrets by resource pod spec
+	AuthByResource(resource unstructured.Unstructured) (map[string]docker.Auth, error)
 }
 
 type cluster struct {
@@ -597,4 +599,60 @@ func matchSubDomain(wildcardServers []string, subDomain string) string {
 		}
 	}
 	return ""
+}
+
+func getWorkloadPodSpec(un unstructured.Unstructured) (*corev1.PodSpec, error) {
+	switch un.GetKind() {
+	case KindPod:
+		objectMap, ok, err := unstructured.NestedMap(un.Object, []string{"spec"}...)
+		if err != nil {
+			return nil, err
+		}
+		if !ok {
+			return nil, fmt.Errorf("unstructured resource do not match Pod spec")
+		}
+		return mapToPodSpec(objectMap)
+	case KindCronJob:
+		objectMap, ok, err := unstructured.NestedMap(un.Object, []string{"spec", "jobTemplate", "spec", "template", "spec"}...)
+		if err != nil {
+			return nil, err
+		}
+		if !ok {
+			return nil, fmt.Errorf("unstructured resource do not match Pod spec")
+		}
+		return mapToPodSpec(objectMap)
+	case KindDeployment:
+		objectMap, ok, err := unstructured.NestedMap(un.Object, []string{"spec", "template", "spec"}...)
+		if err != nil {
+			return nil, err
+		}
+		if !ok {
+			return nil, fmt.Errorf("unstructured resource do not match Pod spec")
+		}
+		return mapToPodSpec(objectMap)
+	default:
+		return nil, nil
+	}
+}
+
+func mapToPodSpec(objectMap map[string]interface{}) (*corev1.PodSpec, error) {
+	ps := &corev1.PodSpec{}
+	err := ms.Decode(objectMap, ps)
+	if err != nil && len(ps.Containers) == 0 {
+		return nil, err
+	}
+	return ps, nil
+}
+
+func (r *cluster) AuthByResource(resource unstructured.Unstructured) (map[string]docker.Auth, error) {
+	podSpec, err := getWorkloadPodSpec(resource)
+	if err != nil {
+		return nil, err
+	}
+	var serverAuths map[string]docker.Auth
+	serverAuths, err = r.ListImagePullSecretsByPodSpec(context.Background(), podSpec, resource.GetNamespace())
+	if err != nil {
+		return nil, err
+	}
+	return serverAuths, nil
 }

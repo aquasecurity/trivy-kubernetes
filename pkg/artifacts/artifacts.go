@@ -1,9 +1,9 @@
 package artifacts
 
 import (
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-
 	"github.com/aquasecurity/trivy-kubernetes/pkg/k8s"
+	"github.com/aquasecurity/trivy-kubernetes/pkg/k8s/docker"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
 // Artifact holds information for kubernetes scannable resources
@@ -13,22 +13,30 @@ type Artifact struct {
 	Labels      map[string]string
 	Name        string
 	Images      []string
+	Credentials []docker.Auth
 	RawResource map[string]interface{}
 }
 
 // FromResource is a factory method to create an Artifact from an unstructured.Unstructured
-func FromResource(resource unstructured.Unstructured) (*Artifact, error) {
+func FromResource(resource unstructured.Unstructured, serverAuths map[string]docker.Auth) (*Artifact, error) {
 	nestedKeys := getContainerNestedKeys(resource.GetKind())
-
 	images := make([]string, 0)
-
+	credentials := make([]docker.Auth, 0)
 	cTypes := []string{"containers", "ephemeralContainers", "initContainers"}
+
 	for _, t := range cTypes {
 		cTypeImages, err := extractImages(resource, append(nestedKeys, t))
 		if err != nil {
 			return nil, err
 		}
 		images = append(images, cTypeImages...)
+		for _, im := range cTypeImages {
+			as, err := k8s.MapContainerNamesToDockerAuths(im, serverAuths)
+			if err != nil {
+				return nil, err
+			}
+			credentials = append(credentials, as)
+		}
 	}
 
 	// we don't check found here, if the name is not found it will be an empty string
@@ -47,6 +55,7 @@ func FromResource(resource unstructured.Unstructured) (*Artifact, error) {
 		Labels:      labels,
 		Name:        name,
 		Images:      images,
+		Credentials: credentials,
 		RawResource: resource.Object,
 	}, nil
 }

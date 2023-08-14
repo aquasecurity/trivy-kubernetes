@@ -6,11 +6,14 @@ import (
 	"strings"
 
 	"github.com/aquasecurity/trivy-kubernetes/pkg/bom"
+	"github.com/aquasecurity/trivy-kubernetes/pkg/k8s/docker"
 	containerimage "github.com/google/go-containerregistry/pkg/name"
+	ms "github.com/mitchellh/mapstructure"
 	corev1 "k8s.io/api/core/v1"
 	k8sapierror "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/dynamic"
@@ -51,6 +54,8 @@ const (
 	ClusterRoleBindings    = "clusterrolebindings"
 	Nodes                  = "nodes"
 	k8sComponentNamespace  = "kube-system"
+
+	serviceAccountDefault = "default"
 )
 
 // Cluster interface represents the operations needed to scan a cluster
@@ -74,6 +79,8 @@ type Cluster interface {
 	CreateClusterBom(ctx context.Context) (*bom.Result, error)
 	// GetClusterVersion return cluster git version
 	GetClusterVersion() string
+	// AuthByResource return image pull secrets by resource pod spec
+	AuthByResource(resource unstructured.Unstructured) (map[string]docker.Auth, error)
 }
 
 type cluster struct {
@@ -454,4 +461,198 @@ func (c *cluster) ClusterNameVersion() (string, string, error) {
 		return "", "", err
 	}
 	return clusterName, version.GitVersion, nil
+}
+
+// ListImagePullSecretsByPodSpec return image pull secrets by pod spec
+func (r *cluster) ListImagePullSecretsByPodSpec(ctx context.Context, spec *corev1.PodSpec, ns string) (map[string]docker.Auth, error) {
+	if spec == nil {
+		return map[string]docker.Auth{}, nil
+	}
+	imagePullSecrets := spec.ImagePullSecrets
+
+	sa, err := r.getServiceAccountByPodSpec(ctx, spec, ns)
+	if err != nil && !k8sapierror.IsNotFound(err) {
+		return nil, err
+	}
+	imagePullSecrets = append(sa.ImagePullSecrets, imagePullSecrets...)
+
+	secrets, err := r.ListByLocalObjectReferences(ctx, imagePullSecrets, ns)
+	if err != nil {
+		return nil, err
+	}
+
+	return mapDockerRegistryServersToAuths(secrets, true)
+}
+
+func (r *cluster) getServiceAccountByPodSpec(ctx context.Context, spec *corev1.PodSpec, ns string) (*corev1.ServiceAccount, error) {
+	serviceAccountName := spec.ServiceAccountName
+	if serviceAccountName == "" {
+		serviceAccountName = serviceAccountDefault
+	}
+	sa, err := r.clientset.CoreV1().ServiceAccounts(ns).Get(ctx, serviceAccountName, metav1.GetOptions{})
+	if err != nil {
+		return sa, fmt.Errorf("getting service account by name: %s/%s: %w", ns, serviceAccountName, err)
+	}
+	return sa, nil
+}
+
+func (r *cluster) ListByLocalObjectReferences(ctx context.Context, refs []corev1.LocalObjectReference, ns string) ([]*corev1.Secret, error) {
+	secrets := make([]*corev1.Secret, 0)
+
+	for _, secretRef := range refs {
+		secret, err := r.clientset.CoreV1().Secrets(ns).Get(ctx, secretRef.Name, metav1.GetOptions{})
+		if err != nil {
+			if k8sapierror.IsNotFound(err) {
+				continue
+			}
+			return nil, fmt.Errorf("getting secret by name: %s/%s: %w", ns, secretRef.Name, err)
+		}
+		secrets = append(secrets, secret)
+	}
+	return secrets, nil
+}
+
+// MapDockerRegistryServersToAuths creates the mapping from a Docker registry server
+// to the Docker authentication credentials for the specified slice of image pull Secrets.
+func mapDockerRegistryServersToAuths(imagePullSecrets []*corev1.Secret, multiSecretSupport bool) (map[string]docker.Auth, error) {
+	auths := make(map[string]docker.Auth)
+	for _, secret := range imagePullSecrets {
+		var data []byte
+		var hasRequiredData, isLegacy bool
+
+		switch secret.Type {
+		case corev1.SecretTypeDockerConfigJson:
+			data, hasRequiredData = secret.Data[corev1.DockerConfigJsonKey]
+		case corev1.SecretTypeDockercfg:
+			data, hasRequiredData = secret.Data[corev1.DockerConfigKey]
+			isLegacy = true
+		default:
+			continue
+		}
+
+		// Skip a secrets of type "kubernetes.io/dockerconfigjson" or "kubernetes.io/dockercfg" which does not contain
+		// the required ".dockerconfigjson" or ".dockercfg" key.
+		if !hasRequiredData {
+			continue
+		}
+		dockerConfig := &docker.Config{}
+		err := dockerConfig.Read(data, isLegacy)
+		if err != nil {
+			return nil, fmt.Errorf("reading %s or %s field of %q secret: %w", corev1.DockerConfigJsonKey, corev1.DockerConfigKey, secret.Namespace+"/"+secret.Name, err)
+		}
+		for authKey, auth := range dockerConfig.Auths {
+			server, err := docker.GetServerFromDockerAuthKey(authKey)
+			if err != nil {
+				return nil, err
+			}
+			if a, ok := auths[server]; multiSecretSupport && ok {
+				user := fmt.Sprintf("%s,%s", a.Username, auth.Username)
+				pass := fmt.Sprintf("%s,%s", a.Password, auth.Password)
+				auths[server] = docker.Auth{Username: user, Password: pass}
+			} else {
+				auths[server] = auth
+			}
+		}
+	}
+	return auths, nil
+}
+
+type ContainerImages map[string]string
+
+func MapContainerNamesToDockerAuths(imageRef string, auths map[string]docker.Auth) (docker.Auth, error) {
+	wildcardServers := GetWildcardServers(auths)
+
+	var authsCred docker.Auth
+	server, err := docker.GetServerFromImageRef(imageRef)
+	if err != nil {
+		return authsCred, err
+	}
+	if auth, ok := auths[server]; ok {
+		return auth, nil
+	}
+	if len(wildcardServers) > 0 {
+		if wildcardDomain := matchSubDomain(wildcardServers, server); len(wildcardDomain) > 0 {
+			if auth, ok := auths[wildcardDomain]; ok {
+				return auth, nil
+			}
+		}
+	}
+
+	return authsCred, nil
+}
+
+func GetWildcardServers(auths map[string]docker.Auth) []string {
+	wildcardServers := make([]string, 0)
+	for server := range auths {
+		if strings.HasPrefix(server, "*.") {
+			wildcardServers = append(wildcardServers, server)
+		}
+	}
+	return wildcardServers
+}
+
+func matchSubDomain(wildcardServers []string, subDomain string) string {
+	for _, domain := range wildcardServers {
+		domainWithoutWildcard := strings.Replace(domain, "*", "", 1)
+		if strings.HasSuffix(subDomain, domainWithoutWildcard) {
+			return domain
+		}
+	}
+	return ""
+}
+
+func getWorkloadPodSpec(un unstructured.Unstructured) (*corev1.PodSpec, error) {
+	switch un.GetKind() {
+	case KindPod:
+		objectMap, ok, err := unstructured.NestedMap(un.Object, []string{"spec"}...)
+		if err != nil {
+			return nil, err
+		}
+		if !ok {
+			return nil, fmt.Errorf("unstructured resource do not match Pod spec")
+		}
+		return mapToPodSpec(objectMap)
+	case KindCronJob:
+		objectMap, ok, err := unstructured.NestedMap(un.Object, []string{"spec", "jobTemplate", "spec", "template", "spec"}...)
+		if err != nil {
+			return nil, err
+		}
+		if !ok {
+			return nil, fmt.Errorf("unstructured resource do not match Pod spec")
+		}
+		return mapToPodSpec(objectMap)
+	case KindDeployment:
+		objectMap, ok, err := unstructured.NestedMap(un.Object, []string{"spec", "template", "spec"}...)
+		if err != nil {
+			return nil, err
+		}
+		if !ok {
+			return nil, fmt.Errorf("unstructured resource do not match Pod spec")
+		}
+		return mapToPodSpec(objectMap)
+	default:
+		return nil, nil
+	}
+}
+
+func mapToPodSpec(objectMap map[string]interface{}) (*corev1.PodSpec, error) {
+	ps := &corev1.PodSpec{}
+	err := ms.Decode(objectMap, ps)
+	if err != nil && len(ps.Containers) == 0 {
+		return nil, err
+	}
+	return ps, nil
+}
+
+func (r *cluster) AuthByResource(resource unstructured.Unstructured) (map[string]docker.Auth, error) {
+	podSpec, err := getWorkloadPodSpec(resource)
+	if err != nil {
+		return nil, err
+	}
+	var serverAuths map[string]docker.Auth
+	serverAuths, err = r.ListImagePullSecretsByPodSpec(context.Background(), podSpec, resource.GetNamespace())
+	if err != nil {
+		return nil, err
+	}
+	return serverAuths, nil
 }

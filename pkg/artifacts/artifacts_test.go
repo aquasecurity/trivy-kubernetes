@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/aquasecurity/trivy-kubernetes/pkg/k8s/docker"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -32,7 +33,7 @@ func TestFromResource(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.Name, func(t *testing.T) {
-			result, err := FromResource(test.Resource)
+			result, err := FromResource(test.Resource, map[string]docker.Auth{})
 			if err != nil {
 				t.Fatal(err)
 			}

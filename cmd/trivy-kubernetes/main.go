@@ -10,6 +10,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/aquasecurity/trivy-kubernetes/pkg/commands"
+	"github.com/aquasecurity/trivy-kubernetes/pkg/compliance"
 	k8sflag "github.com/aquasecurity/trivy-kubernetes/pkg/flag"
 	"github.com/aquasecurity/trivy-kubernetes/pkg/version"
 	"github.com/aquasecurity/trivy/pkg/flag"
@@ -46,15 +47,15 @@ func NewCmd() *cobra.Command {
 	imageFlags := &flag.ImageFlagGroup{ImageSources: &flag.SourceFlag}
 
 	reportFlagGroup := flag.NewReportFlagGroup()
-	compliance := flag.ComplianceFlag
-	compliance.Values = []string{
-		types.ComplianceK8sNsa,
-		types.ComplianceK8sCIS,
-		types.ComplianceK8sPSSBaseline,
-		types.ComplianceK8sPSSRestricted,
+	complianceFlag := flag.ComplianceFlag
+	complianceFlag.Values = []string{
+		compliance.NSA,
+		compliance.CIS,
+		compliance.PSSBaseline,
+		compliance.PSSRestricted,
 	}
-	reportFlagGroup.Compliance = &compliance // override usage as the accepted values differ for each subcommand.
-	reportFlagGroup.ExitOnEOL = nil          // disable '--exit-on-eol'
+	reportFlagGroup.Compliance = &complianceFlag // override usage as the accepted values differ for each subcommand.
+	reportFlagGroup.ExitOnEOL = nil              // disable '--exit-on-eol'
 
 	formatFlag := flag.FormatFlag
 	formatFlag.Values = xstrings.ToStringSlice([]types.Format{

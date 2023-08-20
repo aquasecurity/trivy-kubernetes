@@ -90,7 +90,7 @@ func Tidy() error {
 	return sh.RunV("go", "mod", "tidy")
 }
 
-// Build builds Trivy
+// Build builds trivy-kubernetes
 func Build() error {
 	if updated, err := target.Dir("trivy-kubernetes", "pkg", "cmd"); err != nil {
 		return err

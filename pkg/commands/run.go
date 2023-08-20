@@ -3,11 +3,11 @@ package commands
 import (
 	"context"
 	"errors"
-
 	"github.com/spf13/viper"
 	"golang.org/x/xerrors"
 
 	"github.com/aquasecurity/trivy-kubernetes/pkg/artifacts"
+	"github.com/aquasecurity/trivy-kubernetes/pkg/compliance"
 	"github.com/aquasecurity/trivy-kubernetes/pkg/flag"
 	"github.com/aquasecurity/trivy-kubernetes/pkg/k8s"
 	"github.com/aquasecurity/trivy-kubernetes/pkg/report"
@@ -80,9 +80,14 @@ func (r *runner) run(ctx context.Context, artifacts []*artifacts.Artifact) error
 
 	s := scanner.NewScanner(r.cluster, runner, r.flagOpts)
 
+	cs, err := compliance.GetSpec(r.flagOpts.Compliance)
+	if err != nil {
+		return xerrors.Errorf("failed to get compliance spec: %w", err)
+	}
+
 	// set scanners types by spec
-	if r.flagOpts.Compliance.Spec.ID != "" {
-		scanners, err := r.flagOpts.Compliance.Scanners()
+	if cs.Spec.ID != "" {
+		scanners, err := cs.Scanners()
 		if err != nil {
 			return xerrors.Errorf("scanner error: %w", err)
 		}
@@ -100,12 +105,12 @@ func (r *runner) run(ctx context.Context, artifacts []*artifacts.Artifact) error
 	}
 	defer output.Close()
 
-	if r.flagOpts.Compliance.Spec.ID != "" {
+	if cs.Spec.ID != "" {
 		var scanResults []types.Results
 		for _, rss := range rpt.Resources {
 			scanResults = append(scanResults, rss.Results)
 		}
-		complianceReport, err := cr.BuildComplianceReport(scanResults, r.flagOpts.Compliance)
+		complianceReport, err := cr.BuildComplianceReport(scanResults, cs)
 		if err != nil {
 			return xerrors.Errorf("compliance report build error: %w", err)
 		}

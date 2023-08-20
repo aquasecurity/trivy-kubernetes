@@ -45,7 +45,7 @@ func removeFile(filename string) {
 	}
 }
 
-var r, _ = regexp.Compile("\\\\|/|:|\\*|\\?|<|>")
+var r, _ = regexp.Compile(`\\|/|:|\*|\?|<|>`)
 
 func filenameWindowsFriendly(name string) string {
 	return r.ReplaceAllString(name, "_")

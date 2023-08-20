@@ -2,6 +2,7 @@ package scanner
 
 import (
 	"context"
+	"github.com/stretchr/testify/require"
 	"sort"
 	"testing"
 
@@ -263,6 +264,7 @@ func TestK8sClusterInfoReport(t *testing.T) {
 			assert.NoError(t, err)
 			scanner := NewScanner(tt.clusterName, runner, flagOpts)
 			got, err := scanner.Scan(ctx, tt.artifacts)
+			require.NoError(t, err)
 			sortNodeComponents(got.RootComponent)
 			sortNodeComponents(tt.want)
 			assert.Equal(t, tt.want, got.RootComponent)

@@ -201,7 +201,7 @@ func clusterInfoToReportResources(allArtifact []*artifacts.Artifact, clusterName
 			for _, c := range comp.Containers {
 				name := fmt.Sprintf("%s/%s", c.Registry, c.Repository)
 				cDigest := c.Digest
-				if strings.Index(c.Digest, string(digest.SHA256)) == -1 {
+				if !strings.Contains(c.Digest, string(digest.SHA256)) {
 					cDigest = fmt.Sprintf("%s:%s", string(digest.SHA256), cDigest)
 				}
 				version := sanitizedVersion(c.Version)

@@ -342,8 +342,7 @@ require (
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
 )
 
-//replace github.com/aquasecurity/trivy v0.44.1 => github.com/knqyf263/trivy v0.38.1-0.20230820134308-ca9f5bc9b142
-replace github.com/aquasecurity/trivy v0.44.1 => ../trivy
+replace github.com/aquasecurity/trivy v0.44.1 => github.com/knqyf263/trivy v0.38.1-0.20230820142308-bcb5cd9b754a
 
 // oras 1.2.2 is incompatible with github.com/docker/docker v24.0.2
 // cf. https://github.com/oras-project/oras-go/pull/527

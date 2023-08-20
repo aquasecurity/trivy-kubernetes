@@ -14,9 +14,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/aquasecurity/trivy-kubernetes/pkg/commands"
 	"github.com/aquasecurity/trivy-kubernetes/pkg/report"
-	"github.com/aquasecurity/trivy/pkg/commands"
 	"github.com/aquasecurity/trivy/pkg/types"
+
+	_ "modernc.org/sqlite" // sqlite driver for RPM DB and Java DB
 )
 
 // Note: the test required k8s (kind) cluster installed.
@@ -28,7 +30,6 @@ func TestK8s(t *testing.T) {
 		outputFile := filepath.Join(t.TempDir(), "output.json")
 
 		osArgs := []string{
-			"k8s",
 			"cluster",
 			"--report",
 			"summary",
@@ -76,7 +77,6 @@ func TestK8s(t *testing.T) {
 		// Set up the output file
 		outputFile := filepath.Join(t.TempDir(), "output.json")
 		osArgs := []string{
-			"k8s",
 			"cluster",
 			"--format",
 			"cyclonedx",
@@ -115,10 +115,10 @@ func TestK8s(t *testing.T) {
 
 func execute(osArgs []string) error {
 	// Setup CLI App
-	app := commands.NewApp()
-	app.SetOut(io.Discard)
+	cmd := commands.NewCmd()
+	cmd.SetOut(io.Discard)
 
 	// Run Trivy
-	app.SetArgs(osArgs)
-	return app.Execute()
+	cmd.SetArgs(osArgs)
+	return cmd.Execute()
 }

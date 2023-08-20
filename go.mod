@@ -10,7 +10,6 @@ require (
 	github.com/aquasecurity/trivy-db v0.0.0-20230726112157-167ba4f2faeb
 	github.com/davecgh/go-spew v1.1.1
 	github.com/google/go-containerregistry v0.16.1
-	github.com/magefile/mage v1.14.0
 	github.com/package-url/packageurl-go v0.1.1
 	github.com/samber/lo v1.38.1
 	github.com/spf13/viper v1.15.0
@@ -27,6 +26,7 @@ require (
 	k8s.io/klog/v2 v2.100.1
 	k8s.io/kubectl v0.27.4
 	k8s.io/utils v0.0.0-20230220204549-a5ecb0141aa5
+	modernc.org/sqlite v1.23.1
 	sigs.k8s.io/yaml v1.3.0
 )
 
@@ -60,7 +60,6 @@ require (
 	github.com/Masterminds/squirrel v1.5.4 // indirect
 	github.com/Microsoft/go-winio v0.6.1 // indirect
 	github.com/Microsoft/hcsshim v0.10.0-rc.8 // indirect
-	github.com/NYTimes/gziphandler v1.1.1 // indirect
 	github.com/OneOfOne/xxhash v1.2.8 // indirect
 	github.com/ProtonMail/go-crypto v0.0.0-20230518184743-7afd39499903 // indirect
 	github.com/VividCortex/ewma v1.2.0 // indirect
@@ -72,67 +71,27 @@ require (
 	github.com/apparentlymart/go-cidr v1.1.0 // indirect
 	github.com/apparentlymart/go-textseg/v13 v13.0.0 // indirect
 	github.com/aquasecurity/defsec v0.91.1 // indirect
-	github.com/aquasecurity/go-dep-parser v0.0.0-20230803125501-bd9cf68d8636 // indirect
+	github.com/aquasecurity/go-dep-parser v0.0.0-20230816082938-c86bfd152132 // indirect
 	github.com/aquasecurity/go-gem-version v0.0.0-20201115065557-8eed6fe000ce // indirect
 	github.com/aquasecurity/go-npm-version v0.0.0-20201110091526-0b796d180798 // indirect
 	github.com/aquasecurity/go-pep440-version v0.0.0-20210121094942-22b2f8951d46 // indirect
-	github.com/aquasecurity/loading v0.0.5 // indirect
 	github.com/aquasecurity/tml v0.6.1 // indirect
 	github.com/aquasecurity/trivy-java-db v0.0.0-20230209231723-7cddb1406728 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
 	github.com/aws/aws-sdk-go v1.44.273 // indirect
-	github.com/aws/aws-sdk-go-v2 v1.19.0 // indirect
-	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.4.8 // indirect
+	github.com/aws/aws-sdk-go-v2 v1.20.0 // indirect
 	github.com/aws/aws-sdk-go-v2/config v1.18.25 // indirect
 	github.com/aws/aws-sdk-go-v2/credentials v1.13.24 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.13.3 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/configsources v1.1.35 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.4.29 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/configsources v1.1.37 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.4.31 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/ini v1.3.34 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/v4a v1.0.14 // indirect
-	github.com/aws/aws-sdk-go-v2/service/accessanalyzer v1.16.0 // indirect
-	github.com/aws/aws-sdk-go-v2/service/apigateway v1.15.24 // indirect
-	github.com/aws/aws-sdk-go-v2/service/apigatewayv2 v1.13.11 // indirect
-	github.com/aws/aws-sdk-go-v2/service/athena v1.30.4 // indirect
-	github.com/aws/aws-sdk-go-v2/service/cloudfront v1.20.5 // indirect
-	github.com/aws/aws-sdk-go-v2/service/cloudtrail v1.27.1 // indirect
-	github.com/aws/aws-sdk-go-v2/service/cloudwatch v1.26.2 // indirect
-	github.com/aws/aws-sdk-go-v2/service/cloudwatchlogs v1.15.20 // indirect
-	github.com/aws/aws-sdk-go-v2/service/codebuild v1.19.17 // indirect
-	github.com/aws/aws-sdk-go-v2/service/docdb v1.19.11 // indirect
-	github.com/aws/aws-sdk-go-v2/service/dynamodb v1.17.7 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ebs v1.15.19 // indirect
+	github.com/aws/aws-sdk-go-v2/service/ebs v1.18.1 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ec2 v1.98.0 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ecr v1.17.18 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ecs v1.28.1 // indirect
-	github.com/aws/aws-sdk-go-v2/service/efs v1.20.3 // indirect
-	github.com/aws/aws-sdk-go-v2/service/eks v1.27.14 // indirect
-	github.com/aws/aws-sdk-go-v2/service/elasticache v1.26.8 // indirect
-	github.com/aws/aws-sdk-go-v2/service/elasticloadbalancingv2 v1.19.11 // indirect
-	github.com/aws/aws-sdk-go-v2/service/elasticsearchservice v1.19.0 // indirect
-	github.com/aws/aws-sdk-go-v2/service/emr v1.24.4 // indirect
-	github.com/aws/aws-sdk-go-v2/service/iam v1.21.1 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.9.10 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.1.18 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/endpoint-discovery v1.7.23 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.9.28 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.13.17 // indirect
-	github.com/aws/aws-sdk-go-v2/service/kafka v1.19.4 // indirect
-	github.com/aws/aws-sdk-go-v2/service/kinesis v1.15.19 // indirect
-	github.com/aws/aws-sdk-go-v2/service/kms v1.23.0 // indirect
-	github.com/aws/aws-sdk-go-v2/service/lambda v1.24.6 // indirect
-	github.com/aws/aws-sdk-go-v2/service/mq v1.15.0 // indirect
-	github.com/aws/aws-sdk-go-v2/service/neptune v1.20.7 // indirect
-	github.com/aws/aws-sdk-go-v2/service/rds v1.26.1 // indirect
-	github.com/aws/aws-sdk-go-v2/service/redshift v1.27.7 // indirect
-	github.com/aws/aws-sdk-go-v2/service/s3 v1.27.11 // indirect
-	github.com/aws/aws-sdk-go-v2/service/secretsmanager v1.16.2 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sns v1.20.10 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sqs v1.20.6 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sso v1.12.10 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.14.10 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sts v1.19.0 // indirect
-	github.com/aws/aws-sdk-go-v2/service/workspaces v1.23.0 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.9.31 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sso v1.13.1 // indirect
+	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.15.1 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sts v1.21.0 // indirect
 	github.com/aws/smithy-go v1.14.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bgentry/go-netrc v0.0.0-20140422174119-9fd32a8b3d3d // indirect
@@ -163,6 +122,7 @@ require (
 	github.com/docker/go-events v0.0.0-20190806004212-e31b211e4f1c // indirect
 	github.com/docker/go-metrics v0.0.1 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
+	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/emirpasic/gods v1.18.1 // indirect
 	github.com/exponent-io/jsonpath v0.0.0-20151013193312-d6023ce2651d // indirect
 	github.com/fatih/color v1.14.1 // indirect
@@ -206,6 +166,7 @@ require (
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
 	github.com/jmoiron/sqlx v1.3.5 // indirect
+	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
 	github.com/kevinburke/ssh_config v1.2.0 // indirect
 	github.com/klauspost/compress v1.16.5 // indirect
 	github.com/knqyf263/go-apk-version v0.0.0-20200609155635-041fdbb8563f // indirect
@@ -223,7 +184,7 @@ require (
 	github.com/lunixbochs/struc v0.0.0-20200707160740-784aaebc1d40 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
 	github.com/masahiro331/go-disk v0.0.0-20220919035250-c8da316f91ac // indirect
-	github.com/masahiro331/go-ebs-file v0.0.0-20221225061409-5ef263bb2cc3 // indirect
+	github.com/masahiro331/go-ebs-file v0.0.0-20230228042409-005c81d4ae43 // indirect
 	github.com/masahiro331/go-ext4-filesystem v0.0.0-20230612143131-27ccd485b7a1 // indirect
 	github.com/masahiro331/go-mvn-version v0.0.0-20210429150710-d3157d602a08 // indirect
 	github.com/masahiro331/go-vmdk-parser v0.0.0-20221225061455-612096e4bbbd // indirect
@@ -266,6 +227,7 @@ require (
 	github.com/prometheus/common v0.42.0 // indirect
 	github.com/prometheus/procfs v0.9.0 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475 // indirect
+	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/rivo/uniseg v0.2.0 // indirect
 	github.com/rubenv/sql-migrate v1.3.1 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
@@ -300,7 +262,7 @@ require (
 	go.opencensus.io v0.24.0 // indirect
 	go.opentelemetry.io/otel v1.14.0 // indirect
 	go.opentelemetry.io/otel/trace v1.14.0 // indirect
-	golang.org/x/crypto v0.11.0 // indirect
+	golang.org/x/crypto v0.12.0 // indirect
 	golang.org/x/mod v0.12.0 // indirect
 	golang.org/x/sync v0.3.0 // indirect
 	golang.org/x/tools v0.10.0 // indirect
@@ -314,6 +276,15 @@ require (
 	k8s.io/apiextensions-apiserver v0.27.2 // indirect
 	k8s.io/apiserver v0.27.2 // indirect
 	k8s.io/component-base v0.27.4 // indirect
+	lukechampine.com/uint128 v1.2.0 // indirect
+	modernc.org/cc/v3 v3.40.0 // indirect
+	modernc.org/ccgo/v3 v3.16.13 // indirect
+	modernc.org/libc v1.22.5 // indirect
+	modernc.org/mathutil v1.5.0 // indirect
+	modernc.org/memory v1.5.0 // indirect
+	modernc.org/opt v0.1.3 // indirect
+	modernc.org/strutil v1.1.3 // indirect
+	modernc.org/token v1.0.1 // indirect
 	oras.land/oras-go v1.2.2 // indirect
 )
 
@@ -351,14 +322,14 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/spf13/cobra v1.7.0
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/xlab/treeprint v1.1.0 // indirect
+	github.com/xlab/treeprint v1.2.0 // indirect
 	go.starlark.net v0.0.0-20200306205701-8dd3e2ee1dd5 // indirect
 	go.uber.org/multierr v1.10.0 // indirect
-	golang.org/x/net v0.12.0 // indirect
+	golang.org/x/net v0.14.0 // indirect
 	golang.org/x/oauth2 v0.8.0 // indirect
-	golang.org/x/sys v0.10.0 // indirect
-	golang.org/x/term v0.10.0 // indirect
-	golang.org/x/text v0.11.0 // indirect
+	golang.org/x/sys v0.11.0 // indirect
+	golang.org/x/term v0.11.0 // indirect
+	golang.org/x/text v0.12.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/protobuf v1.31.0 // indirect
@@ -371,6 +342,7 @@ require (
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
 )
 
+//replace github.com/aquasecurity/trivy v0.44.1 => github.com/knqyf263/trivy v0.38.1-0.20230820134308-ca9f5bc9b142
 replace github.com/aquasecurity/trivy v0.44.1 => ../trivy
 
 // oras 1.2.2 is incompatible with github.com/docker/docker v24.0.2

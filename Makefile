@@ -10,12 +10,20 @@ GOBIN=$(GOPATH)/bin
 
 .PHONY: test
 ## Runs both unit and integration tests
-test: unit-tests 
+test: unit-tests integration-tests
 
 .PHONY: unit-tests
 ## Runs unit tests with code coverage enabled
 unit-tests: $(SOURCES)
 	go test -v -short -race -timeout 30s -coverprofile=coverage.txt ./...
+
+.PHONY: integration-tests
+integration-tests: $(SOURCES)
+	kind create cluster --name kind-test
+	kubectl apply -f ./integration/testdata/fixtures/test_nginx.yaml
+
+	go test -v -tags=integration ./integration/...
+	kind delete cluster --name kind-test
 
 $(GOBIN)/golangci-lint:
 	curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh| sh -s -- -b $(GOBIN) v1.46.0

@@ -1,25 +1,26 @@
+---
 spec:
   id: "k8s-pss-baseline"
   title: "Kubernetes Pod Security Standards - Baseline"
   description: Kubernetes Pod Security Standards - Baseline
-  relatedResources :
+  relatedResources:
     - https://kubernetes.io/docs/concepts/security/pod-security-standards/#baseline
   version: "0.1"
   controls:
-    - name: HostProcess 
-      description: "Windows pods offer the ability to run HostProcess containers which enables privileged access to the Windows node. Privileged access to the host is disallowed in the baseline policy" 
+    - name: HostProcess
+      description: "Windows pods offer the ability to run HostProcess containers which enables privileged access to the Windows node. Privileged access to the host is disallowed in the baseline policy"
       id: "1"
       checks:
         - id: AVD-KSV-0103
       severity: 'HIGH'
     - name: Host Namespaces
-      description: "Sharing the host namespaces must be disallowed." 
+      description: "Sharing the host namespaces must be disallowed."
       id: "2"
       checks:
         - id: AVD-KSV-0008
       severity: 'HIGH'
     - name: Privileged Containers
-      description: "Privileged Pods disable most security mechanisms and must be disallowed." 
+      description: "Privileged Pods disable most security mechanisms and must be disallowed."
       id: "3"
       checks:
         - id: AVD-KSV-0017
@@ -72,4 +73,3 @@ spec:
       checks:
         - id: avd-ksv-0026
       severity: 'MEDIUM'
-

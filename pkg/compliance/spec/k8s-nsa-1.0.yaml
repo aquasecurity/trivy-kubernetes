@@ -2,8 +2,8 @@
 spec:
   id: k8s-nsa
   title: National Security Agency - Kubernetes Hardening Guidance v1.0
-  description: National Security Agency - Kubernetes Hardening Guidance 
-  relatedResources : 
+  description: National Security Agency - Kubernetes Hardening Guidance
+  relatedResources:
     - https://www.nsa.gov/Press-Room/News-Highlights/Article/Article/2716980/nsa-cisa-release-kubernetes-hardening-guidance/
   version: "1.0"
   controls:
@@ -43,7 +43,7 @@ spec:
       checks:
         - id: AVD-KSV-0010
       severity: 'HIGH'
-    - name:  Run with root privileges or with root group membership
+    - name: Run with root privileges or with root group membership
       description: 'Controls whether container applications can run with root privileges or with root group membership'
       id: '1.6'
       checks:

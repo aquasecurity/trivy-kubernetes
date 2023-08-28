@@ -621,7 +621,7 @@ func getWorkloadPodSpec(un unstructured.Unstructured) (*corev1.PodSpec, error) {
 			return nil, fmt.Errorf("unstructured resource do not match Pod spec")
 		}
 		return mapToPodSpec(objectMap)
-	case KindDeployment:
+	case KindDeployment, KindReplicaSet, KindReplicationController, KindStatefulSet, KindDaemonSet, KindJob:
 		objectMap, ok, err := unstructured.NestedMap(un.Object, []string{"spec", "template", "spec"}...)
 		if err != nil {
 			return nil, err

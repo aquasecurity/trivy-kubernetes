@@ -10,8 +10,8 @@ import (
 	"github.com/aquasecurity/trivy-kubernetes/pkg/trivyk8s"
 
 	"go.uber.org/zap"
-	//corev1 "k8s.io/api/core/v1"
-	//"k8s.io/utils/pointer"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/utils/pointer"
 
 	"context"
 )

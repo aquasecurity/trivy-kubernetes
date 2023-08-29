@@ -51,11 +51,24 @@ type client struct {
 	resources     []string
 	allNamespaces bool
 	logger        *zap.SugaredLogger
+	excludeOwned  bool
+}
+
+type K8sOption func(*client)
+
+func WithExcludeOwned(excludeOwned bool) K8sOption {
+	return func(c *client) {
+		c.excludeOwned = excludeOwned
+	}
 }
 
 // New creates a trivyK8S client
-func New(cluster k8s.Cluster, logger *zap.SugaredLogger) TrivyK8S {
-	return &client{cluster: cluster, logger: logger}
+func New(cluster k8s.Cluster, logger *zap.SugaredLogger, opts ...K8sOption) TrivyK8S {
+	c := &client{cluster: cluster, logger: logger}
+	for _, opt := range opts {
+		opt(c)
+	}
+	return c
 }
 
 // Namespace configure the namespace to execute the queries
@@ -125,6 +138,13 @@ func (c *client) ListArtifacts(ctx context.Context) ([]*artifacts.Artifact, erro
 			if c.ignoreResource(resource) {
 				continue
 			}
+
+			// if excluding owned resources is enabled, we check if the resource has an owner
+			// if it does, then skip it
+			if c.excludeOwned && len(resource.GetOwnerReferences()) > 0 {
+				continue
+			}
+
 			auths, err := c.cluster.AuthByResource(lastAppliedResource)
 			if err != nil {
 				return nil, fmt.Errorf("failed getting auth for gvr: %v - %w", gvr, err)

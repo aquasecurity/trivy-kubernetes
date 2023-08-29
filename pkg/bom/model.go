@@ -10,6 +10,7 @@ type Result struct {
 type Component struct {
 	Namespace  string
 	Name       string
+	Version    string
 	Properties map[string]string
 	Containers []Container
 }

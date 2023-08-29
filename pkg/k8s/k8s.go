@@ -15,12 +15,34 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	//"k8s.io/apimachinery/pkg/version"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/utils/strings/slices"
+)
+
+var (
+	UpstreamOrgName = map[string]string{
+		"k8s.io":      "controller-manager,kubelet,apiserver,kubectl,kubernetes,kube-scheduler,kube-proxy",
+		"sigs.k8s.io": "secrets-store-csi-driver",
+		"go.etcd.io":  "etcd/v3",
+	}
+
+	UpstreamRepoName = map[string]string{
+		"kube-controller-manager":  "controller-manager",
+		"kubelet":                  "kubelet",
+		"kube-apiserver":           "apiserver",
+		"kubectl":                  "kubectl",
+		"kubernetes":               "kubernetes",
+		"kube-scheduler":           "kube-scheduler",
+		"kube-proxy":               "kube-proxy",
+		"api server":               "apiserver",
+		"etcd":                     "etcd/v3",
+		"secrets-store-csi-driver": "secrets-store-csi-driver",
+	}
 )
 
 const (
@@ -413,21 +435,39 @@ func (c *cluster) collectComponents(ctx context.Context, labels map[string]strin
 				containers = append(containers, c)
 			}
 			props := make(map[string]string)
-			if componentValue, ok := pod.GetLabels()[labelSelector]; ok {
-				props["Name"] = componentValue
+			componentValue, ok := pod.GetLabels()[labelSelector]
+			if ok {
+				props["Name"] = pod.Name
 			}
 			if len(propertyKey) > 0 {
 				props["Type"] = propertyKey[0]
 			}
+			repoName := upstreamRepoByName(componentValue)
+			orgName := upstreamOrgByName(repoName)
+			upstreamComponentName := repoName
+			if len(orgName) > 0 {
+				upstreamComponentName = fmt.Sprintf("%s/%s", orgName, repoName)
+			}
+			version := trimString(findComponentVersion(containers, componentValue), []string{"v", "V"})
 			components = append(components, bom.Component{
 				Namespace:  pod.Namespace,
-				Name:       pod.Name,
+				Name:       upstreamComponentName,
+				Version:    version,
 				Properties: props,
 				Containers: containers,
 			})
 		}
 	}
 	return components, nil
+}
+
+func findComponentVersion(containers []bom.Container, name string) string {
+	for _, c := range containers {
+		if strings.Contains(c.ID, name) {
+			return c.Version
+		}
+	}
+	return ""
 }
 
 func (c *cluster) isOpenShift() bool {
@@ -443,8 +483,10 @@ func (c *cluster) getClusterBomInfo(components []bom.Component, nodeInfo []bom.N
 	}
 	br := &bom.Result{
 		Components: components,
-		ID:         fmt.Sprintf("%s@%s", name, version),
+		ID:         "k8s.io/kubernetes",
 		Type:       "Cluster",
+		Version:    trimString(version, []string{"v", "V"}),
+		Properties: map[string]string{"Name": name},
 		NodesInfo:  nodeInfo,
 	}
 	return br, nil
@@ -655,4 +697,29 @@ func (r *cluster) AuthByResource(resource unstructured.Unstructured) (map[string
 		return nil, err
 	}
 	return serverAuths, nil
+}
+
+func upstreamOrgByName(component string) string {
+	for key, components := range UpstreamOrgName {
+		for _, c := range strings.Split(components, ",") {
+			if strings.TrimSpace(c) == strings.ToLower(component) {
+				return key
+			}
+		}
+	}
+	return ""
+}
+
+func upstreamRepoByName(component string) string {
+	if val, ok := UpstreamRepoName[component]; ok {
+		return val
+	}
+	return component
+}
+
+func trimString(version string, trimValues []string) string {
+	for _, v := range trimValues {
+		version = strings.ReplaceAll(version, v, "")
+	}
+	return strings.TrimSpace(version)
 }

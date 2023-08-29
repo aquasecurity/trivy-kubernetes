@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/aquasecurity/trivy-kubernetes/pkg/artifacts"
+	"github.com/aquasecurity/trivy-kubernetes/pkg/bom"
 	"github.com/aquasecurity/trivy-kubernetes/pkg/jobs"
 	"github.com/aquasecurity/trivy-kubernetes/pkg/k8s"
 	"go.uber.org/zap"
@@ -194,25 +195,27 @@ func (c *client) ListArtifactAndNodeInfo(ctx context.Context, namespace string, 
 // ListBomInfo returns kubernetes Bom (node,core components and etc) information.
 func (c *client) ListBomInfo(ctx context.Context) ([]*artifacts.Artifact, error) {
 	artifactList := make([]*artifacts.Artifact, 0)
-	bom, err := c.cluster.CreateClusterBom(ctx)
+	b, err := c.cluster.CreateClusterBom(ctx)
 	if err != nil {
 		return []*artifacts.Artifact{}, err
 	}
 
-	for _, c := range bom.Components {
+	for _, c := range b.Components {
 		rawResource, err := rawResource(&c)
 		if err != nil {
 			return []*artifacts.Artifact{}, err
 		}
 		artifactList = append(artifactList, &artifacts.Artifact{Kind: "PodInfo", Namespace: c.Namespace, Name: c.Name, RawResource: rawResource})
 	}
-	for _, ni := range bom.NodesInfo {
+	for _, ni := range b.NodesInfo {
 		rawResource, err := rawResource(&ni)
 		if err != nil {
 			return []*artifacts.Artifact{}, err
 		}
 		artifactList = append(artifactList, &artifacts.Artifact{Kind: "NodeInfo", Name: ni.NodeName, RawResource: rawResource})
 	}
+	cr, err := rawResource(&bom.Result{ID: b.ID, Type: "ClusterInfo", Version: b.Version, Properties: b.Properties})
+	artifactList = append(artifactList, &artifacts.Artifact{Kind: "ClusterInfo", Name: b.ID, RawResource: cr})
 	return artifactList, err
 
 }

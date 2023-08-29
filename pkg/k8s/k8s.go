@@ -443,10 +443,15 @@ func (c *cluster) collectComponents(ctx context.Context, labels map[string]strin
 				props["Type"] = propertyKey[0]
 			}
 			repoName := upstreamRepoByName(componentValue)
+			orgName := upstreamOrgByName(repoName)
+			upstreamComponentName := repoName
+			if len(orgName) > 0 {
+				upstreamComponentName = fmt.Sprintf("%s/%s", orgName, repoName)
+			}
 			version := trimString(findComponentVersion(containers, componentValue), []string{"v", "V"})
 			components = append(components, bom.Component{
 				Namespace:  pod.Namespace,
-				Name:       fmt.Sprintf("%s/%s", upstreamOrgByName(repoName), repoName),
+				Name:       upstreamComponentName,
 				Version:    version,
 				Properties: props,
 				Containers: containers,
@@ -478,8 +483,10 @@ func (c *cluster) getClusterBomInfo(components []bom.Component, nodeInfo []bom.N
 	}
 	br := &bom.Result{
 		Components: components,
-		ID:         fmt.Sprintf("%s@%s", name, version),
+		ID:         "k8s.io/kubernetes",
 		Type:       "Cluster",
+		Version:    trimString(version, []string{"v", "V"}),
+		Properties: map[string]string{"Name": name},
 		NodesInfo:  nodeInfo,
 	}
 	return br, nil

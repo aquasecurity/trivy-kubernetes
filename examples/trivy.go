@@ -30,12 +30,19 @@ func main() {
 
 	fmt.Println("Current namespace:", cluster.GetCurrentNamespace())
 
-	trivyk8s := trivyk8s.New(cluster, logger.Sugar())
+	trivyk8s := trivyk8s.New(cluster, logger.Sugar(), trivyk8s.WithExcludeOwned(true))
+
+	fmt.Println("Scanning kind 'pods' with exclude-owned=true")
+	artifacts, err := trivyk8s.Resources("pod").AllNamespaces().ListArtifacts(ctx)
+	if err != nil {
+		log.Fatal(err)
+	}
+	printArtifacts(artifacts)
 
 	fmt.Println("Scanning cluster")
 
 	//trivy k8s #cluster
-	artifacts, err := trivyk8s.ListArtifacts(ctx)
+	artifacts, err = trivyk8s.ListArtifacts(ctx)
 	if err != nil {
 		log.Fatal(err)
 	}

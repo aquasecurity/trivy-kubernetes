@@ -132,7 +132,7 @@ func (b *JobBuilder) build() (*batchv1.Job, error) {
 
 	if b.nodeSelector != "" {
 		job.Spec.Template.Spec.NodeSelector = map[string]string{
-			"kubernetes.io/hostname": b.nodeSelector,
+			corev1.LabelHostname: b.nodeSelector,
 		}
 	}
 	// append lables

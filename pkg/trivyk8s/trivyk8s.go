@@ -94,7 +94,7 @@ func (c *client) Resources(resources string) TrivyK8S {
 	return c
 }
 
-func isNamspaced(namespace string, allNamespace bool) bool {
+func isNamespaced(namespace string, allNamespace bool) bool {
 	if len(namespace) != 0 || (len(namespace) == 0 && allNamespace) {
 		return true
 	}
@@ -105,7 +105,7 @@ func isNamspaced(namespace string, allNamespace bool) bool {
 func (c *client) ListArtifacts(ctx context.Context) ([]*artifacts.Artifact, error) {
 	artifactList := make([]*artifacts.Artifact, 0)
 
-	namespaced := isNamspaced(c.namespace, c.allNamespaces)
+	namespaced := isNamespaced(c.namespace, c.allNamespaces)
 	grvs, err := c.cluster.GetGVRs(namespaced, c.resources)
 	if err != nil {
 		return nil, err

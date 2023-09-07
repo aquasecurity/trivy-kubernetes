@@ -138,21 +138,9 @@ func (c *client) ListArtifacts(ctx context.Context) ([]*artifacts.Artifact, erro
 			if c.ignoreResource(resource) {
 				continue
 			}
-			// assume that the owner is a built-in workload by default
-			ownerIsBuiltIn := true
-			if len(resource.GetOwnerReferences()) > 0 {
-				// if the resource has an owner, we check if it is a built-in workload
-				// this ensures that we don't skip resources that are owned by custom resources
-				for _, owner := range resource.GetOwnerReferences() {
-					if !k8s.IsBuiltInWorkload(&owner) {
-						ownerIsBuiltIn = false
-						break
-					}
-				}
-			}
 
-			// if excludeOwned is enabled and workload is a built-in workload and if ownerExists, we skip it
-			if c.excludeOwned && ownerIsBuiltIn && len(resource.GetOwnerReferences()) > 0 {
+			// if excludeOwned is enabled and the resource is owned by built-in workload, then we skip it
+			if c.excludeOwned && c.hasOwner(resource) {
 				continue
 			}
 
@@ -313,6 +301,10 @@ func (c *client) ignoreResource(resource unstructured.Unstructured) bool {
 		return false
 	}
 
+	return c.hasOwner(resource)
+}
+
+func (c *client) hasOwner(resource unstructured.Unstructured) bool {
 	for _, owner := range resource.GetOwnerReferences() {
 		if k8s.IsBuiltInWorkload(&owner) {
 			return true

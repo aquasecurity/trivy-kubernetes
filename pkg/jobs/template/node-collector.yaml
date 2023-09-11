@@ -14,7 +14,7 @@ spec:
       automountServiceAccountToken: true
       containers:
         - name: node-collector
-          image: ghcr.io/aquasecurity/node-collector:0.0.7
+          image: ghcr.io/aquasecurity/node-collector:0.0.8
           command:
             - node-collector
           args:

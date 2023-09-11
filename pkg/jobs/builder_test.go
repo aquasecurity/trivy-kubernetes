@@ -63,7 +63,7 @@ func TestLoadBuilder(t *testing.T) {
 										ReadOnlyRootFilesystem: pointer.Bool(true),
 									},
 									Name:    "node-collector",
-									Image:   "ghcr.io/aquasecurity/node-collector:0.0.7",
+									Image:   "ghcr.io/aquasecurity/node-collector:0.0.8",
 									Command: []string{"node-collector"},
 									Args:    []string{"k8s"},
 									VolumeMounts: []corev1.VolumeMount{

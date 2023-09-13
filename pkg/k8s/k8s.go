@@ -424,9 +424,9 @@ func (c *cluster) collectComponents(ctx context.Context, labels map[string]strin
 				if err != nil {
 					return nil, err
 				}
-				imageID := s.ImageID
+				imageID := getImageIDFromImage(s.Image, s.ImageID)
 				if len(imageID) == 0 {
-					imageID = getImageIDFromImage(s.Image)
+					continue
 				}
 				imageRef, err := containerimage.ParseReference(imageID)
 				if err != nil {
@@ -728,7 +728,10 @@ func trimString(version string, trimValues []string) string {
 	return strings.TrimSpace(version)
 }
 
-func getImageIDFromImage(image string) string {
+func getImageIDFromImage(imageID string, image string) string {
+	if len(imageID) > 0 {
+		return imageID
+	}
 	imageParts := strings.Split(image, "@")
 	if len(imageParts) > 1 && strings.HasPrefix(imageParts[1], "sha256") {
 		return imageParts[1]

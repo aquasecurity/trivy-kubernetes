@@ -424,7 +424,7 @@ func (c *cluster) collectComponents(ctx context.Context, labels map[string]strin
 				if err != nil {
 					return nil, err
 				}
-				imageID := getImageID(s.Image, s.ImageID)
+				imageID := getImageID(s.ImageID, s.Image)
 				if len(imageID) == 0 {
 					continue
 				}

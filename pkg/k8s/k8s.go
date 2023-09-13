@@ -424,7 +424,7 @@ func (c *cluster) collectComponents(ctx context.Context, labels map[string]strin
 				if err != nil {
 					return nil, err
 				}
-				imageID := getImageIDFromImage(s.Image, s.ImageID)
+				imageID := getImageID(s.Image, s.ImageID)
 				if len(imageID) == 0 {
 					continue
 				}
@@ -728,7 +728,7 @@ func trimString(version string, trimValues []string) string {
 	return strings.TrimSpace(version)
 }
 
-func getImageIDFromImage(imageID string, image string) string {
+func getImageID(imageID string, image string) string {
 	if len(imageID) > 0 {
 		return imageID
 	}

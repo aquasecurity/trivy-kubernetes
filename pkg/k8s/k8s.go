@@ -312,7 +312,7 @@ func (c *cluster) CreateClusterBom(ctx context.Context) (*bom.Result, error) {
 	// collect addons info
 	var components []bom.Component
 	labels := map[string]string{
-		k8sComponentNamespace: "component",
+		"": "component",
 	}
 	if c.isOpenShift() {
 		labels = map[string]string{

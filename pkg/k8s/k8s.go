@@ -312,7 +312,7 @@ func (c *cluster) CreateClusterBom(ctx context.Context) (*bom.Result, error) {
 	// collect addons info
 	var components []bom.Component
 	labels := map[string]string{
-		k8sComponentNamespace: "component",
+		"": "component",
 	}
 	if c.isOpenShift() {
 		labels = map[string]string{
@@ -420,11 +420,15 @@ func (c *cluster) collectComponents(ctx context.Context, labels map[string]strin
 		for _, pod := range pods.Items {
 			containers := make([]bom.Container, 0)
 			for _, s := range pod.Status.ContainerStatuses {
-				imageRef, err := containerimage.ParseReference(s.ImageID)
+				imageName, err := containerimage.ParseReference(s.Image)
 				if err != nil {
 					return nil, err
 				}
-				imageName, err := containerimage.ParseReference(s.Image)
+				imageID := getImageID(s.Image, s.ImageID)
+				if len(imageID) == 0 {
+					continue
+				}
+				imageRef, err := containerimage.ParseReference(imageID)
 				if err != nil {
 					return nil, err
 				}
@@ -722,4 +726,15 @@ func trimString(version string, trimValues []string) string {
 		version = strings.ReplaceAll(version, v, "")
 	}
 	return strings.TrimSpace(version)
+}
+
+func getImageID(imageID string, image string) string {
+	if len(imageID) > 0 {
+		return imageID
+	}
+	imageParts := strings.Split(image, "@")
+	if len(imageParts) > 1 && strings.HasPrefix(imageParts[1], "sha256") {
+		return imageParts[1]
+	}
+	return ""
 }

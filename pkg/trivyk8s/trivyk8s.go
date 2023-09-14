@@ -5,12 +5,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/aquasecurity/trivy-kubernetes/pkg/artifacts"
 	"github.com/aquasecurity/trivy-kubernetes/pkg/bom"
 	"github.com/aquasecurity/trivy-kubernetes/pkg/jobs"
 	"github.com/aquasecurity/trivy-kubernetes/pkg/k8s"
+	"github.com/go-logr/logr"
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -50,12 +52,49 @@ type client struct {
 	namespace     string
 	resources     []string
 	allNamespaces bool
-	logger        *zap.SugaredLogger
+	logger        interface{}
 	excludeOwned  bool
 	scanJobParams scanJobParams
+	loggerInit    sync.Once
 }
 
 type K8sOption func(*client)
+
+// LeveledLogger is an interface that can be implemented by any logger or a
+// logger wrapper to provide leveled logging. The methods accept a message
+// string and a variadic number of key-value pairs. For log.Printf style
+// formatting where message string contains a format specifier, use Logger
+// interface.
+type LeveledLogger interface {
+	Error(msg string, keysAndValues ...interface{})
+	Info(msg string, keysAndValues ...interface{})
+	Debug(msg string, keysAndValues ...interface{})
+	Warn(msg string, keysAndValues ...interface{})
+}
+
+// Logger interface allows to use other loggers than
+// standard log.Logger.
+type Logger interface {
+	Printf(string, ...interface{})
+}
+
+func (c *client) log() interface{} {
+	c.loggerInit.Do(func() {
+		if c.logger == nil {
+			return
+		}
+
+		switch c.logger.(type) {
+		case Logger, LeveledLogger, logr.Logger, *zap.SugaredLogger:
+			// ok
+		default:
+			// This should happen in dev when they are setting Logger and work on code, not in prod.
+			panic(fmt.Sprintf("invalid logger type passed, must be Logger, LeveledLogger, logr.Logger or zap.SugaredLogger , was %T", c.logger))
+		}
+	})
+
+	return c.logger
+}
 
 func WithExcludeOwned(excludeOwned bool) K8sOption {
 	return func(c *client) {
@@ -64,7 +103,7 @@ func WithExcludeOwned(excludeOwned bool) K8sOption {
 }
 
 // New creates a trivyK8S client
-func New(cluster k8s.Cluster, logger *zap.SugaredLogger, opts ...K8sOption) TrivyK8S {
+func New(cluster k8s.Cluster, logger interface{}, opts ...K8sOption) TrivyK8S {
 	c := &client{cluster: cluster, logger: logger}
 	for _, opt := range opts {
 		opt(c)
@@ -104,6 +143,8 @@ func isNamespaced(namespace string, allNamespace bool) bool {
 
 // ListArtifacts returns kubernetes scannable artifacs.
 func (c *client) ListArtifacts(ctx context.Context) ([]*artifacts.Artifact, error) {
+	logger := c.log()
+
 	artifactList := make([]*artifacts.Artifact, 0)
 
 	namespaced := isNamespaced(c.namespace, c.allNamespaces)
@@ -120,7 +161,17 @@ func (c *client) ListArtifacts(ctx context.Context) ([]*artifacts.Artifact, erro
 			lerr := fmt.Errorf("failed listing resources for gvr: %v - %w", gvr, err)
 
 			if errors.IsNotFound(err) {
-				c.logger.Error(lerr)
+
+				switch v := logger.(type) {
+				case logr.Logger:
+					v.Error(lerr, lerr.Error())
+				case *zap.SugaredLogger:
+					v.Errorf(lerr.Error())
+				case LeveledLogger:
+					v.Error(lerr.Error())
+				case Logger:
+					v.Printf(lerr.Error())
+				}
 				// if a resource is not found, we log and continue
 				continue
 			}

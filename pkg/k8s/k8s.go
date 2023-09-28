@@ -348,12 +348,8 @@ func (c *cluster) CreateClusterBom(ctx context.Context) (*bom.Result, error) {
 }
 
 func (c *cluster) GetContainer(imageRef containerimage.Reference, imageName containerimage.Reference) (bom.Container, error) {
-	repoName := imageRef.Context().RepositoryStr()
-	registryName := imageRef.Context().RegistryStr()
-	if strings.HasPrefix(repoName, "library/sha256") {
-		repoName = imageName.Context().RepositoryStr()
-		registryName = imageName.Context().RegistryStr()
-	}
+	repoName := imageName.Context().RepositoryStr()
+	registryName := imageName.Context().RegistryStr()
 
 	return bom.Container{
 		Repository: repoName,
@@ -730,7 +726,7 @@ func upstreamRepoByName(component string) string {
 
 func trimString(version string, trimValues []string) string {
 	for _, v := range trimValues {
-		version = strings.ReplaceAll(version, v, "")
+		version = strings.Trim(version, v)
 	}
 	return strings.TrimSpace(version)
 }

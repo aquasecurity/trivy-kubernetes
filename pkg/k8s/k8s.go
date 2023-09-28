@@ -15,7 +15,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	//"k8s.io/apimachinery/pkg/version"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
@@ -42,6 +41,13 @@ var (
 		"api server":               "apiserver",
 		"etcd":                     "etcd/v3",
 		"secrets-store-csi-driver": "secrets-store-csi-driver",
+	}
+	CoreComponentPropertyType = map[string]string{
+		"controller-manager": "controlPlane",
+		"apiserver":          "controlPlane",
+		"kube-scheduler":     "controlPlane",
+		"etcd/v3":            "controlPlane",
+		"kube-proxy":         "node",
 	}
 )
 
@@ -322,7 +328,7 @@ func (c *cluster) CreateClusterBom(ctx context.Context) (*bom.Result, error) {
 			"openshift-etcd":                    "etcd",
 		}
 	}
-	components, err := c.collectComponents(ctx, labels, "ControlPlane")
+	components, err := c.collectComponents(ctx, labels)
 	if err != nil {
 		return nil, err
 	}
@@ -410,7 +416,7 @@ func getPodsInfo(ctx context.Context, clientset *kubernetes.Clientset, labelSele
 	return pods, nil
 }
 
-func (c *cluster) collectComponents(ctx context.Context, labels map[string]string, propertyKey ...string) ([]bom.Component, error) {
+func (c *cluster) collectComponents(ctx context.Context, labels map[string]string) ([]bom.Component, error) {
 	components := make([]bom.Component, 0)
 	for namespace, labelSelector := range labels {
 		pods, err := getPodsInfo(ctx, c.clientset, labelSelector, namespace)
@@ -443,10 +449,11 @@ func (c *cluster) collectComponents(ctx context.Context, labels map[string]strin
 			if ok {
 				props["Name"] = pod.Name
 			}
-			if len(propertyKey) > 0 {
-				props["Type"] = propertyKey[0]
-			}
+
 			repoName := upstreamRepoByName(componentValue)
+			if val, ok := CoreComponentPropertyType[repoName]; ok {
+				props["Type"] = val
+			}
 			orgName := upstreamOrgByName(repoName)
 			upstreamComponentName := repoName
 			if len(orgName) > 0 {
@@ -490,7 +497,7 @@ func (c *cluster) getClusterBomInfo(components []bom.Component, nodeInfo []bom.N
 		ID:         "k8s.io/kubernetes",
 		Type:       "Cluster",
 		Version:    trimString(version, []string{"v", "V"}),
-		Properties: map[string]string{"Name": name},
+		Properties: map[string]string{"Name": name, "Type": "cluster"},
 		NodesInfo:  nodeInfo,
 	}
 	return br, nil

@@ -18,4 +18,4 @@ This Lib purpose is to extend trivy capabilities with kubernetes context:
 
 # Documentation
 
-Please check `trivy` documentation, which provides detailed installation, configuration, and quick start guides, available at [Trivy Kubernetes](https://aquasecurity.github.io/trivy/latest/docs/kubernetes/cli/scanning/)
+Please check `trivy` documentation, which provides detailed installation, configuration, and quick start guides, available at [Trivy Kubernetes](https://aquasecurity.github.io/trivy/latest/docs/target/kubernetes/#cli)

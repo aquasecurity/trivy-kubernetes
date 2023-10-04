@@ -39,6 +39,7 @@ type jobCollector struct {
 	annotation         map[string]string
 	templateName       string
 	namespace          string
+	priorityClassName  string
 	name               string
 	serviceAccount     string
 	podSecurityContext *corev1.PodSecurityContext
@@ -78,6 +79,12 @@ func WithJobAnnotation(annotation map[string]string) CollectorOption {
 func WithJobNamespace(namespace string) CollectorOption {
 	return func(jc *jobCollector) {
 		jc.namespace = namespace
+	}
+}
+
+func WithPodPriorityClassName(priorityClassName string) JobOption {
+	return func(jc *JobBuilder) {
+		jc.priorityClassName = priorityClassName
 	}
 }
 
@@ -185,6 +192,7 @@ func (jb *jobCollector) ApplyAndCollect(ctx context.Context, nodeName string) (s
 		WithPodVolumes(jb.volumes),
 		WithImagePullSecrets(jb.imagePullSecrets),
 		WithContainerVolumeMounts(jb.volumeMounts),
+		WithPriorityClassName(jb.priorityClassName),
 		WithJobName(fmt.Sprintf("%s-%s", jb.templateName, ComputeHash(
 			ObjectRef{
 				Kind:      "Node-Info",
@@ -246,6 +254,7 @@ func (jb *jobCollector) Apply(ctx context.Context, nodeName string) (*batchv1.Jo
 		WithPodVolumes(jb.volumes),
 		WithImagePullSecrets(jb.imagePullSecrets),
 		WithContainerVolumeMounts(jb.volumeMounts),
+		WithPriorityClassName(jb.priorityClassName),
 		WithJobName(jb.name),
 	)
 	if err != nil {

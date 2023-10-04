@@ -82,8 +82,8 @@ func WithJobNamespace(namespace string) CollectorOption {
 	}
 }
 
-func WithPodPriorityClassName(priorityClassName string) JobOption {
-	return func(jc *JobBuilder) {
+func WithPodPriorityClassName(priorityClassName string) CollectorOption {
+	return func(jc *jobCollector) {
 		jc.priorityClassName = priorityClassName
 	}
 }

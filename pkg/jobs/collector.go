@@ -200,6 +200,7 @@ func (jb *jobCollector) ApplyAndCollect(ctx context.Context, nodeName string) (s
 		WithImagePullSecrets(jb.imagePullSecrets),
 		WithContainerVolumeMounts(jb.volumeMounts),
 		WithPriorityClassName(jb.priorityClassName),
+		WithResourceRequirements(jb.resourceRequirements),
 		WithJobName(fmt.Sprintf("%s-%s", jb.templateName, ComputeHash(
 			ObjectRef{
 				Kind:      "Node-Info",

@@ -33,22 +33,23 @@ type Collector interface {
 type jobCollector struct {
 	cluster k8s.Cluster
 	// timeout duration for collection job to complete it task before is cancelled default 0
-	timeout            time.Duration
-	logsReader         LogsReader
-	labels             map[string]string
-	annotation         map[string]string
-	templateName       string
-	namespace          string
-	priorityClassName  string
-	name               string
-	serviceAccount     string
-	podSecurityContext *corev1.PodSecurityContext
-	securityContext    *corev1.SecurityContext
-	imageRef           string
-	tolerations        []corev1.Toleration
-	volumes            []corev1.Volume
-	volumeMounts       []corev1.VolumeMount
-	imagePullSecrets   []corev1.LocalObjectReference
+	timeout              time.Duration
+	logsReader           LogsReader
+	labels               map[string]string
+	annotation           map[string]string
+	templateName         string
+	namespace            string
+	priorityClassName    string
+	name                 string
+	serviceAccount       string
+	podSecurityContext   *corev1.PodSecurityContext
+	securityContext      *corev1.SecurityContext
+	imageRef             string
+	tolerations          []corev1.Toleration
+	volumes              []corev1.Volume
+	volumeMounts         []corev1.VolumeMount
+	imagePullSecrets     []corev1.LocalObjectReference
+	resourceRequirements *corev1.ResourceRequirements
 }
 
 type CollectorOption func(*jobCollector)
@@ -115,6 +116,12 @@ func WithServiceAccount(sa string) CollectorOption {
 func WithJobTemplateName(name string) CollectorOption {
 	return func(jc *jobCollector) {
 		jc.templateName = name
+	}
+}
+
+func WithContainerResourceRequirements(rr *corev1.ResourceRequirements) CollectorOption {
+	return func(j *jobCollector) {
+		j.resourceRequirements = rr
 	}
 }
 
@@ -256,6 +263,7 @@ func (jb *jobCollector) Apply(ctx context.Context, nodeName string) (*batchv1.Jo
 		WithContainerVolumeMounts(jb.volumeMounts),
 		WithPriorityClassName(jb.priorityClassName),
 		WithJobName(jb.name),
+		WithResourceRequirements(jb.resourceRequirements),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("running node-collector job: %w", err)

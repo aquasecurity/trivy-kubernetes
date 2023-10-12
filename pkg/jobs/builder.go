@@ -95,6 +95,12 @@ func WithImagePullSecrets(imagePullSecrets []corev1.LocalObjectReference) JobOpt
 	}
 }
 
+func WithResourceRequirements(rr *corev1.ResourceRequirements) JobOption {
+	return func(j *JobBuilder) {
+		j.resourceRequirements = rr
+	}
+}
+
 func GetJob(opts ...JobOption) (*batchv1.Job, error) {
 	jb := &JobBuilder{}
 	for _, opt := range opts {
@@ -104,21 +110,22 @@ func GetJob(opts ...JobOption) (*batchv1.Job, error) {
 }
 
 type JobBuilder struct {
-	template           string
-	nodeSelector       string
-	namespace          string
-	imageRef           string
-	serviceAccount     string
-	name               string
-	labels             map[string]string
-	podSecurityContext *corev1.PodSecurityContext
-	securityContext    *corev1.SecurityContext
-	annotations        map[string]string
-	tolerations        []corev1.Toleration
-	priorityClassName  string
-	volumes            []corev1.Volume
-	volumeMounts       []corev1.VolumeMount
-	imagePullSecrets   []corev1.LocalObjectReference
+	template             string
+	nodeSelector         string
+	namespace            string
+	imageRef             string
+	serviceAccount       string
+	name                 string
+	labels               map[string]string
+	podSecurityContext   *corev1.PodSecurityContext
+	securityContext      *corev1.SecurityContext
+	annotations          map[string]string
+	tolerations          []corev1.Toleration
+	priorityClassName    string
+	volumes              []corev1.Volume
+	volumeMounts         []corev1.VolumeMount
+	imagePullSecrets     []corev1.LocalObjectReference
+	resourceRequirements *corev1.ResourceRequirements
 }
 
 func (b *JobBuilder) build() (*batchv1.Job, error) {
@@ -176,6 +183,11 @@ func (b *JobBuilder) build() (*batchv1.Job, error) {
 	}
 	if len(b.imagePullSecrets) > 0 {
 		job.Spec.Template.Spec.ImagePullSecrets = b.imagePullSecrets
+	}
+	if b.resourceRequirements != nil {
+		for _, c := range job.Spec.Template.Spec.Containers {
+			c.Resources = *b.resourceRequirements
+		}
 	}
 	if len(b.volumeMounts) > 0 {
 		job.Spec.Template.Spec.Containers[0].VolumeMounts = b.volumeMounts

@@ -228,17 +228,17 @@ func (c *client) ListBomInfo(ctx context.Context) ([]*artifacts.Artifact, error)
 		if err != nil {
 			return []*artifacts.Artifact{}, err
 		}
-		artifactList = append(artifactList, &artifacts.Artifact{Kind: "PodBomInfo", Namespace: c.Namespace, Name: c.Name, RawResource: rawResource})
+		artifactList = append(artifactList, &artifacts.Artifact{Kind: "ControlPlaneComponents", Namespace: c.Namespace, Name: c.Name, RawResource: rawResource})
 	}
 	for _, ni := range b.NodesInfo {
 		rawResource, err := rawResource(&ni)
 		if err != nil {
 			return []*artifacts.Artifact{}, err
 		}
-		artifactList = append(artifactList, &artifacts.Artifact{Kind: "NodeBomInfo", Name: ni.NodeName, RawResource: rawResource})
+		artifactList = append(artifactList, &artifacts.Artifact{Kind: "NodeComponents", Name: ni.NodeName, RawResource: rawResource})
 	}
 	cr, err := rawResource(&bom.Result{ID: b.ID, Type: "ClusterInfo", Version: b.Version, Properties: b.Properties})
-	artifactList = append(artifactList, &artifacts.Artifact{Kind: "ClusterBomInfo", Name: b.ID, RawResource: cr})
+	artifactList = append(artifactList, &artifacts.Artifact{Kind: "Cluster", Name: b.ID, RawResource: cr})
 	return artifactList, err
 
 }

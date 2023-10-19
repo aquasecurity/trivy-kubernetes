@@ -156,7 +156,11 @@ func (c *client) ListArtifacts(ctx context.Context) ([]*artifacts.Artifact, erro
 			artifactList = append(artifactList, artifact)
 		}
 	}
-
+	bomArtifacts, err := c.ListBomInfo(ctx)
+	if err != nil {
+		return nil, err
+	}
+	artifactList = append(artifactList, bomArtifacts...)
 	return artifactList, nil
 }
 
@@ -224,17 +228,17 @@ func (c *client) ListBomInfo(ctx context.Context) ([]*artifacts.Artifact, error)
 		if err != nil {
 			return []*artifacts.Artifact{}, err
 		}
-		artifactList = append(artifactList, &artifacts.Artifact{Kind: "PodInfo", Namespace: c.Namespace, Name: c.Name, RawResource: rawResource})
+		artifactList = append(artifactList, &artifacts.Artifact{Kind: "PodBomInfo", Namespace: c.Namespace, Name: c.Name, RawResource: rawResource})
 	}
 	for _, ni := range b.NodesInfo {
 		rawResource, err := rawResource(&ni)
 		if err != nil {
 			return []*artifacts.Artifact{}, err
 		}
-		artifactList = append(artifactList, &artifacts.Artifact{Kind: "NodeInfo", Name: ni.NodeName, RawResource: rawResource})
+		artifactList = append(artifactList, &artifacts.Artifact{Kind: "NodeBomInfo", Name: ni.NodeName, RawResource: rawResource})
 	}
 	cr, err := rawResource(&bom.Result{ID: b.ID, Type: "ClusterInfo", Version: b.Version, Properties: b.Properties})
-	artifactList = append(artifactList, &artifacts.Artifact{Kind: "ClusterInfo", Name: b.ID, RawResource: cr})
+	artifactList = append(artifactList, &artifacts.Artifact{Kind: "ClusterBomInfo", Name: b.ID, RawResource: cr})
 	return artifactList, err
 
 }

@@ -7,6 +7,7 @@ import (
 
 	"github.com/aquasecurity/trivy-kubernetes/pkg/bom"
 	"github.com/aquasecurity/trivy-kubernetes/pkg/k8s/docker"
+	"github.com/aquasecurity/trivy-kubernetes/utils"
 	containerimage "github.com/google/go-containerregistry/pkg/name"
 	ms "github.com/mitchellh/mapstructure"
 	corev1 "k8s.io/api/core/v1"
@@ -422,7 +423,7 @@ func (c *cluster) collectComponents(ctx context.Context, labels map[string]strin
 		for _, pod := range pods.Items {
 			containers := make([]bom.Container, 0)
 			for _, s := range pod.Status.ContainerStatuses {
-				imageName, err := containerimage.ParseReference(s.Image)
+				imageName, err := utils.ParseReference(s.Image)
 				if err != nil {
 					return nil, err
 				}
@@ -430,7 +431,7 @@ func (c *cluster) collectComponents(ctx context.Context, labels map[string]strin
 				if len(imageID) == 0 {
 					continue
 				}
-				imageRef, err := containerimage.ParseReference(imageID)
+				imageRef, err := utils.ParseReference(imageID)
 				if err != nil {
 					return nil, err
 				}

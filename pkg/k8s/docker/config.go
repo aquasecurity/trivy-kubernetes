@@ -7,7 +7,7 @@ import (
 	"net/url"
 	"strings"
 
-	containerimage "github.com/google/go-containerregistry/pkg/name"
+	"github.com/aquasecurity/trivy-kubernetes/utils"
 )
 
 type BasicAuth string
@@ -116,7 +116,7 @@ func (c Config) Write() ([]byte, error) {
 
 // GetServerFromImageRef returns registry server from the specified imageRef.
 func GetServerFromImageRef(imageRef string) (string, error) {
-	ref, err := containerimage.ParseReference(imageRef)
+	ref, err := utils.ParseReference(imageRef)
 	if err != nil {
 		return "", err
 	}

@@ -400,7 +400,7 @@ func NodeInfo(node v1.Node) bom.NodeInfo {
 		KubeletVersion:          node.Status.NodeInfo.KubeletVersion,
 		ContainerRuntimeVersion: node.Status.NodeInfo.ContainerRuntimeVersion,
 		OsImage:                 node.Status.NodeInfo.OSImage,
-		KubeProxyVersion:        node.Status.NodeInfo.KernelVersion,
+		KubeProxyVersion:        node.Status.NodeInfo.KubeProxyVersion,
 		Properties: map[string]string{
 			"NodeRole":        nodeRole,
 			"HostName":        node.ObjectMeta.Name,

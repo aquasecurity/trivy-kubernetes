@@ -11,6 +11,7 @@ import (
 	containerimage "github.com/google/go-containerregistry/pkg/name"
 	ms "github.com/mitchellh/mapstructure"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	k8sapierror "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -348,7 +349,7 @@ func (c *cluster) CreateClusterBom(ctx context.Context) (*bom.Result, error) {
 	return c.getClusterBomInfo(components, nodesInfo)
 }
 
-func (c *cluster) GetContainer(imageRef containerimage.Reference, imageName containerimage.Reference) (bom.Container, error) {
+func GetContainer(imageRef containerimage.Reference, imageName containerimage.Reference) (bom.Container, error) {
 	repoName := imageName.Context().RepositoryStr()
 	registryName := imageName.Context().RegistryStr()
 
@@ -368,13 +369,7 @@ func (c *cluster) CollectNodes(components []bom.Component) ([]bom.NodeInfo, erro
 	}
 	nodesInfo := make([]bom.NodeInfo, 0)
 	for _, node := range nodes.Items {
-		nodeRole := "worker"
-		if _, ok := node.Labels["node-role.kubernetes.io/control-plane"]; ok {
-			nodeRole = "master"
-		}
-		if _, ok := node.Labels["node-role.kubernetes.io/master"]; ok {
-			nodeRole = "master"
-		}
+		nf := NodeInfo(node)
 		images := make([]string, 0)
 		for _, image := range node.Status.Images {
 			for _, c := range components {
@@ -386,23 +381,34 @@ func (c *cluster) CollectNodes(components []bom.Component) ([]bom.NodeInfo, erro
 				}
 			}
 		}
-		nodesInfo = append(nodesInfo, bom.NodeInfo{
-			NodeName:                node.Name,
-			KubeletVersion:          node.Status.NodeInfo.KubeletVersion,
-			ContainerRuntimeVersion: node.Status.NodeInfo.ContainerRuntimeVersion,
-			OsImage:                 node.Status.NodeInfo.OSImage,
-			KubeProxyVersion:        node.Status.NodeInfo.KernelVersion,
-			Properties: map[string]string{
-				"NodeRole":        nodeRole,
-				"HostName":        node.ObjectMeta.Name,
-				"KernelVersion":   node.Status.NodeInfo.KernelVersion,
-				"OperatingSystem": node.Status.NodeInfo.OperatingSystem,
-				"Architecture":    node.Status.NodeInfo.Architecture,
-			},
-			Images: images,
-		})
+		nf.Images = images
+		nodesInfo = append(nodesInfo, nf)
 	}
 	return nodesInfo, nil
+}
+
+func NodeInfo(node v1.Node) bom.NodeInfo {
+	nodeRole := "worker"
+	if _, ok := node.Labels["node-role.kubernetes.io/control-plane"]; ok {
+		nodeRole = "master"
+	}
+	if _, ok := node.Labels["node-role.kubernetes.io/master"]; ok {
+		nodeRole = "master"
+	}
+	return bom.NodeInfo{
+		NodeName:                node.Name,
+		KubeletVersion:          node.Status.NodeInfo.KubeletVersion,
+		ContainerRuntimeVersion: node.Status.NodeInfo.ContainerRuntimeVersion,
+		OsImage:                 node.Status.NodeInfo.OSImage,
+		KubeProxyVersion:        node.Status.NodeInfo.KubeProxyVersion,
+		Properties: map[string]string{
+			"NodeRole":        nodeRole,
+			"HostName":        node.ObjectMeta.Name,
+			"KernelVersion":   node.Status.NodeInfo.KernelVersion,
+			"OperatingSystem": node.Status.NodeInfo.OperatingSystem,
+			"Architecture":    node.Status.NodeInfo.Architecture,
+		},
+	}
 }
 
 func getPodsInfo(ctx context.Context, clientset *kubernetes.Clientset, labelSelector string, namespace string) (*corev1.PodList, error) {
@@ -421,52 +427,60 @@ func (c *cluster) collectComponents(ctx context.Context, labels map[string]strin
 			continue
 		}
 		for _, pod := range pods.Items {
-			containers := make([]bom.Container, 0)
-			for _, s := range pod.Status.ContainerStatuses {
-				imageName, err := utils.ParseReference(s.Image)
-				if err != nil {
-					return nil, err
-				}
-				imageID := getImageID(s.ImageID, s.Image)
-				if len(imageID) == 0 {
-					continue
-				}
-				imageRef, err := utils.ParseReference(imageID)
-				if err != nil {
-					return nil, err
-				}
-				c, err := c.GetContainer(imageRef, imageName)
-				if err != nil {
-					continue
-				}
-				containers = append(containers, c)
+			pi, err := PodInfo(pod, labelSelector)
+			if err != nil {
+				continue
 			}
-			props := make(map[string]string)
-			componentValue, ok := pod.GetLabels()[labelSelector]
-			if ok {
-				props["Name"] = pod.Name
-			}
-
-			repoName := upstreamRepoByName(componentValue)
-			if val, ok := CoreComponentPropertyType[repoName]; ok {
-				props["Type"] = val
-			}
-			orgName := upstreamOrgByName(repoName)
-			upstreamComponentName := repoName
-			if len(orgName) > 0 {
-				upstreamComponentName = fmt.Sprintf("%s/%s", orgName, repoName)
-			}
-			version := trimString(findComponentVersion(containers, componentValue), []string{"v", "V"})
-			components = append(components, bom.Component{
-				Namespace:  pod.Namespace,
-				Name:       upstreamComponentName,
-				Version:    version,
-				Properties: props,
-				Containers: containers,
-			})
+			components = append(components, *pi)
 		}
 	}
 	return components, nil
+}
+
+func PodInfo(pod corev1.Pod, labelSelector string) (*bom.Component, error) {
+	containers := make([]bom.Container, 0)
+	for _, s := range pod.Status.ContainerStatuses {
+		imageName, err := utils.ParseReference(s.Image)
+		if err != nil {
+			return nil, err
+		}
+		imageID := getImageID(s.ImageID, s.Image)
+		if len(imageID) == 0 {
+			continue
+		}
+		imageRef, err := utils.ParseReference(imageID)
+		if err != nil {
+			return nil, err
+		}
+		co, err := GetContainer(imageRef, imageName)
+		if err != nil {
+			continue
+		}
+		containers = append(containers, co)
+	}
+	props := make(map[string]string)
+	componentValue, ok := pod.GetLabels()[labelSelector]
+	if ok {
+		props["Name"] = pod.Name
+	}
+
+	repoName := upstreamRepoByName(componentValue)
+	if val, ok := CoreComponentPropertyType[repoName]; ok {
+		props["Type"] = val
+	}
+	orgName := upstreamOrgByName(repoName)
+	upstreamComponentName := repoName
+	if len(orgName) > 0 {
+		upstreamComponentName = fmt.Sprintf("%s/%s", orgName, repoName)
+	}
+	version := trimString(findComponentVersion(containers, componentValue), []string{"v", "V"})
+	return &bom.Component{
+		Namespace:  pod.Namespace,
+		Name:       upstreamComponentName,
+		Version:    version,
+		Properties: props,
+		Containers: containers,
+	}, nil
 }
 
 func findComponentVersion(containers []bom.Container, name string) string {

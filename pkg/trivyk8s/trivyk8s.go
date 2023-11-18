@@ -217,12 +217,17 @@ func (c *client) ListArtifactAndNodeInfo(ctx context.Context, namespace string, 
 
 // ListBomInfo returns kubernetes Bom (node,core components and etc) information.
 func (c *client) ListBomInfo(ctx context.Context) ([]*artifacts.Artifact, error) {
-	artifactList := make([]*artifacts.Artifact, 0)
+
 	b, err := c.cluster.CreateClusterBom(ctx)
 	if err != nil {
 		return []*artifacts.Artifact{}, err
 	}
+	return BomToArtifacts(b)
 
+}
+
+func BomToArtifacts(b *bom.Result) ([]*artifacts.Artifact, error) {
+	artifactList := make([]*artifacts.Artifact, 0)
 	for _, c := range b.Components {
 		rawResource, err := rawResource(&c)
 		if err != nil {
@@ -238,9 +243,11 @@ func (c *client) ListBomInfo(ctx context.Context) ([]*artifacts.Artifact, error)
 		artifactList = append(artifactList, &artifacts.Artifact{Kind: "NodeComponents", Name: ni.NodeName, RawResource: rawResource})
 	}
 	cr, err := rawResource(&bom.Result{ID: b.ID, Type: "ClusterInfo", Version: b.Version, Properties: b.Properties})
+	if err != nil {
+		return []*artifacts.Artifact{}, err
+	}
 	artifactList = append(artifactList, &artifacts.Artifact{Kind: "Cluster", Name: b.ID, RawResource: cr})
-	return artifactList, err
-
+	return artifactList, nil
 }
 
 func rawResource(resource interface{}) (map[string]interface{}, error) {

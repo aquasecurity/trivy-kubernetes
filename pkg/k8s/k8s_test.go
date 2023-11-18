@@ -3,8 +3,12 @@ package k8s
 import (
 	"testing"
 
+	"github.com/aquasecurity/trivy-kubernetes/pkg/bom"
 	"github.com/stretchr/testify/assert"
+	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
@@ -107,4 +111,111 @@ func createValidTestConfig(namespace string) clientcmd.ClientConfig {
 	}
 
 	return clientcmd.NewNonInteractiveClientConfig(*config, "cluster1", &clientcmd.ConfigOverrides{}, nil)
+}
+
+func TestPodInfo(t *testing.T) {
+	tests := []struct {
+		Name          string
+		pod           corev1.Pod
+		labelSelector string
+		want          *bom.Component
+	}{
+		{
+			Name:          "pod with label",
+			labelSelector: "component",
+			pod: corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "pod1",
+					Namespace: "kube-system",
+					Labels:    map[string]string{"component": "kube-apiserver"},
+				},
+				Status: corev1.PodStatus{
+					ContainerStatuses: []corev1.ContainerStatus{{
+						Image:   "k8s.gcr.io/kube-apiserver:v1.21.1",
+						ImageID: "sha256:18e61c783b41758dd391ab901366ec3546b26fae00eef7e223d1f94da808e02f",
+					},
+					},
+				},
+			},
+			want: &bom.Component{
+				Namespace: "kube-system",
+				Name:      "k8s.io/apiserver",
+				Version:   "1.21.1",
+				Properties: map[string]string{
+					"Name": "pod1",
+					"Type": "controlPlane",
+				},
+				Containers: []bom.Container{
+					{
+						ID:         "kube-apiserver:v1.21.1",
+						Version:    "v1.21.1",
+						Repository: "kube-apiserver",
+						Registry:   "k8s.gcr.io",
+						Digest:     "18e61c783b41758dd391ab901366ec3546b26fae00eef7e223d1f94da808e02f",
+					},
+				},
+			},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.Name, func(t *testing.T) {
+			got, err := PodInfo(test.pod, test.labelSelector)
+			assert.NoError(t, err)
+			assert.Equal(t, got, test.want)
+		})
+	}
+}
+
+func TestNodeInfo(t *testing.T) {
+	tests := []struct {
+		Name          string
+		node          v1.Node
+		labelSelector string
+		want          bom.NodeInfo
+	}{
+		{
+			Name: "node info ",
+			node: v1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "node1",
+					Labels: map[string]string{
+						"component":                      "kube-apiserver",
+						"node-role.kubernetes.io/master": "",
+					},
+				},
+				Status: v1.NodeStatus{
+					NodeInfo: v1.NodeSystemInfo{
+						Architecture:            "amd64",
+						ContainerRuntimeVersion: "containerd://1.5.2",
+						KubeletVersion:          "v1.21.1",
+						KernelVersion:           "6.5.9-300.fc39.aarch64",
+						OperatingSystem:         "linux",
+						OSImage:                 "Ubuntu 21.04",
+						KubeProxyVersion:        "v1.21.1",
+					},
+				},
+			},
+
+			want: bom.NodeInfo{
+				NodeName:                "node1",
+				KubeletVersion:          "v1.21.1",
+				KubeProxyVersion:        "v1.21.1",
+				ContainerRuntimeVersion: "containerd://1.5.2",
+				OsImage:                 "Ubuntu 21.04",
+				Properties: map[string]string{
+					"NodeRole":        "master",
+					"HostName":        "node1",
+					"KernelVersion":   "6.5.9-300.fc39.aarch64",
+					"OperatingSystem": "linux",
+					"Architecture":    "amd64",
+				},
+			},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.Name, func(t *testing.T) {
+			got := NodeInfo(test.node)
+			assert.Equal(t, got, test.want)
+		})
+	}
 }

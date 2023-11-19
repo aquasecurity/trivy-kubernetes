@@ -249,7 +249,6 @@ func (jb *jobCollector) ApplyAndCollect(ctx context.Context, nodeName string) (s
 // Apply deploy k8s job by template to specific node and namespace (for operator use case)
 func (jb *jobCollector) Apply(ctx context.Context, nodeName string) (*batchv1.Job, error) {
 	job, err := GetJob(
-		WithNodeSelector(nodeName),
 		WithNamespace(jb.namespace),
 		WithLabels(jb.labels),
 		withPodSecurityContext(jb.podSecurityContext),

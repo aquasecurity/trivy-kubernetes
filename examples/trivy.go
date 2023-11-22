@@ -124,7 +124,7 @@ func main() {
 		fmt.Println(a.RawResource)
 	}
 
-	bi, err := trivyk8s.ListBomInfo(ctx)
+	bi, err := trivyk8s.ListClusterBomInfo(ctx)
 	if err != nil {
 		log.Fatal(err)
 	}

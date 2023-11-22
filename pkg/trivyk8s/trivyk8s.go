@@ -41,8 +41,8 @@ type ArtifactsK8S interface {
 	GetArtifact(context.Context, string, string) (*artifacts.Artifact, error)
 	// ListArtifactAndNodeInfo return kubernete scanable artifact and node info
 	ListArtifactAndNodeInfo(context.Context, string, map[string]string, ...corev1.Toleration) ([]*artifacts.Artifact, error)
-	// ListBomInfo returns kubernetes Bom (node,core components) information.
-	ListBomInfo(context.Context) ([]*artifacts.Artifact, error)
+	// ListClusterBomInfo returns kubernetes Bom (node,core components) information.
+	ListClusterBomInfo(context.Context) ([]*artifacts.Artifact, error)
 }
 
 type client struct {
@@ -156,11 +156,13 @@ func (c *client) ListArtifacts(ctx context.Context) ([]*artifacts.Artifact, erro
 			artifactList = append(artifactList, artifact)
 		}
 	}
-	bomArtifacts, err := c.ListBomInfo(ctx)
-	if err != nil {
-		return nil, err
+	if !namespaced {
+		bomArtifacts, err := c.ListClusterBomInfo(ctx)
+		if err != nil {
+			return nil, err
+		}
+		artifactList = append(artifactList, bomArtifacts...)
 	}
-	artifactList = append(artifactList, bomArtifacts...)
 	return artifactList, nil
 }
 
@@ -215,8 +217,8 @@ func (c *client) ListArtifactAndNodeInfo(ctx context.Context, namespace string, 
 	return artifactList, err
 }
 
-// ListBomInfo returns kubernetes Bom (node,core components and etc) information.
-func (c *client) ListBomInfo(ctx context.Context) ([]*artifacts.Artifact, error) {
+// ListClusterBomInfo returns kubernetes Bom (node,core components and etc) information.
+func (c *client) ListClusterBomInfo(ctx context.Context) ([]*artifacts.Artifact, error) {
 
 	b, err := c.cluster.CreateClusterBom(ctx)
 	if err != nil {

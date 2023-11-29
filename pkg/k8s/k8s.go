@@ -538,7 +538,7 @@ func (r *cluster) ListImagePullSecretsByPodSpec(ctx context.Context, spec *corev
 	imagePullSecrets := spec.ImagePullSecrets
 
 	sa, err := r.getServiceAccountByPodSpec(ctx, spec, ns)
-	if err != nil && !k8sapierror.IsNotFound(err) {
+	if err != nil && !k8sapierror.IsNotFound(err) && !k8sapierror.IsForbidden(err) {
 		return nil, err
 	}
 	imagePullSecrets = append(sa.ImagePullSecrets, imagePullSecrets...)
@@ -569,7 +569,7 @@ func (r *cluster) ListByLocalObjectReferences(ctx context.Context, refs []corev1
 	for _, secretRef := range refs {
 		secret, err := r.clientset.CoreV1().Secrets(ns).Get(ctx, secretRef.Name, metav1.GetOptions{})
 		if err != nil {
-			if k8sapierror.IsNotFound(err) {
+			if k8sapierror.IsNotFound(err) || k8sapierror.IsForbidden(err) {
 				continue
 			}
 			return nil, fmt.Errorf("getting secret by name: %s/%s: %w", ns, secretRef.Name, err)

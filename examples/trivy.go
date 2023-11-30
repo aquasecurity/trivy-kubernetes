@@ -30,9 +30,7 @@ func main() {
 
 	fmt.Println("Current namespace:", cluster.GetCurrentNamespace())
 
-	trivyk8sCopy := tk.New(cluster, logger.Sugar(), tk.WithExcludeOwned(true))
 	trivyk8s := tk.New(cluster, logger.Sugar(), tk.WithExcludeOwned(true))
-
 	fmt.Println("Scanning cluster")
 
 	//trivy k8s #cluster
@@ -51,13 +49,13 @@ func main() {
 
 	fmt.Println("Scanning namespace 'default'")
 	//trivy k8s --namespace default
-	artifacts, err = trivyk8sCopy.Namespace("default").ListArtifacts(ctx)
+	artifacts, err = trivyk8s.Namespace("default").ListArtifacts(ctx)
 	if err != nil {
 		log.Fatal(err)
 	}
 	printArtifacts(artifacts)
 	fmt.Println("Scanning all namespaces ")
-	artifacts, err = trivyk8sCopy.AllNamespaces().ListArtifacts(ctx)
+	artifacts, err = trivyk8s.AllNamespaces().ListArtifacts(ctx)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -66,7 +64,7 @@ func main() {
 	fmt.Println("Scanning namespace 'default', resource 'deployment/orion'")
 
 	//trivy k8s --namespace default deployment/orion
-	artifact, err := trivyk8sCopy.Namespace("default").GetArtifact(ctx, "deploy", "orion")
+	artifact, err := trivyk8s.Namespace("default").GetArtifact(ctx, "deploy", "orion")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -75,7 +73,7 @@ func main() {
 	fmt.Println("Scanning 'deployments'")
 
 	//trivy k8s deployment
-	artifacts, err = trivyk8sCopy.Namespace("default").Resources("deployment").ListArtifacts(ctx)
+	artifacts, err = trivyk8s.Namespace("default").Resources("deployment").ListArtifacts(ctx)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -83,7 +81,7 @@ func main() {
 
 	fmt.Println("Scanning 'cm,pods'")
 	//trivy k8s clusterroles,pods
-	artifacts, err = trivyk8sCopy.Namespace("default").Resources("cm,pods").ListArtifacts(ctx)
+	artifacts, err = trivyk8s.Namespace("default").Resources("cm,pods").ListArtifacts(ctx)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -113,7 +111,7 @@ func main() {
 	}
 
 	// collect node info
-	ar, err := trivyk8sCopy.ListArtifactAndNodeInfo(ctx, []tk.NodeCollectorOption{
+	ar, err := trivyk8s.ListArtifactAndNodeInfo(ctx, []tk.NodeCollectorOption{
 		tk.WithScanJobNamespace("trivy-temp"),
 		tk.WithIgnoreLabels(map[string]string{"chen": "test"}),
 		tk.WithTolerations(tolerations)}...)

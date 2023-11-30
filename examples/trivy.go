@@ -113,7 +113,7 @@ func main() {
 	}
 
 	// collect node info
-	ar, err := trivyk8sCopy.ListArtifactAndNodeInfo(ctx, []tk.ArtifactListOption{
+	ar, err := trivyk8sCopy.ListArtifactAndNodeInfo(ctx, []tk.NodeCollectorOption{
 		tk.WithScanJobNamespace("trivy-temp"),
 		tk.WithIgnoreLabels(map[string]string{"chen": "test"}),
 		tk.WithTolerations(tolerations)}...)

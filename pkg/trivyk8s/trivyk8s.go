@@ -40,7 +40,7 @@ type ArtifactsK8S interface {
 	// GetArtifact return kubernete scanable artifact
 	GetArtifact(context.Context, string, string) (*artifacts.Artifact, error)
 	// ListArtifactAndNodeInfo return kubernete scanable artifact and node info
-	ListArtifactAndNodeInfo(context.Context, ...ArtifactListOption) ([]*artifacts.Artifact, error)
+	ListArtifactAndNodeInfo(context.Context, ...NodeCollectorOption) ([]*artifacts.Artifact, error)
 	// ListClusterBomInfo returns kubernetes Bom (node,core components) information.
 	ListClusterBomInfo(context.Context) ([]*artifacts.Artifact, error)
 }
@@ -174,27 +174,27 @@ type scanJobParams struct {
 	imageRef         string
 }
 
-type ArtifactListOption func(*client)
+type NodeCollectorOption func(*client)
 
-func WithTolerations(toleration []corev1.Toleration) ArtifactListOption {
+func WithTolerations(toleration []corev1.Toleration) NodeCollectorOption {
 	return func(c *client) {
 		c.scanJobParams.toleration = toleration
 	}
 }
 
-func WithIgnoreLabels(ignoreLabels map[string]string) ArtifactListOption {
+func WithIgnoreLabels(ignoreLabels map[string]string) NodeCollectorOption {
 	return func(c *client) {
 		c.scanJobParams.ignoreLabels = ignoreLabels
 	}
 }
 
-func WithScanJobNamespace(namespace string) ArtifactListOption {
+func WithScanJobNamespace(namespace string) NodeCollectorOption {
 	return func(c *client) {
 		c.scanJobParams.scanJobNamespace = namespace
 	}
 }
 
-func WithScanJobImageRef(imageRef string) ArtifactListOption {
+func WithScanJobImageRef(imageRef string) NodeCollectorOption {
 	return func(c *client) {
 		c.scanJobParams.imageRef = imageRef
 	}
@@ -202,7 +202,7 @@ func WithScanJobImageRef(imageRef string) ArtifactListOption {
 
 // ListArtifacts returns kubernetes scannable artifacs.
 func (c *client) ListArtifactAndNodeInfo(ctx context.Context,
-	opts ...ArtifactListOption) ([]*artifacts.Artifact, error) {
+	opts ...NodeCollectorOption) ([]*artifacts.Artifact, error) {
 	for _, opt := range opts {
 		opt(c)
 	}

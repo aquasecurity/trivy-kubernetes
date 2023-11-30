@@ -7,7 +7,7 @@ import (
 
 	"github.com/aquasecurity/trivy-kubernetes/pkg/artifacts"
 	"github.com/aquasecurity/trivy-kubernetes/pkg/k8s"
-	"github.com/aquasecurity/trivy-kubernetes/pkg/trivyk8s"
+	tk "github.com/aquasecurity/trivy-kubernetes/pkg/trivyk8s"
 
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
@@ -30,8 +30,8 @@ func main() {
 
 	fmt.Println("Current namespace:", cluster.GetCurrentNamespace())
 
-	trivyk8sCopy := trivyk8s.New(cluster, logger.Sugar(), trivyk8s.WithExcludeOwned(true))
-	trivyk8s := trivyk8s.New(cluster, logger.Sugar(), trivyk8s.WithExcludeOwned(true))
+	trivyk8sCopy := tk.New(cluster, logger.Sugar(), tk.WithExcludeOwned(true))
+	trivyk8s := tk.New(cluster, logger.Sugar(), tk.WithExcludeOwned(true))
 
 	fmt.Println("Scanning cluster")
 
@@ -113,7 +113,10 @@ func main() {
 	}
 
 	// collect node info
-	ar, err := trivyk8sCopy.ListArtifactAndNodeInfo(ctx, "trivy-temp", map[string]string{"chen": "test"}, tolerations...)
+	ar, err := trivyk8sCopy.ListArtifactAndNodeInfo(ctx, []tk.ArtifactListOption{
+		tk.WithScanJobNamespace("trivy-temp"),
+		tk.WithIgnoreLabels(map[string]string{"chen": "test"}),
+		tk.WithTolerations(tolerations)}...)
 	if err != nil {
 		log.Fatal(err)
 	}

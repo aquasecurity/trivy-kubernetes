@@ -202,7 +202,10 @@ func WithScanJobImageRef(imageRef string) ArtifactListOption {
 
 // ListArtifacts returns kubernetes scannable artifacs.
 func (c *client) ListArtifactAndNodeInfo(ctx context.Context,
-	alo ...ArtifactListOption) ([]*artifacts.Artifact, error) {
+	opts ...ArtifactListOption) ([]*artifacts.Artifact, error) {
+	for _, opt := range opts {
+		opt(c)
+	}
 	artifactList, err := c.ListArtifacts(ctx)
 	if err != nil {
 		return nil, err

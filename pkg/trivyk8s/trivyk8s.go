@@ -40,7 +40,7 @@ type ArtifactsK8S interface {
 	// GetArtifact return kubernete scanable artifact
 	GetArtifact(context.Context, string, string) (*artifacts.Artifact, error)
 	// ListArtifactAndNodeInfo return kubernete scanable artifact and node info
-	ListArtifactAndNodeInfo(context.Context, string, map[string]string, ...corev1.Toleration) ([]*artifacts.Artifact, error)
+	ListArtifactAndNodeInfo(context.Context, ...NodeCollectorOption) ([]*artifacts.Artifact, error)
 	// ListClusterBomInfo returns kubernetes Bom (node,core components) information.
 	ListClusterBomInfo(context.Context) ([]*artifacts.Artifact, error)
 }
@@ -52,6 +52,7 @@ type client struct {
 	allNamespaces bool
 	logger        *zap.SugaredLogger
 	excludeOwned  bool
+	scanJobParams scanJobParams
 }
 
 type K8sOption func(*client)
@@ -166,8 +167,45 @@ func (c *client) ListArtifacts(ctx context.Context) ([]*artifacts.Artifact, erro
 	return artifactList, nil
 }
 
+type scanJobParams struct {
+	toleration       []corev1.Toleration
+	ignoreLabels     map[string]string
+	scanJobNamespace string
+	imageRef         string
+}
+
+type NodeCollectorOption func(*client)
+
+func WithTolerations(toleration []corev1.Toleration) NodeCollectorOption {
+	return func(c *client) {
+		c.scanJobParams.toleration = toleration
+	}
+}
+
+func WithIgnoreLabels(ignoreLabels map[string]string) NodeCollectorOption {
+	return func(c *client) {
+		c.scanJobParams.ignoreLabels = ignoreLabels
+	}
+}
+
+func WithScanJobNamespace(namespace string) NodeCollectorOption {
+	return func(c *client) {
+		c.scanJobParams.scanJobNamespace = namespace
+	}
+}
+
+func WithScanJobImageRef(imageRef string) NodeCollectorOption {
+	return func(c *client) {
+		c.scanJobParams.imageRef = imageRef
+	}
+}
+
 // ListArtifacts returns kubernetes scannable artifacs.
-func (c *client) ListArtifactAndNodeInfo(ctx context.Context, namespace string, ignoreLabels map[string]string, tolerations ...corev1.Toleration) ([]*artifacts.Artifact, error) {
+func (c *client) ListArtifactAndNodeInfo(ctx context.Context,
+	opts ...NodeCollectorOption) ([]*artifacts.Artifact, error) {
+	for _, opt := range opts {
+		opt(c)
+	}
 	artifactList, err := c.ListArtifacts(ctx)
 	if err != nil {
 		return nil, err
@@ -181,9 +219,10 @@ func (c *client) ListArtifactAndNodeInfo(ctx context.Context, namespace string, 
 		c.cluster,
 		jobs.WithTimetout(time.Minute*5),
 		jobs.WithJobTemplateName(jobs.NodeCollectorName),
-		jobs.WithJobNamespace(namespace),
+		jobs.WithJobNamespace(c.scanJobParams.scanJobNamespace),
 		jobs.WithJobLabels(labels),
-		jobs.WithJobTolerations(tolerations),
+		jobs.WithImageRef(c.scanJobParams.imageRef),
+		jobs.WithJobTolerations(c.scanJobParams.toleration),
 	)
 	// delete trivy namespace
 	defer jc.Cleanup(ctx)
@@ -193,7 +232,7 @@ func (c *client) ListArtifactAndNodeInfo(ctx context.Context, namespace string, 
 		if resource.Kind != "Node" {
 			continue
 		}
-		if ignoreNodeByLabel(resource, ignoreLabels) {
+		if ignoreNodeByLabel(resource, c.scanJobParams.ignoreLabels) {
 			continue
 		}
 

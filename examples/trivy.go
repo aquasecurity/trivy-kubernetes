@@ -9,6 +9,7 @@ import (
 	"github.com/aquasecurity/trivy-kubernetes/pkg/artifacts"
 	"github.com/aquasecurity/trivy-kubernetes/pkg/k8s"
 	"github.com/aquasecurity/trivy-kubernetes/pkg/trivyk8s"
+	tk "github.com/aquasecurity/trivy-kubernetes/pkg/trivyk8s"
 	"github.com/go-logr/logr"
 	"github.com/go-logr/logr/funcr"
 	"github.com/sirupsen/logrus"
@@ -144,7 +145,10 @@ func main() {
 	}
 
 	// collect node info
-	ar, err := trivyk8sGoLogr.ListArtifactAndNodeInfo(ctx, "trivy-temp", map[string]string{"chen": "test"}, tolerations...)
+	ar, err := trivyk8sGoLogr.ListArtifactAndNodeInfo(ctx, []tk.NodeCollectorOption{
+		tk.WithScanJobNamespace("trivy-temp"),
+		tk.WithIgnoreLabels(map[string]string{"chen": "test"}),
+		tk.WithTolerations(tolerations)}...)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -155,7 +159,7 @@ func main() {
 		fmt.Println(a.RawResource)
 	}
 
-	bi, err := trivyk8sZapSugar.ListBomInfo(ctx)
+	bi, err := trivyk8sZapSugar.ListClusterBomInfo(ctx)
 	if err != nil {
 		log.Fatal(err)
 	}

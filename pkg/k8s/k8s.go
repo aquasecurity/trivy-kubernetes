@@ -139,6 +139,21 @@ func WithKubeConfig(kubeConfig string) ClusterOption {
 	}
 }
 
+func WithQPS(qps float32) ClusterOption {
+	return func(o *genericclioptions.ConfigFlags) {
+		fmt.Println("Setting QPS to", qps)
+		o.WithDiscoveryQPS(qps)
+	}
+}
+
+// WithBurst sets the burst limit for the client
+func WithBurst(burst int) ClusterOption {
+	return func(o *genericclioptions.ConfigFlags) {
+		fmt.Println("Setting burst to", burst)
+		o.WithDiscoveryBurst(burst)
+	}
+}
+
 // GetCluster returns a current configured cluster,
 func GetCluster(opts ...ClusterOption) (Cluster, error) {
 	cf := genericclioptions.NewConfigFlags(true)
@@ -164,6 +179,35 @@ func getCluster(clientConfig clientcmd.ClientConfig, restMapper meta.RESTMapper,
 	if err != nil {
 		return nil, err
 	}
+
+	fmt.Println("kubeconfig QPS:", kubeConfig.QPS)
+	fmt.Println("kubeconfig Burst:", kubeConfig.Burst)
+
+	// kubeConfig.QPS = 2000
+	// kubeConfig.Burst = 2000
+	/* uncomment the above lines to manually set QPS and Burst
+	after manually setting QPS and Burst, your response time will be much faster
+
+	example output with WithQPS(2000) and WithBurst(2000) functions:
+		Setting burst to 2000
+		Setting QPS to 2000
+		kubeconfig QPS: 0 (qps and burst are reset to 0)
+		kubeconfig Burst: 0
+		Current namespace: default
+		Scanning cluster
+		Time taken: 2.057551041s
+		Name: coredns, Kind: Deployment, Namespace: kube-system, Images: [registry.k8s.io/coredns/coredns:v1.10.1]
+
+	example output after manually setting QPS and Burst:
+		Setting burst to 2000
+		Setting QPS to 2000
+		kubeconfig QPS: 2000 (manually set values)
+		kubeconfig Burst: 2000 (manually set values)
+		Current namespace: default
+		Scanning cluster
+		Time taken: 89.546083ms
+		Name: coredns, Kind: Deployment, Namespace: kube-system, Images: [registry.k8s.io/coredns/coredns:v1.10.1]
+	*/
 
 	k8sDynamicClient, err := dynamic.NewForConfig(kubeConfig)
 	if err != nil {

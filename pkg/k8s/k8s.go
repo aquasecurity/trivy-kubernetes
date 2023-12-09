@@ -151,19 +151,20 @@ func GetCluster(opts ...ClusterOption) (Cluster, error) {
 
 	clientConfig := cf.ToRawKubeConfigLoader()
 
+	kubeConfig, err := cf.ToRESTConfig()
+	if err != nil {
+		return nil, err
+	}
+
 	restMapper, err := cf.ToRESTMapper()
 	if err != nil {
 		return nil, err
 	}
 
-	return getCluster(clientConfig, restMapper, *cf.Context, false)
+	return getCluster(clientConfig, kubeConfig, restMapper, *cf.Context, false)
 }
 
-func getCluster(clientConfig clientcmd.ClientConfig, restMapper meta.RESTMapper, currentContext string, fakeConfig bool) (*cluster, error) {
-	kubeConfig, err := clientConfig.ClientConfig()
-	if err != nil {
-		return nil, err
-	}
+func getCluster(clientConfig clientcmd.ClientConfig, kubeConfig *rest.Config, restMapper meta.RESTMapper, currentContext string, fakeConfig bool) (*cluster, error) {
 
 	k8sDynamicClient, err := dynamic.NewForConfig(kubeConfig)
 	if err != nil {

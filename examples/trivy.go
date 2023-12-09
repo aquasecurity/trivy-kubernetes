@@ -4,10 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/aquasecurity/trivy-kubernetes/pkg/artifacts"
 	"github.com/aquasecurity/trivy-kubernetes/pkg/k8s"
 	tk "github.com/aquasecurity/trivy-kubernetes/pkg/trivyk8s"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
+	"k8s.io/client-go/rest"
 
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
@@ -16,6 +19,16 @@ import (
 	"context"
 )
 
+func WithQPSBurst(qps float32, burst int) k8s.ClusterOption {
+	return func(o *genericclioptions.ConfigFlags) {
+		o.WrapConfigFn = func(c *rest.Config) *rest.Config {
+			c.QPS = qps
+			c.Burst = burst
+			return c
+		}
+	}
+}
+
 func main() {
 
 	logger, _ := zap.NewProduction()
@@ -23,7 +36,7 @@ func main() {
 
 	ctx := context.Background()
 
-	cluster, err := k8s.GetCluster()
+	cluster, err := k8s.GetCluster(WithQPSBurst(10000, 10000))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -34,10 +47,13 @@ func main() {
 	fmt.Println("Scanning cluster")
 
 	//trivy k8s #cluster
+	start := time.Now()
 	artifacts, err := trivyk8s.ListArtifacts(ctx)
+	end := time.Now()
 	if err != nil {
 		log.Fatal(err)
 	}
+	fmt.Printf("Scan took %v\n", end.Sub(start))
 	printArtifacts(artifacts)
 
 	fmt.Println("Scanning kind 'pods' with exclude-owned=true")

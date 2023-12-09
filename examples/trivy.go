@@ -19,13 +19,34 @@ import (
 	"context"
 )
 
-func WithQPSBurst(qps float32, burst int) k8s.ClusterOption {
+func WithQPS(qps float32) k8s.ClusterOption {
 	return func(o *genericclioptions.ConfigFlags) {
-		o.WrapConfigFn = func(c *rest.Config) *rest.Config {
+		o.WrapConfigFn = combineConfigFns(o.WrapConfigFn, func(c *rest.Config) *rest.Config {
 			c.QPS = qps
+			return c
+		})
+	}
+}
+
+func WithBurst(burst int) k8s.ClusterOption {
+	return func(o *genericclioptions.ConfigFlags) {
+		o.WrapConfigFn = combineConfigFns(o.WrapConfigFn, func(c *rest.Config) *rest.Config {
 			c.Burst = burst
 			return c
+		})
+	}
+}
+
+// Helper function to combine multiple config functions
+func combineConfigFns(existing, newFn func(*rest.Config) *rest.Config) func(*rest.Config) *rest.Config {
+	if existing == nil {
+		return newFn
+	}
+	return func(c *rest.Config) *rest.Config {
+		if modified := existing(c); modified != nil {
+			return newFn(modified)
 		}
+		return newFn(c)
 	}
 }
 
@@ -36,7 +57,7 @@ func main() {
 
 	ctx := context.Background()
 
-	cluster, err := k8s.GetCluster(WithQPSBurst(10000, 10000))
+	cluster, err := k8s.GetCluster(WithBurst(100), WithQPS(100))
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -151,12 +151,12 @@ func GetCluster(opts ...ClusterOption) (Cluster, error) {
 
 	clientConfig := cf.ToRawKubeConfigLoader()
 
-	kubeConfig, err := cf.ToRESTConfig()
+	restMapper, err := cf.ToRESTMapper()
 	if err != nil {
 		return nil, err
 	}
 
-	restMapper, err := cf.ToRESTMapper()
+	kubeConfig, err := cf.ToRESTConfig()
 	if err != nil {
 		return nil, err
 	}

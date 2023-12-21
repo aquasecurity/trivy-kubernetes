@@ -1,0 +1,16 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: node-collector-rb
+  labels:
+    app.kubernetes.io/version: 0.17.1
+    app.kubernetes.io/managed-by: kubectl
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: node-collector-cr
+subjects:
+  - kind: ServiceAccount
+    name: node-collector-sa
+    namespace: trivy-temp

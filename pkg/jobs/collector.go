@@ -185,6 +185,34 @@ type ObjectRef struct {
 // ApplyAndCollect deploy k8s job by template to  specific node  and namespace, it read pod logs
 // cleaning up job and returning it output (for cli use-case)
 func (jb *jobCollector) ApplyAndCollect(ctx context.Context, nodeName string) (string, error) {
+
+	_, err := jb.getTrivyNamespace(ctx)
+	if err != nil {
+		if k8sapierror.IsNotFound(err) {
+			trivyNamespace := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: jb.namespace}}
+			_, err = jb.cluster.GetK8sClientSet().CoreV1().Namespaces().Create(ctx, trivyNamespace, metav1.CreateOptions{})
+			if err != nil {
+				return "", err
+			}
+		}
+	}
+	cr, rb, sa, err := GetAuth(WithServiceAccountNamespace(jb.namespace))
+	if err != nil {
+		return "", fmt.Errorf("running node-collector job: %w", err)
+	}
+	_, err = jb.cluster.GetK8sClientSet().RbacV1().ClusterRoles().Create(ctx, cr, metav1.CreateOptions{})
+	if err != nil {
+		return "", fmt.Errorf("creating cluster role: %w", err)
+	}
+	_, err = jb.cluster.GetK8sClientSet().CoreV1().ServiceAccounts(jb.namespace).Create(ctx, sa, metav1.CreateOptions{})
+	if err != nil {
+		return "", fmt.Errorf("creating service account: %w", err)
+	}
+	_, err = jb.cluster.GetK8sClientSet().RbacV1().ClusterRoleBindings().Create(ctx, rb, metav1.CreateOptions{})
+	if err != nil {
+		return "", fmt.Errorf("creating role binding: %w", err)
+	}
+
 	job, err := GetJob(
 		WithTemplate(jb.templateName),
 		WithNamespace(jb.namespace),
@@ -211,22 +239,21 @@ func (jb *jobCollector) ApplyAndCollect(ctx context.Context, nodeName string) (s
 		return "", fmt.Errorf("running node-collector job: %w", err)
 	}
 
-	_, err = jb.getTrivyNamespace(ctx)
-	if err != nil {
-		if k8sapierror.IsNotFound(err) {
-			trivyNamespace := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: jb.namespace}}
-			_, err = jb.cluster.GetK8sClientSet().CoreV1().Namespaces().Create(ctx, trivyNamespace, metav1.CreateOptions{})
-			if err != nil {
-				return "", err
-			}
-		}
-	}
 	err = New(WithTimeout(jb.timeout)).Run(ctx, NewRunnableJob(jb.cluster.GetK8sClientSet(), job))
 	if err != nil {
 		return "", fmt.Errorf("running node-collector job: %w", err)
 	}
 	defer func() {
 		background := metav1.DeletePropagationBackground
+		_ = jb.cluster.GetK8sClientSet().RbacV1().ClusterRoleBindings().Delete(ctx, roleBinding, metav1.DeleteOptions{
+			PropagationPolicy: &background,
+		})
+		_ = jb.cluster.GetK8sClientSet().RbacV1().ClusterRoles().Delete(ctx, clusterRole, metav1.DeleteOptions{
+			PropagationPolicy: &background,
+		})
+		_ = jb.cluster.GetK8sClientSet().CoreV1().ServiceAccounts(job.Namespace).Delete(ctx, serviceAccount, metav1.DeleteOptions{
+			PropagationPolicy: &background,
+		})
 		_ = jb.cluster.GetK8sClientSet().BatchV1().Jobs(job.Namespace).Delete(ctx, job.Name, metav1.DeleteOptions{
 			PropagationPolicy: &background,
 		})
@@ -255,6 +282,7 @@ func (jb *jobCollector) Apply(ctx context.Context, nodeName string) (*batchv1.Jo
 		withSecurityContext(jb.securityContext),
 		WithTolerations(jb.tolerations),
 		WithJobServiceAccount(jb.serviceAccount),
+		WithNodeSelector(nodeName),
 		WithNodeCollectorImageRef(jb.imageRef),
 		WithAnnotation(jb.annotation),
 		WithTemplate(jb.templateName),

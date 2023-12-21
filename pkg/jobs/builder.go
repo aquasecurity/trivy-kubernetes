@@ -143,7 +143,9 @@ func (b *JobBuilder) build() (*batchv1.Job, error) {
 	if len(b.imageRef) > 0 {
 		job.Spec.Template.Spec.Containers[0].Image = b.imageRef
 	}
-
+	if len(b.nodeSelector) > 0 {
+		job.Spec.Template.Spec.Containers[0].Args = append(job.Spec.Template.Spec.Containers[0].Args, "--node", b.nodeSelector)
+	}
 	if b.nodeSelector != "" {
 		job.Spec.Template.Spec.NodeSelector = map[string]string{
 			corev1.LabelHostname: b.nodeSelector,

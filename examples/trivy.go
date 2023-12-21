@@ -1,7 +1,7 @@
 package main
 
 import (
-	//"encoding/json"
+	"encoding/json"
 	"fmt"
 	"log"
 
@@ -124,21 +124,16 @@ func main() {
 		}
 		fmt.Println(a.RawResource)
 	}
-	/*
-	   bi, err := trivyk8s.ListClusterBomInfo(ctx)
 
-	   	if err != nil {
-	   		log.Fatal(err)
-	   	}
-
-	   bb, err := json.Marshal(bi)
-
-	   	if err != nil {
-	   		log.Fatal(err)
-	   	}
-
-	   fmt.Print(string(bb))
-	*/
+	bi, err := trivyk8s.ListClusterBomInfo(ctx)
+	if err != nil {
+		log.Fatal(err)
+	}
+	bb, err := json.Marshal(bi)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Print(string(bb))
 }
 
 func printArtifacts(artifacts []*artifacts.Artifact) {

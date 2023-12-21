@@ -218,7 +218,7 @@ func (jb *jobCollector) ApplyAndCollect(ctx context.Context, nodeName string) (s
 		WithNamespace(jb.namespace),
 		WithNodeSelector(nodeName),
 		WithAnnotation(jb.annotation),
-		WithJobServiceAccount(jb.serviceAccount),
+		WithJobServiceAccount(serviceAccount),
 		WithLabels(jb.labels),
 		withSecurityContext(jb.securityContext),
 		withPodSecurityContext(jb.podSecurityContext),

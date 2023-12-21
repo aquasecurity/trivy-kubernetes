@@ -32,61 +32,61 @@ func main() {
 
 	trivyk8s := tk.New(cluster, logger.Sugar(), tk.WithExcludeOwned(true))
 	fmt.Println("Scanning cluster")
-	/*
-		//trivy k8s #cluster
-		artifacts, err := trivyk8s.ListArtifacts(ctx)
-		if err != nil {
-			log.Fatal(err)
-		}
-		printArtifacts(artifacts)
 
-		fmt.Println("Scanning kind 'pods' with exclude-owned=true")
-		artifacts, err = trivyk8s.Resources("pod").AllNamespaces().ListArtifacts(ctx)
-		if err != nil {
-			log.Fatal(err)
-		}
-		printArtifacts(artifacts)
+	//trivy k8s #cluster
+	artifacts, err := trivyk8s.ListArtifacts(ctx)
+	if err != nil {
+		log.Fatal(err)
+	}
+	printArtifacts(artifacts)
 
-		fmt.Println("Scanning namespace 'default'")
-		//trivy k8s --namespace default
-		artifacts, err = trivyk8s.Namespace("default").ListArtifacts(ctx)
-		if err != nil {
-			log.Fatal(err)
-		}
-		printArtifacts(artifacts)
-		fmt.Println("Scanning all namespaces ")
-		artifacts, err = trivyk8s.AllNamespaces().ListArtifacts(ctx)
-		if err != nil {
-			log.Fatal(err)
-		}
-		printArtifacts(artifacts)
+	fmt.Println("Scanning kind 'pods' with exclude-owned=true")
+	artifacts, err = trivyk8s.Resources("pod").AllNamespaces().ListArtifacts(ctx)
+	if err != nil {
+		log.Fatal(err)
+	}
+	printArtifacts(artifacts)
 
-		fmt.Println("Scanning namespace 'default', resource 'deployment/orion'")
+	fmt.Println("Scanning namespace 'default'")
+	//trivy k8s --namespace default
+	artifacts, err = trivyk8s.Namespace("default").ListArtifacts(ctx)
+	if err != nil {
+		log.Fatal(err)
+	}
+	printArtifacts(artifacts)
+	fmt.Println("Scanning all namespaces ")
+	artifacts, err = trivyk8s.AllNamespaces().ListArtifacts(ctx)
+	if err != nil {
+		log.Fatal(err)
+	}
+	printArtifacts(artifacts)
 
-		//trivy k8s --namespace default deployment/orion
-		artifact, err := trivyk8s.Namespace("default").GetArtifact(ctx, "deploy", "orion")
-		if err != nil {
-			log.Fatal(err)
-		}
-		printArtifact(artifact)
+	fmt.Println("Scanning namespace 'default', resource 'deployment/orion'")
 
-		fmt.Println("Scanning 'deployments'")
+	//trivy k8s --namespace default deployment/orion
+	artifact, err := trivyk8s.Namespace("default").GetArtifact(ctx, "deploy", "orion")
+	if err != nil {
+		log.Fatal(err)
+	}
+	printArtifact(artifact)
 
-		//trivy k8s deployment
-		artifacts, err = trivyk8s.Namespace("default").Resources("deployment").ListArtifacts(ctx)
-		if err != nil {
-			log.Fatal(err)
-		}
-		printArtifacts(artifacts)
+	fmt.Println("Scanning 'deployments'")
 
-		fmt.Println("Scanning 'cm,pods'")
-		//trivy k8s clusterroles,pods
-		artifacts, err = trivyk8s.Namespace("default").Resources("cm,pods").ListArtifacts(ctx)
-		if err != nil {
-			log.Fatal(err)
-		}
-		printArtifacts(artifacts)
-	*/
+	//trivy k8s deployment
+	artifacts, err = trivyk8s.Namespace("default").Resources("deployment").ListArtifacts(ctx)
+	if err != nil {
+		log.Fatal(err)
+	}
+	printArtifacts(artifacts)
+
+	fmt.Println("Scanning 'cm,pods'")
+	//trivy k8s clusterroles,pods
+	artifacts, err = trivyk8s.Namespace("default").Resources("cm,pods").ListArtifacts(ctx)
+	if err != nil {
+		log.Fatal(err)
+	}
+	printArtifacts(artifacts)
+
 	tolerations := []corev1.Toleration{
 		{
 			Effect:   corev1.TaintEffectNoSchedule,

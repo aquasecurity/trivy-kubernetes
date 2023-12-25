@@ -11,7 +11,7 @@ import (
 
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 
 	"context"
 )
@@ -100,13 +100,13 @@ func main() {
 			Effect:            corev1.TaintEffectNoExecute,
 			Key:               "node.kubernetes.io/not-ready",
 			Operator:          corev1.TolerationOperator(corev1.NodeSelectorOpExists),
-			TolerationSeconds: pointer.Int64(300),
+			TolerationSeconds: ptr.To[int64](300),
 		},
 		{
 			Effect:            corev1.TaintEffectNoExecute,
 			Key:               "node.kubernetes.io/unreachable",
 			Operator:          corev1.TolerationOperator(corev1.NodeSelectorOpExists),
-			TolerationSeconds: pointer.Int64(300),
+			TolerationSeconds: ptr.To[int64](300),
 		},
 	}
 

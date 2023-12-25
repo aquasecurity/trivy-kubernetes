@@ -49,6 +49,7 @@ type jobCollector struct {
 	volumes              []corev1.Volume
 	volumeMounts         []corev1.VolumeMount
 	imagePullSecrets     []corev1.LocalObjectReference
+	collectorTimeout     time.Duration
 	resourceRequirements *corev1.ResourceRequirements
 }
 
@@ -154,6 +155,12 @@ func WithPodImagePullSecrets(imagePullSecrets []corev1.LocalObjectReference) Col
 	}
 }
 
+func WithCollectorTimeout(timeout time.Duration) CollectorOption {
+	return func(jc *jobCollector) {
+		jc.collectorTimeout = timeout
+	}
+}
+
 func NewCollector(
 	cluster k8s.Cluster,
 	opts ...CollectorOption,
@@ -220,6 +227,7 @@ func (jb *jobCollector) ApplyAndCollect(ctx context.Context, nodeName string) (s
 		WithAnnotation(jb.annotation),
 		WithJobServiceAccount(serviceAccount),
 		WithLabels(jb.labels),
+		WithJobTimeout(jb.timeout),
 		withSecurityContext(jb.securityContext),
 		withPodSecurityContext(jb.podSecurityContext),
 		WithNodeCollectorImageRef(jb.imageRef),
@@ -283,6 +291,7 @@ func (jb *jobCollector) Apply(ctx context.Context, nodeName string) (*batchv1.Jo
 		WithTolerations(jb.tolerations),
 		WithJobServiceAccount(jb.serviceAccount),
 		WithNodeSelector(nodeName),
+		WithJobTimeout(jb.timeout),
 		WithNodeCollectorImageRef(jb.imageRef),
 		WithAnnotation(jb.annotation),
 		WithTemplate(jb.templateName),

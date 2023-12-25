@@ -1,8 +1,11 @@
 package jobs
 
 import (
+	"time"
+
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/yaml"
 )
 
@@ -100,6 +103,11 @@ func WithResourceRequirements(rr *corev1.ResourceRequirements) JobOption {
 		j.resourceRequirements = rr
 	}
 }
+func WithJobTimeout(timeout time.Duration) JobOption {
+	return func(j *JobBuilder) {
+		j.timeout = timeout
+	}
+}
 
 func GetJob(opts ...JobOption) (*batchv1.Job, error) {
 	jb := &JobBuilder{}
@@ -126,6 +134,7 @@ type JobBuilder struct {
 	volumeMounts         []corev1.VolumeMount
 	imagePullSecrets     []corev1.LocalObjectReference
 	resourceRequirements *corev1.ResourceRequirements
+	timeout              time.Duration
 }
 
 func (b *JobBuilder) build() (*batchv1.Job, error) {
@@ -176,6 +185,9 @@ func (b *JobBuilder) build() (*batchv1.Job, error) {
 	}
 	if b.podSecurityContext != nil {
 		job.Spec.Template.Spec.SecurityContext = b.podSecurityContext
+	}
+	if b.timeout > 0 {
+		job.Spec.ActiveDeadlineSeconds = ptr.To[int64](int64(b.timeout.Seconds()))
 	}
 	if b.securityContext != nil {
 		job.Spec.Template.Spec.Containers[0].SecurityContext = b.securityContext

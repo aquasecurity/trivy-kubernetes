@@ -9,7 +9,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 )
 
 func TestLoadBuilder(t *testing.T) {
@@ -27,14 +27,17 @@ func TestLoadBuilder(t *testing.T) {
 				},
 				ObjectMeta: v1.ObjectMeta{Name: "node-collector"},
 				Spec: batchv1.JobSpec{
+					ActiveDeadlineSeconds: ptr.To[int64](300),
+					BackoffLimit:          ptr.To[int32](0),
+					Completions:           ptr.To[int32](1),
 					Template: corev1.PodTemplateSpec{
 						ObjectMeta: v1.ObjectMeta{Labels: map[string]string{"app": "node-collector"}},
 						Spec: corev1.PodSpec{
 							DNSPolicy:                    corev1.DNSClusterFirst,
-							AutomountServiceAccountToken: pointer.Bool(true),
+							AutomountServiceAccountToken: ptr.To[bool](true),
 							SecurityContext: &corev1.PodSecurityContext{
-								RunAsGroup: pointer.Int64(0),
-								RunAsUser:  pointer.Int64(0),
+								RunAsGroup: ptr.To[int64](0),
+								RunAsUser:  ptr.To[int64](0),
 								SeccompProfile: &corev1.SeccompProfile{
 									Type: corev1.SeccompProfileTypeRuntimeDefault,
 								},
@@ -53,14 +56,14 @@ func TestLoadBuilder(t *testing.T) {
 										},
 									},
 									SecurityContext: &corev1.SecurityContext{
-										AllowPrivilegeEscalation: pointer.Bool(false),
+										AllowPrivilegeEscalation: ptr.To[bool](false),
 										Capabilities: &corev1.Capabilities{
 											Drop: []corev1.Capability{
 												"all",
 											},
 										},
-										Privileged:             pointer.Bool(false),
-										ReadOnlyRootFilesystem: pointer.Bool(true),
+										Privileged:             ptr.To[bool](false),
+										ReadOnlyRootFilesystem: ptr.To[bool](true),
 									},
 									Name:    "node-collector",
 									Image:   "ghcr.io/aquasecurity/node-collector:0.1.1",

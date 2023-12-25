@@ -13,7 +13,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog/v2"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 )
 
 var defaultResyncDuration = 30 * time.Minute
@@ -126,7 +126,7 @@ func (r *runnableJob) logTerminatedContainersErrors(ctx context.Context) {
 
 func GetActiveDeadlineSeconds(d time.Duration) *int64 {
 	if d > 0 {
-		return pointer.Int64(int64(d.Seconds()))
+		return ptr.To[int64](int64(d.Seconds()))
 	}
 	return nil
 }

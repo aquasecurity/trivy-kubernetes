@@ -4,6 +4,9 @@ kind: Job
 metadata:
   name: node-collector
 spec:
+  activeDeadlineSeconds: 300
+  backoffLimit: 0
+  completions: 1
   template:
     metadata:
       labels:

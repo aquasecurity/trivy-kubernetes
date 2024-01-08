@@ -138,6 +138,36 @@ func WithKubeConfig(kubeConfig string) ClusterOption {
 		c.KubeConfig = &kubeConfig
 	}
 }
+func WithQPS(qps float32) ClusterOption {
+	return func(o *genericclioptions.ConfigFlags) {
+		o.WrapConfigFn = combineConfigFns(o.WrapConfigFn, func(c *rest.Config) *rest.Config {
+			c.QPS = qps
+			return c
+		})
+	}
+}
+
+func WithBurst(burst int) ClusterOption {
+	return func(o *genericclioptions.ConfigFlags) {
+		o.WrapConfigFn = combineConfigFns(o.WrapConfigFn, func(c *rest.Config) *rest.Config {
+			c.Burst = burst
+			return c
+		})
+	}
+}
+
+// Helper function to combine multiple config functions
+func combineConfigFns(existing, newFn func(*rest.Config) *rest.Config) func(*rest.Config) *rest.Config {
+	if existing == nil {
+		return newFn
+	}
+	return func(c *rest.Config) *rest.Config {
+		if modified := existing(c); modified != nil {
+			return newFn(modified)
+		}
+		return newFn(c)
+	}
+}
 
 // GetCluster returns a current configured cluster,
 func GetCluster(opts ...ClusterOption) (Cluster, error) {

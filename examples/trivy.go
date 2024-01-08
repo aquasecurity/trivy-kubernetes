@@ -9,8 +9,6 @@ import (
 	"github.com/aquasecurity/trivy-kubernetes/pkg/artifacts"
 	"github.com/aquasecurity/trivy-kubernetes/pkg/k8s"
 	tk "github.com/aquasecurity/trivy-kubernetes/pkg/trivyk8s"
-	"k8s.io/cli-runtime/pkg/genericclioptions"
-	"k8s.io/client-go/rest"
 
 	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
@@ -19,37 +17,6 @@ import (
 	"context"
 )
 
-func WithQPS(qps float32) k8s.ClusterOption {
-	return func(o *genericclioptions.ConfigFlags) {
-		o.WrapConfigFn = combineConfigFns(o.WrapConfigFn, func(c *rest.Config) *rest.Config {
-			c.QPS = qps
-			return c
-		})
-	}
-}
-
-func WithBurst(burst int) k8s.ClusterOption {
-	return func(o *genericclioptions.ConfigFlags) {
-		o.WrapConfigFn = combineConfigFns(o.WrapConfigFn, func(c *rest.Config) *rest.Config {
-			c.Burst = burst
-			return c
-		})
-	}
-}
-
-// Helper function to combine multiple config functions
-func combineConfigFns(existing, newFn func(*rest.Config) *rest.Config) func(*rest.Config) *rest.Config {
-	if existing == nil {
-		return newFn
-	}
-	return func(c *rest.Config) *rest.Config {
-		if modified := existing(c); modified != nil {
-			return newFn(modified)
-		}
-		return newFn(c)
-	}
-}
-
 func main() {
 
 	logger, _ := zap.NewProduction()
@@ -57,7 +24,7 @@ func main() {
 
 	ctx := context.Background()
 
-	cluster, err := k8s.GetCluster(WithBurst(100), WithQPS(100))
+	cluster, err := k8s.GetCluster(k8s.WithBurst(1), k8s.WithQPS(1))
 	if err != nil {
 		log.Fatal(err)
 	}

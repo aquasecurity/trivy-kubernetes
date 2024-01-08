@@ -24,7 +24,7 @@ func main() {
 
 	ctx := context.Background()
 
-	cluster, err := k8s.GetCluster(k8s.WithBurst(1), k8s.WithQPS(1))
+	cluster, err := k8s.GetCluster(k8s.WithBurst(100), k8s.WithQPS(100))
 	if err != nil {
 		log.Fatal(err)
 	}

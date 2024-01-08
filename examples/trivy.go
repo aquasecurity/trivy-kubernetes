@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/aquasecurity/trivy-kubernetes/pkg/artifacts"
 	"github.com/aquasecurity/trivy-kubernetes/pkg/k8s"
@@ -23,7 +24,7 @@ func main() {
 
 	ctx := context.Background()
 
-	cluster, err := k8s.GetCluster()
+	cluster, err := k8s.GetCluster(k8s.WithBurst(100), k8s.WithQPS(100))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -34,10 +35,13 @@ func main() {
 	fmt.Println("Scanning cluster")
 
 	//trivy k8s #cluster
+	start := time.Now()
 	artifacts, err := trivyk8s.ListArtifacts(ctx)
+	end := time.Now()
 	if err != nil {
 		log.Fatal(err)
 	}
+	fmt.Printf("Scan took %v\n", end.Sub(start))
 	printArtifacts(artifacts)
 
 	fmt.Println("Scanning kind 'pods' with exclude-owned=true")

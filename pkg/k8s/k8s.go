@@ -138,6 +138,36 @@ func WithKubeConfig(kubeConfig string) ClusterOption {
 		c.KubeConfig = &kubeConfig
 	}
 }
+func WithQPS(qps float32) ClusterOption {
+	return func(o *genericclioptions.ConfigFlags) {
+		o.WrapConfigFn = combineConfigFns(o.WrapConfigFn, func(c *rest.Config) *rest.Config {
+			c.QPS = qps
+			return c
+		})
+	}
+}
+
+func WithBurst(burst int) ClusterOption {
+	return func(o *genericclioptions.ConfigFlags) {
+		o.WrapConfigFn = combineConfigFns(o.WrapConfigFn, func(c *rest.Config) *rest.Config {
+			c.Burst = burst
+			return c
+		})
+	}
+}
+
+// Helper function to combine multiple config functions
+func combineConfigFns(existing, newFn func(*rest.Config) *rest.Config) func(*rest.Config) *rest.Config {
+	if existing == nil {
+		return newFn
+	}
+	return func(c *rest.Config) *rest.Config {
+		if modified := existing(c); modified != nil {
+			return newFn(modified)
+		}
+		return newFn(c)
+	}
+}
 
 // GetCluster returns a current configured cluster,
 func GetCluster(opts ...ClusterOption) (Cluster, error) {
@@ -156,14 +186,15 @@ func GetCluster(opts ...ClusterOption) (Cluster, error) {
 		return nil, err
 	}
 
-	return getCluster(clientConfig, restMapper, *cf.Context, false)
-}
-
-func getCluster(clientConfig clientcmd.ClientConfig, restMapper meta.RESTMapper, currentContext string, fakeConfig bool) (*cluster, error) {
-	kubeConfig, err := clientConfig.ClientConfig()
+	kubeConfig, err := cf.ToRESTConfig()
 	if err != nil {
 		return nil, err
 	}
+
+	return getCluster(clientConfig, kubeConfig, restMapper, *cf.Context, false)
+}
+
+func getCluster(clientConfig clientcmd.ClientConfig, kubeConfig *rest.Config, restMapper meta.RESTMapper, currentContext string, fakeConfig bool) (*cluster, error) {
 
 	k8sDynamicClient, err := dynamic.NewForConfig(kubeConfig)
 	if err != nil {

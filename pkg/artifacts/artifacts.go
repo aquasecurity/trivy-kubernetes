@@ -1,6 +1,8 @@
 package artifacts
 
 import (
+	"fmt"
+
 	"github.com/aquasecurity/trivy-kubernetes/pkg/k8s"
 	"github.com/aquasecurity/trivy-kubernetes/pkg/k8s/docker"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -27,7 +29,7 @@ func FromResource(resource unstructured.Unstructured, serverAuths map[string]doc
 	for _, t := range cTypes {
 		cTypeImages, err := extractImages(resource, append(nestedKeys, t))
 		if err != nil {
-			return nil, err
+			continue
 		}
 		images = append(images, cTypeImages...)
 		for _, im := range cTypeImages {
@@ -40,7 +42,9 @@ func FromResource(resource unstructured.Unstructured, serverAuths map[string]doc
 			}
 		}
 	}
-
+	if len(images) == 0 {
+		return nil, fmt.Errorf("no images found in %s/%s", resource.GetNamespace(), resource.GetName())
+	}
 	// we don't check found here, if the name is not found it will be an empty string
 	name, _, err := unstructured.NestedString(resource.Object, "metadata", "name")
 	if err != nil {

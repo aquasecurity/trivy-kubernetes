@@ -53,6 +53,7 @@ type client struct {
 	logger        *zap.SugaredLogger
 	excludeOwned  bool
 	scanJobParams scanJobParams
+	nodeConfig    bool
 }
 
 type K8sOption func(*client)
@@ -200,6 +201,12 @@ func WithScanJobImageRef(imageRef string) NodeCollectorOption {
 	}
 }
 
+func WithNodeConfig(nodeConfig bool) NodeCollectorOption {
+	return func(c *client) {
+		c.nodeConfig = nodeConfig
+	}
+}
+
 // ListArtifacts returns kubernetes scannable artifacs.
 func (c *client) ListArtifactAndNodeInfo(ctx context.Context,
 	opts ...NodeCollectorOption) ([]*artifacts.Artifact, error) {
@@ -223,6 +230,7 @@ func (c *client) ListArtifactAndNodeInfo(ctx context.Context,
 		jobs.WithJobLabels(labels),
 		jobs.WithImageRef(c.scanJobParams.imageRef),
 		jobs.WithJobTolerations(c.scanJobParams.toleration),
+		jobs.WithNodeConfig(c.nodeConfig),
 	)
 	// delete trivy namespace
 	defer jc.Cleanup(ctx)

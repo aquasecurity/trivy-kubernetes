@@ -53,7 +53,7 @@ type client struct {
 	logger        *zap.SugaredLogger
 	excludeOwned  bool
 	scanJobParams scanJobParams
-	nodeConfig    bool
+	nodeConfig    bool // feature flag to enable/disable node config collection
 }
 
 type K8sOption func(*client)
@@ -231,7 +231,6 @@ func (c *client) ListArtifactAndNodeInfo(ctx context.Context,
 		jobs.WithImageRef(c.scanJobParams.imageRef),
 		jobs.WithJobTolerations(c.scanJobParams.toleration),
 		jobs.WithNodeConfig(c.nodeConfig),
-		jobs.WithNodeConfig(false),
 	)
 	// delete trivy namespace
 	defer jc.Cleanup(ctx)

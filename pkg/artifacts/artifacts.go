@@ -2,6 +2,7 @@ package artifacts
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/aquasecurity/trivy-kubernetes/pkg/k8s"
 	"github.com/aquasecurity/trivy-kubernetes/pkg/k8s/docker"
@@ -18,6 +19,8 @@ type Artifact struct {
 	Credentials []docker.Auth
 	RawResource map[string]interface{}
 }
+
+const ResourceWithContainers = "Pod,Job,CronJob,ReplicaSet,ReplicationController,StatefulSet,DaemonSet,Deployment"
 
 // FromResource is a factory method to create an Artifact from an unstructured.Unstructured
 func FromResource(resource unstructured.Unstructured, serverAuths map[string]docker.Auth) (*Artifact, error) {
@@ -42,7 +45,7 @@ func FromResource(resource unstructured.Unstructured, serverAuths map[string]doc
 			}
 		}
 	}
-	if len(images) == 0 {
+	if len(images) == 0 && strings.Contains(ResourceWithContainers, resource.GetKind()) {
 		return nil, fmt.Errorf("no images found in %s/%s", resource.GetNamespace(), resource.GetName())
 	}
 	// we don't check found here, if the name is not found it will be an empty string

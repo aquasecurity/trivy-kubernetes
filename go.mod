@@ -2,8 +2,6 @@ module github.com/aquasecurity/trivy-kubernetes
 
 go 1.21
 
-toolchain go1.21.3
-
 require (
 	github.com/aws/aws-sdk-go v1.49.16
 	github.com/davecgh/go-spew v1.1.1

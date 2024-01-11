@@ -231,6 +231,7 @@ func (c *client) ListArtifactAndNodeInfo(ctx context.Context,
 		jobs.WithImageRef(c.scanJobParams.imageRef),
 		jobs.WithJobTolerations(c.scanJobParams.toleration),
 		jobs.WithNodeConfig(c.nodeConfig),
+		jobs.WithNodeConfig(false),
 	)
 	// delete trivy namespace
 	defer jc.Cleanup(ctx)

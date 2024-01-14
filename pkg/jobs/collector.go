@@ -243,6 +243,7 @@ func (jb *jobCollector) ApplyAndCollect(ctx context.Context, nodeName string) (s
 		WithPodVolumes(jb.volumes),
 		WithImagePullSecrets(jb.imagePullSecrets),
 		WithContainerVolumeMounts(jb.volumeMounts),
+		WithNodeConfiguration(jb.nodeConfig),
 		WithPriorityClassName(jb.priorityClassName),
 		WithResourceRequirements(jb.resourceRequirements),
 		WithJobName(fmt.Sprintf("%s-%s", jb.templateName, ComputeHash(

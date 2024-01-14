@@ -109,6 +109,12 @@ func WithJobTimeout(timeout time.Duration) JobOption {
 	}
 }
 
+func WithNodeConfiguration(nodeConfig bool) JobOption {
+	return func(j *JobBuilder) {
+		j.nodeConfig = nodeConfig
+	}
+}
+
 func GetJob(opts ...JobOption) (*batchv1.Job, error) {
 	jb := &JobBuilder{}
 	for _, opt := range opts {
@@ -135,6 +141,7 @@ type JobBuilder struct {
 	imagePullSecrets     []corev1.LocalObjectReference
 	resourceRequirements *corev1.ResourceRequirements
 	timeout              time.Duration
+	nodeConfig           bool
 }
 
 func (b *JobBuilder) build() (*batchv1.Job, error) {
@@ -152,7 +159,7 @@ func (b *JobBuilder) build() (*batchv1.Job, error) {
 	if len(b.imageRef) > 0 {
 		job.Spec.Template.Spec.Containers[0].Image = b.imageRef
 	}
-	if len(b.nodeSelector) > 0 {
+	if len(b.nodeSelector) > 0 && b.nodeConfig {
 		job.Spec.Template.Spec.Containers[0].Args = append(job.Spec.Template.Spec.Containers[0].Args, "--node", b.nodeSelector)
 	}
 	if b.nodeSelector != "" {

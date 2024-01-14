@@ -51,6 +51,7 @@ type jobCollector struct {
 	imagePullSecrets     []corev1.LocalObjectReference
 	collectorTimeout     time.Duration
 	resourceRequirements *corev1.ResourceRequirements
+	nodeConfig           bool
 }
 
 type CollectorOption func(*jobCollector)
@@ -99,6 +100,12 @@ func WithJobTolerations(tolerations []corev1.Toleration) CollectorOption {
 func WithName(name string) CollectorOption {
 	return func(jc *jobCollector) {
 		jc.name = name
+	}
+}
+
+func WithNodeConfig(nodeConfig bool) CollectorOption {
+	return func(jc *jobCollector) {
+		jc.nodeConfig = nodeConfig
 	}
 }
 
@@ -203,29 +210,30 @@ func (jb *jobCollector) ApplyAndCollect(ctx context.Context, nodeName string) (s
 			}
 		}
 	}
-	cr, rb, sa, err := GetAuth(WithServiceAccountNamespace(jb.namespace))
-	if err != nil {
-		return "", fmt.Errorf("running node-collector job: %w", err)
-	}
-	_, err = jb.cluster.GetK8sClientSet().RbacV1().ClusterRoles().Create(ctx, cr, metav1.CreateOptions{})
-	if err != nil {
-		return "", fmt.Errorf("creating cluster role: %w", err)
-	}
-	_, err = jb.cluster.GetK8sClientSet().CoreV1().ServiceAccounts(jb.namespace).Create(ctx, sa, metav1.CreateOptions{})
-	if err != nil {
-		return "", fmt.Errorf("creating service account: %w", err)
-	}
-	_, err = jb.cluster.GetK8sClientSet().RbacV1().ClusterRoleBindings().Create(ctx, rb, metav1.CreateOptions{})
-	if err != nil {
-		return "", fmt.Errorf("creating role binding: %w", err)
+	if jb.nodeConfig {
+		cr, rb, sa, err := GetAuth(WithServiceAccountNamespace(jb.namespace))
+		if err != nil {
+			return "", fmt.Errorf("running node-collector job: %w", err)
+		}
+		_, err = jb.cluster.GetK8sClientSet().RbacV1().ClusterRoles().Create(ctx, cr, metav1.CreateOptions{})
+		if err != nil {
+			return "", fmt.Errorf("creating cluster role: %w", err)
+		}
+		_, err = jb.cluster.GetK8sClientSet().CoreV1().ServiceAccounts(jb.namespace).Create(ctx, sa, metav1.CreateOptions{})
+		if err != nil {
+			return "", fmt.Errorf("creating service account: %w", err)
+		}
+		_, err = jb.cluster.GetK8sClientSet().RbacV1().ClusterRoleBindings().Create(ctx, rb, metav1.CreateOptions{})
+		if err != nil {
+			return "", fmt.Errorf("creating role binding: %w", err)
+		}
 	}
 
-	job, err := GetJob(
+	JobOptions := []JobOption{
 		WithTemplate(jb.templateName),
 		WithNamespace(jb.namespace),
 		WithNodeSelector(nodeName),
 		WithAnnotation(jb.annotation),
-		WithJobServiceAccount(serviceAccount),
 		WithLabels(jb.labels),
 		WithJobTimeout(jb.collectorTimeout),
 		withSecurityContext(jb.securityContext),
@@ -242,7 +250,12 @@ func (jb *jobCollector) ApplyAndCollect(ctx context.Context, nodeName string) (s
 				Kind:      "Node-Info",
 				Name:      nodeName,
 				Namespace: jb.namespace,
-			}))))
+			}))),
+	}
+	if jb.nodeConfig {
+		JobOptions = append(JobOptions, WithJobServiceAccount(serviceAccount))
+	}
+	job, err := GetJob(JobOptions...)
 	if err != nil {
 		return "", fmt.Errorf("running node-collector job: %w", err)
 	}
@@ -253,15 +266,17 @@ func (jb *jobCollector) ApplyAndCollect(ctx context.Context, nodeName string) (s
 	}
 	defer func() {
 		background := metav1.DeletePropagationBackground
-		_ = jb.cluster.GetK8sClientSet().RbacV1().ClusterRoleBindings().Delete(ctx, roleBinding, metav1.DeleteOptions{
-			PropagationPolicy: &background,
-		})
-		_ = jb.cluster.GetK8sClientSet().RbacV1().ClusterRoles().Delete(ctx, clusterRole, metav1.DeleteOptions{
-			PropagationPolicy: &background,
-		})
-		_ = jb.cluster.GetK8sClientSet().CoreV1().ServiceAccounts(job.Namespace).Delete(ctx, serviceAccount, metav1.DeleteOptions{
-			PropagationPolicy: &background,
-		})
+		if jb.nodeConfig {
+			_ = jb.cluster.GetK8sClientSet().RbacV1().ClusterRoleBindings().Delete(ctx, roleBinding, metav1.DeleteOptions{
+				PropagationPolicy: &background,
+			})
+			_ = jb.cluster.GetK8sClientSet().RbacV1().ClusterRoles().Delete(ctx, clusterRole, metav1.DeleteOptions{
+				PropagationPolicy: &background,
+			})
+			_ = jb.cluster.GetK8sClientSet().CoreV1().ServiceAccounts(job.Namespace).Delete(ctx, serviceAccount, metav1.DeleteOptions{
+				PropagationPolicy: &background,
+			})
+		}
 		_ = jb.cluster.GetK8sClientSet().BatchV1().Jobs(job.Namespace).Delete(ctx, job.Name, metav1.DeleteOptions{
 			PropagationPolicy: &background,
 		})

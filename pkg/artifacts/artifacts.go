@@ -27,7 +27,7 @@ func FromResource(resource unstructured.Unstructured, serverAuths map[string]doc
 	for _, t := range cTypes {
 		cTypeImages, err := extractImages(resource, append(nestedKeys, t))
 		if err != nil {
-			return nil, err
+			continue
 		}
 		images = append(images, cTypeImages...)
 		for _, im := range cTypeImages {

@@ -1,6 +1,8 @@
 package k8s
 
 import (
+	"log/slog"
+
 	"context"
 	"fmt"
 	"strings"
@@ -472,7 +474,9 @@ func PodInfo(pod corev1.Pod, labelSelector string) (*bom.Component, error) {
 	containers := make([]bom.Container, 0)
 	for _, s := range pod.Status.ContainerStatuses {
 		imageName, err := utils.ParseReference(s.Image)
+
 		if err != nil {
+			slog.Warn(fmt.Sprintf("unable to parse image reference, skipping: %s", s.Image))
 			continue
 		}
 		imageID := getImageID(s.ImageID, s.Image)
@@ -481,6 +485,7 @@ func PodInfo(pod corev1.Pod, labelSelector string) (*bom.Component, error) {
 		}
 		imageRef, err := utils.ParseReference(imageID)
 		if err != nil {
+			slog.Warn(fmt.Sprintf("unable to parse image reference, skipping: %s", s.Image))
 			continue
 		}
 		co, err := GetContainer(imageRef, imageName)

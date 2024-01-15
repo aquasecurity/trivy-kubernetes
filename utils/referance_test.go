@@ -16,4 +16,9 @@ func TestParseRef(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, "k8s.gcr.io/etcd:3.4.13-0", imageRef.String())
 	})
+	t.Run("parses imgae ref without arn", func(t *testing.T) {
+		imageRef, err := ParseReference("ToBeReplaced:0.0.1")
+		assert.NoError(t, err)
+		assert.Equal(t, "k8s.gcr.io/etcd:3.4.13-0", imageRef.String())
+	})
 }

@@ -76,8 +76,8 @@ const (
 	ConfigMaps             = "configmaps"
 	Roles                  = "roles"
 	RoleBindings           = "rolebindings"
-	NetworkPolicys         = "networkpolicies"
-	Ingresss               = "ingresses"
+	NetworkPolicies        = "networkpolicies"
+	Ingresses              = "ingresses"
 	ResourceQuotas         = "resourcequotas"
 	LimitRanges            = "limitranges"
 	ClusterRoles           = "clusterroles"
@@ -340,8 +340,8 @@ func getNamespaceResources() []string {
 		ConfigMaps,
 		Roles,
 		RoleBindings,
-		NetworkPolicys,
-		Ingresss,
+		NetworkPolicies,
+		Ingresses,
 		ResourceQuotas,
 		LimitRanges,
 	}

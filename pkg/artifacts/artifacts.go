@@ -33,7 +33,7 @@ func FromResource(resource unstructured.Unstructured, serverAuths map[string]doc
 		for _, im := range cTypeImages {
 			as, err := k8s.MapContainerNamesToDockerAuths(im, serverAuths)
 			if err != nil {
-				return nil, err
+				continue
 			}
 			if as != nil {
 				credentials = append(credentials, *as)

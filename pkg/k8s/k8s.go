@@ -473,7 +473,7 @@ func PodInfo(pod corev1.Pod, labelSelector string) (*bom.Component, error) {
 	for _, s := range pod.Status.ContainerStatuses {
 		imageName, err := utils.ParseReference(s.Image)
 		if err != nil {
-			return nil, err
+			continue
 		}
 		imageID := getImageID(s.ImageID, s.Image)
 		if len(imageID) == 0 {
@@ -481,7 +481,7 @@ func PodInfo(pod corev1.Pod, labelSelector string) (*bom.Component, error) {
 		}
 		imageRef, err := utils.ParseReference(imageID)
 		if err != nil {
-			return nil, err
+			continue
 		}
 		co, err := GetContainer(imageRef, imageName)
 		if err != nil {

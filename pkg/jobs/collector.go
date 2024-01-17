@@ -318,6 +318,7 @@ func (jb *jobCollector) Apply(ctx context.Context, nodeName string) (*batchv1.Jo
 		WithAnnotation(jb.annotation),
 		WithTemplate(jb.templateName),
 		WithPodVolumes(jb.volumes),
+		WithNodeConfiguration(jb.nodeConfig),
 		WithImagePullSecrets(jb.imagePullSecrets),
 		WithContainerVolumeMounts(jb.volumeMounts),
 		WithPriorityClassName(jb.priorityClassName),

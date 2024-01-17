@@ -52,6 +52,7 @@ type jobCollector struct {
 	collectorTimeout     time.Duration
 	resourceRequirements *corev1.ResourceRequirements
 	nodeConfig           bool
+	useNodeSelector      bool
 }
 
 type CollectorOption func(*jobCollector)
@@ -165,6 +166,12 @@ func WithPodImagePullSecrets(imagePullSecrets []corev1.LocalObjectReference) Col
 func WithCollectorTimeout(timeout time.Duration) CollectorOption {
 	return func(jc *jobCollector) {
 		jc.collectorTimeout = timeout
+	}
+}
+
+func WithUseNodeSelector(useNodeSelector bool) CollectorOption {
+	return func(jc *jobCollector) {
+		jc.useNodeSelector = useNodeSelector
 	}
 }
 
@@ -299,14 +306,13 @@ func (jb *jobCollector) ApplyAndCollect(ctx context.Context, nodeName string) (s
 
 // Apply deploy k8s job by template to specific node and namespace (for operator use case)
 func (jb *jobCollector) Apply(ctx context.Context, nodeName string) (*batchv1.Job, error) {
-	job, err := GetJob(
+	jobOptions := []JobOption{
 		WithNamespace(jb.namespace),
 		WithLabels(jb.labels),
 		withPodSecurityContext(jb.podSecurityContext),
 		withSecurityContext(jb.securityContext),
 		WithTolerations(jb.tolerations),
 		WithJobServiceAccount(jb.serviceAccount),
-		WithNodeSelector(nodeName),
 		WithJobTimeout(jb.collectorTimeout),
 		WithNodeCollectorImageRef(jb.imageRef),
 		WithAnnotation(jb.annotation),
@@ -316,8 +322,11 @@ func (jb *jobCollector) Apply(ctx context.Context, nodeName string) (*batchv1.Jo
 		WithContainerVolumeMounts(jb.volumeMounts),
 		WithPriorityClassName(jb.priorityClassName),
 		WithJobName(jb.name),
-		WithResourceRequirements(jb.resourceRequirements),
-	)
+		WithResourceRequirements(jb.resourceRequirements)}
+	if jb.useNodeSelector {
+		jobOptions = append(jobOptions, WithNodeSelector(nodeName))
+	}
+	job, err := GetJob(jobOptions...)
 	if err != nil {
 		return nil, fmt.Errorf("running node-collector job: %w", err)
 	}

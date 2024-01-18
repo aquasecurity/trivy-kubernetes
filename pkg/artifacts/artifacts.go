@@ -1,6 +1,9 @@
 package artifacts
 
 import (
+	"fmt"
+	"log/slog"
+
 	"github.com/aquasecurity/trivy-kubernetes/pkg/k8s"
 	"github.com/aquasecurity/trivy-kubernetes/pkg/k8s/docker"
 	"github.com/aquasecurity/trivy-kubernetes/utils"
@@ -34,6 +37,7 @@ func FromResource(resource unstructured.Unstructured, serverAuths map[string]doc
 		for _, im := range cTypeImages {
 			as, err := k8s.MapContainerNamesToDockerAuths(im, serverAuths)
 			if err != nil {
+				slog.Warn(fmt.Sprintf("unable to parse image reference, skipping: %s", im))
 				continue
 			}
 			if as != nil {

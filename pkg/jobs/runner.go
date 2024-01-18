@@ -4,8 +4,6 @@ import (
 	"context"
 	"errors"
 	"time"
-
-	"k8s.io/klog/v2"
 )
 
 // ErrTimeout is returned when Runner's Run method fails due to a timeout event.
@@ -84,15 +82,12 @@ func (r *runner) runWithTimeout(ctx context.Context) error {
 		ctx, cancel = context.WithTimeout(ctx, r.timeoutDuration)
 		defer cancel()
 	}
-	klog.V(3).Infof("Running task with timeout: %v", r.timeoutDuration)
 	select {
 	// Signaled when processing is done.
 	case err := <-r.complete:
-		klog.V(3).Infof("Stopping runner on task completion with error: %v", err)
 		return err
 	// Signaled when we run out of time.
 	case <-ctx.Done():
-		klog.V(3).Info("Stopping runner on timeout")
 		return ErrTimeout
 	}
 }

@@ -3,6 +3,7 @@ package jobs
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"time"
 
 	batchv1 "k8s.io/api/batch/v1"
@@ -12,7 +13,6 @@ import (
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/klog/v2"
 	"k8s.io/utils/ptr"
 )
 
@@ -66,10 +66,8 @@ func (r *runnableJob) Run(ctx context.Context) error {
 			}
 			switch condition := newJob.Status.Conditions[0]; condition.Type {
 			case batchv1.JobComplete:
-				klog.V(3).Infof("Stopping runnable job on task completion with status: %s", batchv1.JobComplete)
 				complete <- nil
 			case batchv1.JobFailed:
-				klog.V(3).Infof("Stopping runnable job on task failure with status: %s", batchv1.JobFailed)
 				complete <- fmt.Errorf("job failed: %s: %s", condition.Reason, condition.Message)
 			}
 		},
@@ -83,10 +81,6 @@ func (r *runnableJob) Run(ctx context.Context) error {
 			event := obj.(*corev1.Event)
 			if event.InvolvedObject.UID != r.job.UID {
 				return
-			}
-
-			if event.Type == corev1.EventTypeNormal {
-				klog.V(3).Infof("Event: %s (%s)", event.Message, event.Reason)
 			}
 
 			if event.Type == corev1.EventTypeWarning {
@@ -113,14 +107,13 @@ func (r *runnableJob) Run(ctx context.Context) error {
 func (r *runnableJob) logTerminatedContainersErrors(ctx context.Context) {
 	statuses, err := r.logsReader.GetTerminatedContainersStatusesByJob(ctx, r.job)
 	if err != nil {
-		klog.Errorf("Error while getting terminated containers statuses for job %q", r.job.Namespace+"/"+r.job.Name)
+		slog.Error(fmt.Sprintf("Error while getting terminated containers statuses for job %q", r.job.Namespace+"/"+r.job.Name))
 	}
 
-	for container, status := range statuses {
+	for _, status := range statuses {
 		if status.ExitCode == 0 {
 			continue
 		}
-		klog.Errorf("Container %s terminated with %s: %s", container, status.Reason, status.Message)
 	}
 }
 

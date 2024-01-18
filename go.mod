@@ -13,7 +13,6 @@ require (
 	k8s.io/apimachinery v0.29.0
 	k8s.io/cli-runtime v0.29.0
 	k8s.io/client-go v0.29.0
-	k8s.io/klog/v2 v2.120.0
 	k8s.io/kubectl v0.29.0
 	k8s.io/utils v0.0.0-20231127182322-b307cd553661
 	sigs.k8s.io/yaml v1.4.0
@@ -24,6 +23,7 @@ require (
 	github.com/google/gnostic-models v0.6.8 // indirect
 	github.com/moby/term v0.0.0-20221205130635-1aeaba878587 // indirect
 	golang.org/x/sync v0.3.0 // indirect
+	k8s.io/klog/v2 v2.120.0 // indirect
 )
 
 require (

@@ -3,6 +3,7 @@ package artifacts
 import (
 	"github.com/aquasecurity/trivy-kubernetes/pkg/k8s"
 	"github.com/aquasecurity/trivy-kubernetes/pkg/k8s/docker"
+	"github.com/aquasecurity/trivy-kubernetes/utils"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
@@ -39,6 +40,12 @@ func FromResource(resource unstructured.Unstructured, serverAuths map[string]doc
 				credentials = append(credentials, *as)
 			}
 		}
+	}
+
+	// delete managed fields from the resource
+	err := utils.DeleteManagedFields(&resource)
+	if err != nil {
+		return nil, err
 	}
 
 	// we don't check found here, if the name is not found it will be an empty string

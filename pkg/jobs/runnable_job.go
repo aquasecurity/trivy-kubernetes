@@ -3,6 +3,7 @@ package jobs
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"time"
 
 	batchv1 "k8s.io/api/batch/v1"
@@ -106,7 +107,7 @@ func (r *runnableJob) Run(ctx context.Context) error {
 func (r *runnableJob) logTerminatedContainersErrors(ctx context.Context) {
 	statuses, err := r.logsReader.GetTerminatedContainersStatusesByJob(ctx, r.job)
 	if err != nil {
-		fmt.Printf("Error while getting terminated containers statuses for job %q", r.job.Namespace+"/"+r.job.Name)
+		slog.Error(fmt.Sprintf("Error while getting terminated containers statuses for job %q", r.job.Namespace+"/"+r.job.Name))
 	}
 
 	for _, status := range statuses {

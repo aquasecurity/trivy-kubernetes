@@ -28,7 +28,7 @@ import (
 
 var (
 	UpstreamOrgName = map[string]string{
-		"k8s.io":      "controller-manager,kubelet,apiserver,kubectl,kubernetes,kube-scheduler,kube-proxy",
+		"k8s.io":      "controller-manager,kubelet,apiserver,kubectl,kubernetes,kube-scheduler,kube-proxy,cloud-provider",
 		"sigs.k8s.io": "secrets-store-csi-driver",
 		"go.etcd.io":  "etcd/v3",
 	}
@@ -43,6 +43,7 @@ var (
 		"kube-proxy":               "kube-proxy",
 		"api server":               "apiserver",
 		"etcd":                     "etcd/v3",
+		"cloud-controller-manager": "cloud-provider",
 		"secrets-store-csi-driver": "secrets-store-csi-driver",
 	}
 	CoreComponentPropertyType = map[string]string{
@@ -50,6 +51,7 @@ var (
 		"apiserver":          "controlPlane",
 		"kube-scheduler":     "controlPlane",
 		"etcd/v3":            "controlPlane",
+		"cloud-provider":     "controlPlane",
 		"kube-proxy":         "node",
 	}
 )

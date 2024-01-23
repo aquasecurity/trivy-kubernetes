@@ -431,10 +431,10 @@ func NodeInfo(node v1.Node) bom.NodeInfo {
 	}
 	return bom.NodeInfo{
 		NodeName:                node.Name,
-		KubeletVersion:          node.Status.NodeInfo.KubeletVersion,
+		KubeletVersion:          trimString(k8sVersions(node.Status.NodeInfo.KubeletVersion), []string{"v", "V"}),
 		ContainerRuntimeVersion: node.Status.NodeInfo.ContainerRuntimeVersion,
 		OsImage:                 node.Status.NodeInfo.OSImage,
-		KubeProxyVersion:        node.Status.NodeInfo.KubeProxyVersion,
+		KubeProxyVersion:        trimString(k8sVersions(node.Status.NodeInfo.KubeProxyVersion), []string{"v", "V"}),
 		Properties: map[string]string{
 			"NodeRole":        nodeRole,
 			"HostName":        node.ObjectMeta.Name,
@@ -521,18 +521,28 @@ func PodInfo(pod corev1.Pod, labelSelector string) (*bom.Component, error) {
 
 func findComponentVersion(containers []bom.Container, name string) string {
 	for _, c := range containers {
-		switch {
-		case strings.Contains(c.Version, "-rke2"):
-			index := strings.Index(c.Version, "-rke2")
-			return c.Version[:index]
-		case strings.Contains(c.Version, "-k3s"):
-			index := strings.Index(c.Version, "-k3s")
-			return c.Version[:index]
-		case strings.Contains(c.ID, name):
+		if strings.Contains(c.Version, "rke2") || strings.Contains(c.Version, "k3s") {
+			return k8sVersions(c.Version)
+		} else if strings.Contains(c.ID, name) {
 			return c.Version
 		}
 	}
 	return ""
+}
+
+func k8sVersions(version string) string {
+	switch {
+	case strings.Contains(version, "+rke2"):
+		index := strings.Index(version, "+rke2")
+		return version[:index]
+	case strings.Contains(version, "-rke2"):
+		index := strings.Index(version, "-rke2")
+		return version[:index]
+	case strings.Contains(version, "-k3s"):
+		index := strings.Index(version, "-k3s")
+		return version[:index]
+	}
+	return version
 }
 
 func (c *cluster) isOpenShift() bool {

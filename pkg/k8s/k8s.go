@@ -519,7 +519,14 @@ func PodInfo(pod corev1.Pod, labelSelector string) (*bom.Component, error) {
 
 func findComponentVersion(containers []bom.Container, name string) string {
 	for _, c := range containers {
-		if strings.Contains(c.ID, name) {
+		switch {
+		case strings.Contains(c.Version, "-rke2"):
+			index := strings.Index(c.Version, "-rke2")
+			return c.Version[:index]
+		case strings.Contains(c.Version, "-k3s"):
+			index := strings.Index(c.Version, "-k3s")
+			return c.Version[:index]
+		case strings.Contains(c.ID, name):
 			return c.Version
 		}
 	}

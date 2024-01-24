@@ -11,9 +11,9 @@ require (
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/api v0.29.1
 	k8s.io/apimachinery v0.29.1
-	k8s.io/cli-runtime v0.29.0
-	k8s.io/client-go v0.29.0
-	k8s.io/kubectl v0.29.0
+	k8s.io/cli-runtime v0.29.1
+	k8s.io/client-go v0.29.1
+	k8s.io/kubectl v0.29.1
 	k8s.io/utils v0.0.0-20231127182322-b307cd553661
 	sigs.k8s.io/yaml v1.4.0
 )
@@ -22,7 +22,7 @@ require (
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
 	github.com/google/gnostic-models v0.6.8 // indirect
 	github.com/moby/term v0.0.0-20221205130635-1aeaba878587 // indirect
-	golang.org/x/sync v0.3.0 // indirect
+	golang.org/x/sync v0.5.0 // indirect
 	k8s.io/klog/v2 v2.120.0 // indirect
 )
 

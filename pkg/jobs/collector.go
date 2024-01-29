@@ -253,6 +253,7 @@ func (jb *jobCollector) ApplyAndCollect(ctx context.Context, nodeName string) (s
 		WithNodeConfiguration(jb.nodeConfig),
 		WithPriorityClassName(jb.priorityClassName),
 		WithResourceRequirements(jb.resourceRequirements),
+		WithUseNodeSelectorParam(true),
 		WithJobName(fmt.Sprintf("%s-%s", jb.templateName, ComputeHash(
 			ObjectRef{
 				Kind:      "Node-Info",
@@ -322,11 +323,11 @@ func (jb *jobCollector) Apply(ctx context.Context, nodeName string) (*batchv1.Jo
 		WithImagePullSecrets(jb.imagePullSecrets),
 		WithContainerVolumeMounts(jb.volumeMounts),
 		WithPriorityClassName(jb.priorityClassName),
+		WithNodeSelector(nodeName),
 		WithJobName(jb.name),
+		WithUseNodeSelectorParam(jb.useNodeSelector),
 		WithResourceRequirements(jb.resourceRequirements)}
-	if jb.useNodeSelector {
-		jobOptions = append(jobOptions, WithNodeSelector(nodeName))
-	}
+
 	job, err := GetJob(jobOptions...)
 	if err != nil {
 		return nil, fmt.Errorf("running node-collector job: %w", err)

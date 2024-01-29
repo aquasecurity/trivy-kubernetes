@@ -17,9 +17,9 @@ func WithTemplate(template string) JobOption {
 	}
 }
 
-func WithNodeSelector(nodeSelector string) JobOption {
+func WithNodeName(nodeName string) JobOption {
 	return func(j *JobBuilder) {
-		j.nodeSelector = nodeSelector
+		j.nodeName = nodeName
 	}
 }
 func WithJobName(name string) JobOption {
@@ -115,6 +115,12 @@ func WithNodeConfiguration(nodeConfig bool) JobOption {
 	}
 }
 
+func WithUseNodeSelectorParam(useNodeSelector bool) JobOption {
+	return func(j *JobBuilder) {
+		j.useNodeSelector = useNodeSelector
+	}
+}
+
 func GetJob(opts ...JobOption) (*batchv1.Job, error) {
 	jb := &JobBuilder{}
 	for _, opt := range opts {
@@ -125,7 +131,7 @@ func GetJob(opts ...JobOption) (*batchv1.Job, error) {
 
 type JobBuilder struct {
 	template             string
-	nodeSelector         string
+	nodeName             string
 	namespace            string
 	imageRef             string
 	serviceAccount       string
@@ -142,6 +148,7 @@ type JobBuilder struct {
 	resourceRequirements *corev1.ResourceRequirements
 	timeout              time.Duration
 	nodeConfig           bool
+	useNodeSelector      bool
 }
 
 func (b *JobBuilder) build() (*batchv1.Job, error) {
@@ -159,12 +166,12 @@ func (b *JobBuilder) build() (*batchv1.Job, error) {
 	if len(b.imageRef) > 0 {
 		job.Spec.Template.Spec.Containers[0].Image = b.imageRef
 	}
-	if len(b.nodeSelector) > 0 && b.nodeConfig {
-		job.Spec.Template.Spec.Containers[0].Args = append(job.Spec.Template.Spec.Containers[0].Args, "--node", b.nodeSelector)
+	if b.nodeConfig {
+		job.Spec.Template.Spec.Containers[0].Args = append(job.Spec.Template.Spec.Containers[0].Args, "--node", b.nodeName)
 	}
-	if b.nodeSelector != "" {
+	if b.useNodeSelector {
 		job.Spec.Template.Spec.NodeSelector = map[string]string{
-			corev1.LabelHostname: b.nodeSelector,
+			corev1.LabelHostname: b.nodeName,
 		}
 	}
 	// append lables

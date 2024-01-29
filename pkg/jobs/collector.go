@@ -239,7 +239,7 @@ func (jb *jobCollector) ApplyAndCollect(ctx context.Context, nodeName string) (s
 	JobOptions := []JobOption{
 		WithTemplate(jb.templateName),
 		WithNamespace(jb.namespace),
-		WithNodeSelector(nodeName),
+		WithNodeName(nodeName),
 		WithAnnotation(jb.annotation),
 		WithLabels(jb.labels),
 		WithJobTimeout(jb.collectorTimeout),
@@ -323,7 +323,7 @@ func (jb *jobCollector) Apply(ctx context.Context, nodeName string) (*batchv1.Jo
 		WithImagePullSecrets(jb.imagePullSecrets),
 		WithContainerVolumeMounts(jb.volumeMounts),
 		WithPriorityClassName(jb.priorityClassName),
-		WithNodeSelector(nodeName),
+		WithNodeName(nodeName),
 		WithJobName(jb.name),
 		WithUseNodeSelectorParam(jb.useNodeSelector),
 		WithResourceRequirements(jb.resourceRequirements)}

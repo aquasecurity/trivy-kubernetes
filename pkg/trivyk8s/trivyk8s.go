@@ -169,7 +169,8 @@ func (c *client) ListArtifacts(ctx context.Context) ([]*artifacts.Artifact, erro
 }
 
 type scanJobParams struct {
-	toleration       []corev1.Toleration
+	affinity         *corev1.Affinity
+	tolerations      []corev1.Toleration
 	ignoreLabels     map[string]string
 	scanJobNamespace string
 	imageRef         string
@@ -177,9 +178,15 @@ type scanJobParams struct {
 
 type NodeCollectorOption func(*client)
 
-func WithTolerations(toleration []corev1.Toleration) NodeCollectorOption {
+func WithAffinity(affinity *corev1.Affinity) NodeCollectorOption {
 	return func(c *client) {
-		c.scanJobParams.toleration = toleration
+		c.scanJobParams.affinity = affinity
+	}
+}
+
+func WithTolerations(tolerations []corev1.Toleration) NodeCollectorOption {
+	return func(c *client) {
+		c.scanJobParams.tolerations = tolerations
 	}
 }
 
@@ -229,7 +236,8 @@ func (c *client) ListArtifactAndNodeInfo(ctx context.Context,
 		jobs.WithJobNamespace(c.scanJobParams.scanJobNamespace),
 		jobs.WithJobLabels(labels),
 		jobs.WithImageRef(c.scanJobParams.imageRef),
-		jobs.WithJobTolerations(c.scanJobParams.toleration),
+		jobs.WithJobAffinity(c.scanJobParams.affinity),
+		jobs.WithJobTolerations(c.scanJobParams.tolerations),
 		jobs.WithNodeConfig(c.nodeConfig),
 	)
 	// delete trivy namespace

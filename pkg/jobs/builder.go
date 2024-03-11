@@ -51,6 +51,12 @@ func WithAnnotation(annotations map[string]string) JobOption {
 	}
 }
 
+func WithAffinity(affinity *corev1.Affinity) JobOption {
+	return func(j *JobBuilder) {
+		j.affinity = affinity
+	}
+}
+
 func WithTolerations(tolerations []corev1.Toleration) JobOption {
 	return func(j *JobBuilder) {
 		j.tolerations = tolerations
@@ -140,6 +146,7 @@ type JobBuilder struct {
 	podSecurityContext   *corev1.PodSecurityContext
 	securityContext      *corev1.SecurityContext
 	annotations          map[string]string
+	affinity             *corev1.Affinity
 	tolerations          []corev1.Toleration
 	priorityClassName    string
 	volumes              []corev1.Volume
@@ -190,6 +197,9 @@ func (b *JobBuilder) build() (*batchv1.Job, error) {
 	}
 	if len(b.serviceAccount) > 0 {
 		job.Spec.Template.Spec.ServiceAccountName = b.serviceAccount
+	}
+	if b.affinity != nil {
+		job.Spec.Template.Spec.Affinity = b.affinity
 	}
 	if len(b.tolerations) > 0 {
 		job.Spec.Template.Spec.Tolerations = b.tolerations

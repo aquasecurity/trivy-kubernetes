@@ -45,6 +45,7 @@ type jobCollector struct {
 	podSecurityContext   *corev1.PodSecurityContext
 	securityContext      *corev1.SecurityContext
 	imageRef             string
+	affinity             *corev1.Affinity
 	tolerations          []corev1.Toleration
 	volumes              []corev1.Volume
 	volumeMounts         []corev1.VolumeMount
@@ -89,6 +90,12 @@ func WithJobNamespace(namespace string) CollectorOption {
 func WithPodPriorityClassName(priorityClassName string) CollectorOption {
 	return func(jc *jobCollector) {
 		jc.priorityClassName = priorityClassName
+	}
+}
+
+func WithJobAffinity(affinity *corev1.Affinity) CollectorOption {
+	return func(jc *jobCollector) {
+		jc.affinity = affinity
 	}
 }
 
@@ -246,6 +253,7 @@ func (jb *jobCollector) ApplyAndCollect(ctx context.Context, nodeName string) (s
 		withSecurityContext(jb.securityContext),
 		withPodSecurityContext(jb.podSecurityContext),
 		WithNodeCollectorImageRef(jb.imageRef),
+		WithAffinity(jb.affinity),
 		WithTolerations(jb.tolerations),
 		WithPodVolumes(jb.volumes),
 		WithImagePullSecrets(jb.imagePullSecrets),
@@ -312,6 +320,7 @@ func (jb *jobCollector) Apply(ctx context.Context, nodeName string) (*batchv1.Jo
 		WithLabels(jb.labels),
 		withPodSecurityContext(jb.podSecurityContext),
 		withSecurityContext(jb.securityContext),
+		WithAffinity(jb.affinity),
 		WithTolerations(jb.tolerations),
 		WithJobServiceAccount(jb.serviceAccount),
 		WithJobTimeout(jb.collectorTimeout),

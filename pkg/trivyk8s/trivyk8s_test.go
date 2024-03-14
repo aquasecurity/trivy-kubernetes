@@ -41,3 +41,49 @@ func TestIgnoreNodeByLabel(t *testing.T) {
 		})
 	}
 }
+
+func TestFilterResource(t *testing.T) {
+	tests := []struct {
+		name         string
+		resourceKind string
+		excludeKinds []string
+		includeKinds []string
+		want         bool
+	}{
+		{
+			name:         "filterKinds with excludeKinds",
+			resourceKind: "Pod",
+			excludeKinds: []string{"pod"},
+			includeKinds: []string{},
+			want:         true,
+		},
+		{
+			name:         "filterKinds with includeKinds",
+			resourceKind: "Pod",
+			includeKinds: []string{"deployment"},
+			excludeKinds: []string{},
+			want:         true,
+		},
+		{
+			name:         "filterKinds with excludeKinds and includeKinds",
+			resourceKind: "Pod",
+			includeKinds: []string{"pod"},
+			excludeKinds: []string{"pod"},
+			want:         false,
+		},
+		{
+			name:         "filterKinds with no excludeKinds and no includeKinds",
+			resourceKind: "Pod",
+			includeKinds: []string{},
+			excludeKinds: []string{},
+			want:         false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := filterResources(tt.includeKinds, tt.excludeKinds, tt.resourceKind)
+			assert.Equal(t, got, tt.want)
+		})
+	}
+}

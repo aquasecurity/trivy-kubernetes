@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -46,14 +47,18 @@ type ArtifactsK8S interface {
 }
 
 type client struct {
-	cluster       k8s.Cluster
-	namespace     string
-	resources     []string
-	allNamespaces bool
-	logger        *zap.SugaredLogger
-	excludeOwned  bool
-	scanJobParams scanJobParams
-	nodeConfig    bool // feature flag to enable/disable node config collection
+	cluster           k8s.Cluster
+	namespace         string
+	resources         []string
+	allNamespaces     bool
+	logger            *zap.SugaredLogger
+	excludeOwned      bool
+	scanJobParams     scanJobParams
+	nodeConfig        bool // feature flag to enable/disable node config collection
+	excludeKinds      []string
+	includeKinds      []string
+	excludeNamespaces []string
+	includeNamespaces []string
 }
 
 type K8sOption func(*client)
@@ -61,6 +66,35 @@ type K8sOption func(*client)
 func WithExcludeOwned(excludeOwned bool) K8sOption {
 	return func(c *client) {
 		c.excludeOwned = excludeOwned
+	}
+}
+func WithExcludeKinds(excludeKinds []string) K8sOption {
+	return func(c *client) {
+		for _, kind := range excludeKinds {
+			c.excludeKinds = append(c.excludeKinds, strings.ToLower(kind))
+		}
+	}
+}
+func WithIncludeKinds(includeKinds []string) K8sOption {
+	return func(c *client) {
+		for _, kind := range includeKinds {
+			c.includeKinds = append(c.includeKinds, strings.ToLower(kind))
+		}
+	}
+}
+
+func WithExcludeNamespaces(excludeNamespaces []string) K8sOption {
+	return func(c *client) {
+		for _, ns := range excludeNamespaces {
+			c.excludeNamespaces = append(c.excludeNamespaces, strings.ToLower(ns))
+		}
+	}
+}
+func WithIncludeNamespaces(includeNamespaces []string) K8sOption {
+	return func(c *client) {
+		for _, ns := range includeNamespaces {
+			c.includeNamespaces = append(c.includeNamespaces, strings.ToLower(ns))
+		}
 	}
 }
 
@@ -130,13 +164,6 @@ func (c *client) ListArtifacts(ctx context.Context) ([]*artifacts.Artifact, erro
 		}
 
 		for _, resource := range resources.Items {
-			lastAppliedResource := resource
-			if jsonManifest, ok := resource.GetAnnotations()["kubectl.kubernetes.io/last-applied-configuration"]; ok { // required for outdated-api when k8s convert resources
-				err := json.Unmarshal([]byte(jsonManifest), &lastAppliedResource)
-				if err != nil {
-					continue
-				}
-			}
 			if c.ignoreResource(resource) {
 				continue
 			}
@@ -145,7 +172,23 @@ func (c *client) ListArtifacts(ctx context.Context) ([]*artifacts.Artifact, erro
 			if c.excludeOwned && c.hasOwner(resource) {
 				continue
 			}
+			// filter resources by kind
+			if filterResources(c.includeKinds, c.excludeKinds, resource.GetKind()) {
+				continue
+			}
 
+			// filter resources by namespace
+			if filterResources(c.includeNamespaces, c.excludeNamespaces, resource.GetNamespace()) {
+				continue
+			}
+
+			lastAppliedResource := resource
+			if jsonManifest, ok := resource.GetAnnotations()["kubectl.kubernetes.io/last-applied-configuration"]; ok { // required for outdated-api when k8s convert resources
+				err := json.Unmarshal([]byte(jsonManifest), &lastAppliedResource)
+				if err != nil {
+					continue
+				}
+			}
 			auths, err := c.cluster.AuthByResource(lastAppliedResource)
 			if err != nil {
 				return nil, fmt.Errorf("failed getting auth for gvr: %v - %w", gvr, err)
@@ -166,6 +209,25 @@ func (c *client) ListArtifacts(ctx context.Context) ([]*artifacts.Artifact, erro
 		artifactList = append(artifactList, bomArtifacts...)
 	}
 	return artifactList, nil
+}
+
+func filterResources(include []string, exclude []string, key string) bool {
+
+	if (len(include) > 0 && len(exclude) > 0) || // if both include and exclude cannot be set together
+		(len(include) == 0 && len(exclude) == 0) {
+		return false
+	}
+	if len(exclude) > 0 {
+		if slices.Contains(exclude, strings.ToLower(key)) {
+			return true
+		}
+	} else if len(include) > 0 {
+		if !slices.Contains(include, strings.ToLower(key)) {
+			return true
+		}
+	}
+
+	return false
 }
 
 type scanJobParams struct {
@@ -279,13 +341,19 @@ func (c *client) ListClusterBomInfo(ctx context.Context) ([]*artifacts.Artifact,
 	if err != nil {
 		return []*artifacts.Artifact{}, err
 	}
-	return BomToArtifacts(b)
+	return c.BomToArtifacts(b)
 
 }
 
-func BomToArtifacts(b *bom.Result) ([]*artifacts.Artifact, error) {
+func (cl *client) BomToArtifacts(b *bom.Result) ([]*artifacts.Artifact, error) {
 	artifactList := make([]*artifacts.Artifact, 0)
 	for _, c := range b.Components {
+		if filterResources(cl.includeKinds, cl.excludeKinds, "Pod") {
+			continue
+		}
+		if filterResources(cl.includeNamespaces, cl.excludeNamespaces, c.Namespace) {
+			continue
+		}
 		rawResource, err := rawResource(&c)
 		if err != nil {
 			return []*artifacts.Artifact{}, err
@@ -296,6 +364,9 @@ func BomToArtifacts(b *bom.Result) ([]*artifacts.Artifact, error) {
 		rawResource, err := rawResource(&ni)
 		if err != nil {
 			return []*artifacts.Artifact{}, err
+		}
+		if filterResources(cl.includeKinds, cl.excludeKinds, "Node") {
+			continue
 		}
 		artifactList = append(artifactList, &artifacts.Artifact{Kind: "NodeComponents", Name: ni.NodeName, RawResource: rawResource})
 	}

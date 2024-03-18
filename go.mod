@@ -6,7 +6,7 @@ require (
 	github.com/aws/aws-sdk-go v1.50.35
 	github.com/davecgh/go-spew v1.1.1
 	github.com/google/go-containerregistry v0.19.0
-	github.com/stretchr/testify v1.8.4
+	github.com/stretchr/testify v1.9.0
 	go.uber.org/zap v1.26.0
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/api v0.29.2

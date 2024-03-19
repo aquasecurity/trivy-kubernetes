@@ -341,19 +341,13 @@ func (c *client) ListClusterBomInfo(ctx context.Context) ([]*artifacts.Artifact,
 	if err != nil {
 		return []*artifacts.Artifact{}, err
 	}
-	return c.BomToArtifacts(b)
+	return BomToArtifacts(b)
 
 }
 
-func (cl *client) BomToArtifacts(b *bom.Result) ([]*artifacts.Artifact, error) {
+func BomToArtifacts(b *bom.Result) ([]*artifacts.Artifact, error) {
 	artifactList := make([]*artifacts.Artifact, 0)
 	for _, c := range b.Components {
-		if filterResources(cl.includeKinds, cl.excludeKinds, "Pod") {
-			continue
-		}
-		if filterResources(cl.includeNamespaces, cl.excludeNamespaces, c.Namespace) {
-			continue
-		}
 		rawResource, err := rawResource(&c)
 		if err != nil {
 			return []*artifacts.Artifact{}, err
@@ -364,9 +358,6 @@ func (cl *client) BomToArtifacts(b *bom.Result) ([]*artifacts.Artifact, error) {
 		rawResource, err := rawResource(&ni)
 		if err != nil {
 			return []*artifacts.Artifact{}, err
-		}
-		if filterResources(cl.includeKinds, cl.excludeKinds, "Node") {
-			continue
 		}
 		artifactList = append(artifactList, &artifacts.Artifact{Kind: "NodeComponents", Name: ni.NodeName, RawResource: rawResource})
 	}

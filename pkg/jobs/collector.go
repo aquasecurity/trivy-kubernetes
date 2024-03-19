@@ -51,7 +51,7 @@ type jobCollector struct {
 	volumeMounts         []corev1.VolumeMount
 	imagePullSecrets     []corev1.LocalObjectReference
 	collectorTimeout     time.Duration
-	resourceRequirements *corev1.ResourceRequirements
+	resourceRequirements corev1.ResourceRequirements
 	nodeConfig           bool
 	useNodeSelector      bool
 }
@@ -135,7 +135,7 @@ func WithJobTemplateName(name string) CollectorOption {
 	}
 }
 
-func WithContainerResourceRequirements(rr *corev1.ResourceRequirements) CollectorOption {
+func WithContainerResourceRequirements(rr corev1.ResourceRequirements) CollectorOption {
 	return func(j *jobCollector) {
 		j.resourceRequirements = rr
 	}
@@ -333,6 +333,7 @@ func (jb *jobCollector) Apply(ctx context.Context, nodeName string) (*batchv1.Jo
 		WithContainerVolumeMounts(jb.volumeMounts),
 		WithPriorityClassName(jb.priorityClassName),
 		WithNodeName(nodeName),
+		WithReplaceResourceReq(true),
 		WithJobName(jb.name),
 		WithUseNodeSelectorParam(jb.useNodeSelector),
 		WithResourceRequirements(jb.resourceRequirements)}

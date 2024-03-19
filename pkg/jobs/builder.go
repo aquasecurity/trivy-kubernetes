@@ -104,7 +104,7 @@ func WithImagePullSecrets(imagePullSecrets []corev1.LocalObjectReference) JobOpt
 	}
 }
 
-func WithResourceRequirements(rr *corev1.ResourceRequirements) JobOption {
+func WithResourceRequirements(rr corev1.ResourceRequirements) JobOption {
 	return func(j *JobBuilder) {
 		j.resourceRequirements = rr
 	}
@@ -124,6 +124,12 @@ func WithNodeConfiguration(nodeConfig bool) JobOption {
 func WithUseNodeSelectorParam(useNodeSelector bool) JobOption {
 	return func(j *JobBuilder) {
 		j.useNodeSelector = useNodeSelector
+	}
+}
+
+func WithReplaceResourceReq(replaceResourceReq bool) JobOption {
+	return func(j *JobBuilder) {
+		j.replaceResourceReq = replaceResourceReq
 	}
 }
 
@@ -152,7 +158,8 @@ type JobBuilder struct {
 	volumes              []corev1.Volume
 	volumeMounts         []corev1.VolumeMount
 	imagePullSecrets     []corev1.LocalObjectReference
-	resourceRequirements *corev1.ResourceRequirements
+	resourceRequirements corev1.ResourceRequirements
+	replaceResourceReq   bool
 	timeout              time.Duration
 	nodeConfig           bool
 	useNodeSelector      bool
@@ -222,8 +229,8 @@ func (b *JobBuilder) build() (*batchv1.Job, error) {
 	if len(b.imagePullSecrets) > 0 {
 		job.Spec.Template.Spec.ImagePullSecrets = b.imagePullSecrets
 	}
-	if b.resourceRequirements != nil {
-		job.Spec.Template.Spec.Containers[0].Resources = *b.resourceRequirements
+	if b.replaceResourceReq {
+		job.Spec.Template.Spec.Containers[0].Resources = b.resourceRequirements
 	}
 	if len(b.volumeMounts) > 0 {
 		job.Spec.Template.Spec.Containers[0].VolumeMounts = b.volumeMounts

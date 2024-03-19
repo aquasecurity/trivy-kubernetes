@@ -223,9 +223,7 @@ func (b *JobBuilder) build() (*batchv1.Job, error) {
 		job.Spec.Template.Spec.ImagePullSecrets = b.imagePullSecrets
 	}
 	if b.resourceRequirements != nil {
-		for _, c := range job.Spec.Template.Spec.Containers {
-			c.Resources = *b.resourceRequirements
-		}
+		job.Spec.Template.Spec.Containers[0].Resources = *b.resourceRequirements
 	}
 	if len(b.volumeMounts) > 0 {
 		job.Spec.Template.Spec.Containers[0].VolumeMounts = b.volumeMounts

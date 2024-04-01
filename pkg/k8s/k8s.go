@@ -3,14 +3,12 @@ package k8s
 import (
 	"context"
 	"fmt"
-	"log/slog"
-	"strings"
-
 	"github.com/aquasecurity/trivy-kubernetes/pkg/bom"
 	"github.com/aquasecurity/trivy-kubernetes/pkg/k8s/docker"
 	"github.com/aquasecurity/trivy-kubernetes/utils"
 	containerimage "github.com/google/go-containerregistry/pkg/name"
 	ms "github.com/mitchellh/mapstructure"
+	"github.com/opencontainers/go-digest"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	k8sapierror "k8s.io/apimachinery/pkg/api/errors"
@@ -24,6 +22,8 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/utils/strings/slices"
+	"log/slog"
+	"strings"
 )
 
 var (
@@ -383,7 +383,7 @@ func (c *cluster) CreateClusterBom(ctx context.Context) (*bom.Result, error) {
 	return c.getClusterBomInfo(components, nodesInfo)
 }
 
-func GetContainer(imageRef containerimage.Reference, imageName containerimage.Reference) (bom.Container, error) {
+func GetContainer(hex string, imageName containerimage.Reference) (bom.Container, error) {
 	repoName := imageName.Context().RepositoryStr()
 	registryName := imageName.Context().RegistryStr()
 
@@ -391,7 +391,7 @@ func GetContainer(imageRef containerimage.Reference, imageName containerimage.Re
 		Repository: repoName,
 		Registry:   registryName,
 		ID:         fmt.Sprintf("%s:%s", repoName, imageName.Identifier()),
-		Digest:     imageRef.Context().Digest(imageRef.Identifier()).DigestStr(),
+		Digest:     hex,
 		Version:    imageName.Identifier(),
 	}, nil
 }
@@ -488,7 +488,12 @@ func PodInfo(pod corev1.Pod, labelSelector string) (*bom.Component, error) {
 			slog.Warn(fmt.Sprintf("unable to parse image reference, skipping: %s", s.Image))
 			continue
 		}
-		co, err := GetContainer(imageRef, imageName)
+		hex := imageRef.Context().Digest(imageRef.Identifier()).DigestStr()
+		// skip non sha256 digests
+		if len(hex) != digest.Canonical.Size()*2 {
+			continue
+		}
+		co, err := GetContainer(hex, imageName)
 		if err != nil {
 			continue
 		}

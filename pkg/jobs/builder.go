@@ -198,9 +198,9 @@ func (b *JobBuilder) build() (*batchv1.Job, error) {
 	// append annotation
 	for key, val := range b.annotations {
 		if job.Annotations == nil {
-			job.Annotations = make(map[string]string)
+			job.Spec.Template.Annotations = make(map[string]string)
 		}
-		job.Annotations[key] = val
+		job.Spec.Template.Annotations[key] = val
 	}
 	if len(b.serviceAccount) > 0 {
 		job.Spec.Template.Spec.ServiceAccountName = b.serviceAccount

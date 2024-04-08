@@ -82,7 +82,7 @@ func TestFilterResource(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := filterResources(tt.includeKinds, tt.excludeKinds, tt.resourceKind)
+			got := FilterResources(tt.includeKinds, tt.excludeKinds, tt.resourceKind)
 			assert.Equal(t, got, tt.want)
 		})
 	}

@@ -38,8 +38,6 @@ type TrivyK8S interface {
 type ArtifactsK8S interface {
 	// ListArtifacts returns kubernetes scanable artifacts
 	ListArtifacts(context.Context) ([]*artifacts.Artifact, error)
-	// GetArtifact return kubernete scanable artifact
-	GetArtifact(context.Context, string, string) (*artifacts.Artifact, error)
 	// ListArtifactAndNodeInfo return kubernete scanable artifact and node info
 	ListArtifactAndNodeInfo(context.Context, ...NodeCollectorOption) ([]*artifacts.Artifact, error)
 	// ListClusterBomInfo returns kubernetes Bom (node,core components) information.
@@ -137,6 +135,26 @@ func isNamespaced(namespace string, allNamespace bool) bool {
 	return false
 }
 
+// return list of namespaces to exclude
+func (c *client) GetExcludeNamespaces() []string {
+	return c.excludeNamespaces
+}
+
+// return list of namespaces to include
+func (c *client) GetIncludeNamespaces() []string {
+	return c.includeNamespaces
+}
+
+// return list of kinds to exclude
+func (c *client) GetExcludeKinds() []string {
+	return c.excludeKinds
+}
+
+// return list of kinds to include
+func (c client) GetIncludeKinds() []string {
+	return c.includeKinds
+}
+
 // ListArtifacts returns kubernetes scannable artifacs.
 func (c *client) ListArtifacts(ctx context.Context) ([]*artifacts.Artifact, error) {
 	artifactList := make([]*artifacts.Artifact, 0)
@@ -173,12 +191,12 @@ func (c *client) ListArtifacts(ctx context.Context) ([]*artifacts.Artifact, erro
 				continue
 			}
 			// filter resources by kind
-			if filterResources(c.includeKinds, c.excludeKinds, resource.GetKind()) {
+			if FilterResources(c.includeKinds, c.excludeKinds, resource.GetKind()) {
 				continue
 			}
 
 			// filter resources by namespace
-			if filterResources(c.includeNamespaces, c.excludeNamespaces, resource.GetNamespace()) {
+			if FilterResources(c.includeNamespaces, c.excludeNamespaces, resource.GetNamespace()) {
 				continue
 			}
 
@@ -211,7 +229,7 @@ func (c *client) ListArtifacts(ctx context.Context) ([]*artifacts.Artifact, erro
 	return artifactList, nil
 }
 
-func filterResources(include []string, exclude []string, key string) bool {
+func FilterResources(include []string, exclude []string, key string) bool {
 
 	if (len(include) > 0 && len(exclude) > 0) || // if both include and exclude cannot be set together
 		(len(include) == 0 && len(exclude) == 0) {
@@ -341,8 +359,21 @@ func (c *client) ListClusterBomInfo(ctx context.Context) ([]*artifacts.Artifact,
 	if err != nil {
 		return []*artifacts.Artifact{}, err
 	}
+	b.Components = c.filterNamespaces(b.Components)
+	if slices.Contains(c.GetExcludeKinds(), "node") {
+		b.NodesInfo = []bom.NodeInfo{}
+	}
 	return BomToArtifacts(b)
+}
 
+func (c *client) filterNamespaces(comp []bom.Component) []bom.Component {
+	bm := make([]bom.Component, 0)
+	for _, co := range comp {
+		if FilterResources(c.GetIncludeNamespaces(), c.GetExcludeNamespaces(), co.Namespace) {
+			bm = append(bm, co)
+		}
+	}
+	return bm
 }
 
 func BomToArtifacts(b *bom.Result) ([]*artifacts.Artifact, error) {
@@ -380,30 +411,6 @@ func rawResource(resource interface{}) (map[string]interface{}, error) {
 		return nil, err
 	}
 	return rawResource, nil
-}
-
-// GetArtifact return kubernetes scannable artifac.
-func (c *client) GetArtifact(ctx context.Context, kind, name string) (*artifacts.Artifact, error) {
-	gvr, err := c.cluster.GetGVR(kind)
-	if err != nil {
-		return nil, err
-	}
-
-	dclient := c.getDynamicClient(gvr)
-	resource, err := dclient.Get(ctx, name, v1.GetOptions{})
-	if err != nil {
-		return nil, fmt.Errorf("failed getting resource for gvr: %v - %w", gvr, err)
-	}
-	auths, err := c.cluster.AuthByResource(*resource)
-	if err != nil {
-		return nil, fmt.Errorf("failed getting auth for gvr: %v - %w", gvr, err)
-	}
-	artifact, err := artifacts.FromResource(*resource, auths)
-	if err != nil {
-		return nil, err
-	}
-
-	return artifact, nil
 }
 
 func (c *client) getDynamicClient(gvr schema.GroupVersionResource) dynamic.ResourceInterface {

@@ -370,8 +370,9 @@ func (c *client) filterNamespaces(comp []bom.Component) []bom.Component {
 	bm := make([]bom.Component, 0)
 	for _, co := range comp {
 		if FilterResources(c.GetIncludeNamespaces(), c.GetExcludeNamespaces(), co.Namespace) {
-			bm = append(bm, co)
+			continue
 		}
+		bm = append(bm, co)
 	}
 	return bm
 }

@@ -10,7 +10,6 @@ import (
 	"github.com/aquasecurity/trivy-kubernetes/pkg/k8s"
 	tk "github.com/aquasecurity/trivy-kubernetes/pkg/trivyk8s"
 
-	"go.uber.org/zap"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/utils/ptr"
 
@@ -18,10 +17,6 @@ import (
 )
 
 func main() {
-
-	logger, _ := zap.NewProduction()
-	defer logger.Sync()
-
 	ctx := context.Background()
 
 	cluster, err := k8s.GetCluster(k8s.WithBurst(100), k8s.WithQPS(100))
@@ -31,7 +26,7 @@ func main() {
 
 	fmt.Println("Current namespace:", cluster.GetCurrentNamespace())
 
-	trivyk8s := tk.New(cluster, logger.Sugar(), tk.WithExcludeOwned(true))
+	trivyk8s := tk.New(cluster, tk.WithExcludeOwned(true))
 	fmt.Println("Scanning cluster")
 
 	//trivy k8s #cluster
@@ -109,7 +104,8 @@ func main() {
 	ar, err := trivyk8s.ListArtifactAndNodeInfo(ctx, []tk.NodeCollectorOption{
 		tk.WithScanJobNamespace("trivy-temp"),
 		tk.WithIgnoreLabels(map[string]string{"chen": "test"}),
-		tk.WithTolerations(tolerations)}...)
+		tk.WithTolerations(tolerations),
+	}...)
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -15,6 +15,7 @@ import (
 
 const (
 	NodeCollectorName = "node-collector"
+	defaultNamespace  = "trivy-temp"
 
 	// job headers
 	TrivyCollectorName = "trivy.collector.name"
@@ -362,5 +363,8 @@ func (jb *jobCollector) getTrivyNamespace(ctx context.Context) (*corev1.Namespac
 }
 
 func (jb *jobCollector) Cleanup(ctx context.Context) {
+	if jb.namespace != defaultNamespace {
+		return
+	}
 	jb.deleteTrivyNamespace(ctx)
 }

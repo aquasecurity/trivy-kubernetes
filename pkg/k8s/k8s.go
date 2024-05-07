@@ -579,7 +579,12 @@ func (c *cluster) ClusterNameVersion() (string, string, error) {
 	}
 	clusterName := "k8s.io/kubernetes"
 	if len(rawCfg.Contexts) > 0 {
-		clusterName = rawCfg.Contexts[rawCfg.CurrentContext].Cluster
+		if c.currentContext != "" {
+			rawCfg.CurrentContext = c.currentContext
+		}
+		if clusterContext, ok := rawCfg.Contexts[rawCfg.CurrentContext]; ok {
+			clusterName = clusterContext.Cluster
+		}
 	}
 	version, err := c.clientset.ServerVersion()
 	if err != nil {

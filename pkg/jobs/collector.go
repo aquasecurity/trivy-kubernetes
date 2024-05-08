@@ -56,6 +56,7 @@ type jobCollector struct {
 	resourceRequirements corev1.ResourceRequirements
 	nodeConfig           bool
 	useNodeSelector      bool
+	clusterVersion       string
 }
 
 type CollectorOption func(*jobCollector)
@@ -86,6 +87,12 @@ func WithJobAnnotation(annotation map[string]string) CollectorOption {
 func WithJobNamespace(namespace string) CollectorOption {
 	return func(jc *jobCollector) {
 		jc.namespace = namespace
+	}
+}
+
+func WithClusterVersion(clusterVersion string) CollectorOption {
+	return func(jc *jobCollector) {
+		jc.clusterVersion = clusterVersion
 	}
 }
 
@@ -258,6 +265,7 @@ func (jb *jobCollector) ApplyAndCollect(ctx context.Context, nodeName string) (s
 		WithAffinity(jb.affinity),
 		WithTolerations(jb.tolerations),
 		WithPodVolumes(jb.volumes),
+		Withk8sClusterVersion(jb.clusterVersion),
 		WithImagePullSecrets(jb.imagePullSecrets),
 		WithContainerVolumeMounts(jb.volumeMounts),
 		WithNodeConfiguration(jb.nodeConfig),

@@ -139,6 +139,12 @@ func WithKubeletConfig(kubeletConfig string) JobOption {
 	}
 }
 
+func Withk8sClusterVersion(clusterVersion string) JobOption {
+	return func(j *JobBuilder) {
+		j.clusterVersion = clusterVersion
+	}
+}
+
 func GetJob(opts ...JobOption) (*batchv1.Job, error) {
 	jb := &JobBuilder{}
 	for _, opt := range opts {
@@ -170,6 +176,7 @@ type JobBuilder struct {
 	nodeConfig           bool
 	useNodeSelector      bool
 	kubeletConfig        string
+	clusterVersion       string
 }
 
 func (b *JobBuilder) build() (*batchv1.Job, error) {
@@ -189,6 +196,9 @@ func (b *JobBuilder) build() (*batchv1.Job, error) {
 	}
 	if b.kubeletConfig != "" {
 		job.Spec.Template.Spec.Containers[0].Args = append(job.Spec.Template.Spec.Containers[0].Args, "--kubelet-config", b.kubeletConfig)
+	}
+	if b.clusterVersion != "" {
+		job.Spec.Template.Spec.Containers[0].Args = append(job.Spec.Template.Spec.Containers[0].Args, "--cluster-version", b.clusterVersion)
 	}
 	if b.useNodeSelector {
 		job.Spec.Template.Spec.NodeSelector = map[string]string{

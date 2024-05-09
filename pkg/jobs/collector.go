@@ -2,6 +2,7 @@ package jobs
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"time"
@@ -55,6 +56,7 @@ type jobCollector struct {
 	resourceRequirements corev1.ResourceRequirements
 	nodeConfig           bool
 	useNodeSelector      bool
+	clusterVersion       string
 }
 
 type CollectorOption func(*jobCollector)
@@ -85,6 +87,12 @@ func WithJobAnnotation(annotation map[string]string) CollectorOption {
 func WithJobNamespace(namespace string) CollectorOption {
 	return func(jc *jobCollector) {
 		jc.namespace = namespace
+	}
+}
+
+func WithClusterVersion(clusterVersion string) CollectorOption {
+	return func(jc *jobCollector) {
+		jc.clusterVersion = clusterVersion
 	}
 }
 
@@ -257,6 +265,7 @@ func (jb *jobCollector) ApplyAndCollect(ctx context.Context, nodeName string) (s
 		WithAffinity(jb.affinity),
 		WithTolerations(jb.tolerations),
 		WithPodVolumes(jb.volumes),
+		Withk8sClusterVersion(jb.clusterVersion),
 		WithImagePullSecrets(jb.imagePullSecrets),
 		WithContainerVolumeMounts(jb.volumeMounts),
 		WithNodeConfiguration(jb.nodeConfig),
@@ -272,6 +281,10 @@ func (jb *jobCollector) ApplyAndCollect(ctx context.Context, nodeName string) (s
 	}
 	if jb.nodeConfig {
 		JobOptions = append(JobOptions, WithJobServiceAccount(serviceAccount))
+	}
+	nc := jb.loadNodeConfig(ctx, nodeName)
+	if nc != "" {
+		JobOptions = append(JobOptions, WithKubeletConfig(nc))
 	}
 	job, err := GetJob(JobOptions...)
 	if err != nil {
@@ -312,6 +325,14 @@ func (jb *jobCollector) ApplyAndCollect(ctx context.Context, nodeName string) (s
 		return "", fmt.Errorf("reading logs: %w", err)
 	}
 	return string(output), nil
+}
+
+func (jb jobCollector) loadNodeConfig(ctx context.Context, nodeName string) string {
+	data, err := jb.cluster.GetK8sClientSet().RESTClient().Get().AbsPath(fmt.Sprintf("/api/v1/nodes/%s/proxy/configz", nodeName)).DoRaw(ctx)
+	if err != nil {
+		return ""
+	}
+	return base64.RawStdEncoding.EncodeToString(data)
 }
 
 // Apply deploy k8s job by template to specific node and namespace (for operator use case)

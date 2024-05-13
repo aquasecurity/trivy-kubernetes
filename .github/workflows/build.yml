@@ -56,7 +56,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
       - name: Verify Go code
-        uses: golangci/golangci-lint-action@v5.3.0
+        uses: golangci/golangci-lint-action@v6.0.1
         with:
           args: --verbose --deadline=5m
           version: v1.55.2

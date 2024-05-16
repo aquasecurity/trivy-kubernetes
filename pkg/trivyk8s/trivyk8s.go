@@ -173,9 +173,8 @@ func (c *client) ListArtifacts(ctx context.Context) ([]*artifacts.Artifact, erro
 		if err != nil {
 			lerr := fmt.Errorf("failed listing resources for gvr: %v - %w", gvr, err)
 
-			if errors.IsNotFound(err) {
+			if errors.IsNotFound(err) || errors.IsForbidden(err) {
 				slog.Error("Unable to list resources", "error", lerr)
-				// if a resource is not found, we log and continue
 				continue
 			}
 

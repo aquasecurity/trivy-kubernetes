@@ -175,7 +175,6 @@ func (c *client) ListArtifacts(ctx context.Context) ([]*artifacts.Artifact, erro
 
 			if errors.IsNotFound(err) || errors.IsForbidden(err) {
 				slog.Error("Unable to list resources", "error", lerr)
-				// if a resource is not found, we log and continue
 				continue
 			}
 

@@ -66,9 +66,9 @@ func TestLoadBuilder(t *testing.T) {
 										ReadOnlyRootFilesystem: ptr.To[bool](true),
 									},
 									Name:    "node-collector",
-									Image:   "ghcr.io/aquasecurity/node-collector:0.1.1",
+									Image:   "ghcr.io/aquasecurity/node-collector:0.2.1",
 									Command: []string{"node-collector"},
-									Args:    []string{"k8s"},
+									Args:    []string{"k8s", "--node", ""},
 									VolumeMounts: []corev1.VolumeMount{
 										{
 											Name:      "var-lib-etcd",

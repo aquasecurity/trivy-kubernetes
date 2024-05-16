@@ -194,8 +194,11 @@ func (b *JobBuilder) build() (*batchv1.Job, error) {
 	if len(b.imageRef) > 0 {
 		job.Spec.Template.Spec.Containers[0].Image = b.imageRef
 	}
-	if b.kubeletConfig != "" {
+	if b.kubeletConfig != "" && b.nodeConfig {
 		job.Spec.Template.Spec.Containers[0].Args = append(job.Spec.Template.Spec.Containers[0].Args, "--kubelet-config", b.kubeletConfig)
+	}
+	if !b.nodeConfig {
+		job.Spec.Template.Spec.Containers[0].Args = append(job.Spec.Template.Spec.Containers[0].Args, "--node", b.nodeName)
 	}
 	if b.clusterVersion != "" {
 		job.Spec.Template.Spec.Containers[0].Args = append(job.Spec.Template.Spec.Containers[0].Args, "--cluster-version", b.clusterVersion)

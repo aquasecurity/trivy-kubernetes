@@ -233,24 +233,6 @@ func (jb *jobCollector) ApplyAndCollect(ctx context.Context, nodeName string) (s
 			}
 		}
 	}
-	if jb.nodeConfig {
-		cr, rb, sa, err := GetAuth(WithServiceAccountNamespace(jb.namespace))
-		if err != nil {
-			return "", fmt.Errorf("running node-collector job: %w", err)
-		}
-		_, err = jb.cluster.GetK8sClientSet().RbacV1().ClusterRoles().Create(ctx, cr, metav1.CreateOptions{})
-		if err != nil {
-			return "", fmt.Errorf("creating cluster role: %w", err)
-		}
-		_, err = jb.cluster.GetK8sClientSet().CoreV1().ServiceAccounts(jb.namespace).Create(ctx, sa, metav1.CreateOptions{})
-		if err != nil {
-			return "", fmt.Errorf("creating service account: %w", err)
-		}
-		_, err = jb.cluster.GetK8sClientSet().RbacV1().ClusterRoleBindings().Create(ctx, rb, metav1.CreateOptions{})
-		if err != nil {
-			return "", fmt.Errorf("creating role binding: %w", err)
-		}
-	}
 
 	JobOptions := []JobOption{
 		WithTemplate(jb.templateName),
@@ -268,7 +250,7 @@ func (jb *jobCollector) ApplyAndCollect(ctx context.Context, nodeName string) (s
 		Withk8sClusterVersion(jb.clusterVersion),
 		WithImagePullSecrets(jb.imagePullSecrets),
 		WithContainerVolumeMounts(jb.volumeMounts),
-		WithNodeConfiguration(jb.nodeConfig),
+		WithNodeConfiguration(true),
 		WithPriorityClassName(jb.priorityClassName),
 		WithResourceRequirements(jb.resourceRequirements),
 		WithUseNodeSelectorParam(true),
@@ -278,9 +260,6 @@ func (jb *jobCollector) ApplyAndCollect(ctx context.Context, nodeName string) (s
 				Name:      nodeName,
 				Namespace: jb.namespace,
 			}))),
-	}
-	if jb.nodeConfig {
-		JobOptions = append(JobOptions, WithJobServiceAccount(serviceAccount))
 	}
 	nc := jb.loadNodeConfig(ctx, nodeName)
 	if nc != "" {
@@ -297,17 +276,6 @@ func (jb *jobCollector) ApplyAndCollect(ctx context.Context, nodeName string) (s
 	}
 	defer func() {
 		background := metav1.DeletePropagationBackground
-		if jb.nodeConfig {
-			_ = jb.cluster.GetK8sClientSet().RbacV1().ClusterRoleBindings().Delete(ctx, roleBinding, metav1.DeleteOptions{
-				PropagationPolicy: &background,
-			})
-			_ = jb.cluster.GetK8sClientSet().RbacV1().ClusterRoles().Delete(ctx, clusterRole, metav1.DeleteOptions{
-				PropagationPolicy: &background,
-			})
-			_ = jb.cluster.GetK8sClientSet().CoreV1().ServiceAccounts(job.Namespace).Delete(ctx, serviceAccount, metav1.DeleteOptions{
-				PropagationPolicy: &background,
-			})
-		}
 		_ = jb.cluster.GetK8sClientSet().BatchV1().Jobs(job.Namespace).Delete(ctx, job.Name, metav1.DeleteOptions{
 			PropagationPolicy: &background,
 		})
@@ -350,7 +318,7 @@ func (jb *jobCollector) Apply(ctx context.Context, nodeName string) (*batchv1.Jo
 		WithAnnotation(jb.annotation),
 		WithTemplate(jb.templateName),
 		WithPodVolumes(jb.volumes),
-		WithNodeConfiguration(jb.nodeConfig),
+		WithNodeConfiguration(false),
 		WithImagePullSecrets(jb.imagePullSecrets),
 		WithContainerVolumeMounts(jb.volumeMounts),
 		WithPriorityClassName(jb.priorityClassName),

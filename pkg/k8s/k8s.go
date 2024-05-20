@@ -3,6 +3,10 @@ package k8s
 import (
 	"context"
 	"fmt"
+	"log/slog"
+	"regexp"
+	"strings"
+
 	"github.com/aquasecurity/trivy-kubernetes/pkg/bom"
 	"github.com/aquasecurity/trivy-kubernetes/pkg/k8s/docker"
 	"github.com/aquasecurity/trivy-kubernetes/utils"
@@ -22,8 +26,6 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/utils/strings/slices"
-	"log/slog"
-	"strings"
 )
 
 var (
@@ -89,6 +91,15 @@ const (
 	k8sComponentNamespace  = "kube-system"
 
 	serviceAccountDefault = "default"
+
+	native   = "k8s"
+	gke      = "gke"
+	aks      = "aks"
+	eks      = "eks"
+	rke2     = "rke2"
+	k3s      = "k3s"
+	ocp      = "ocp"
+	microk8s = "microk8s"
 )
 
 // Cluster interface represents the operations needed to scan a cluster
@@ -821,4 +832,95 @@ func getImageID(imageID string, image string) string {
 		return imageParts[1]
 	}
 	return ""
+}
+
+func (cluster *cluster) getOpenShiftVersion(ctx context.Context) string {
+	gvr, err := cluster.restMapper.ResourceFor(schema.GroupVersionResource{Resource: "clusterversions"})
+	if err != nil {
+		return ""
+	}
+	dclient := cluster.getDynamicClient(gvr)
+	resources, err := dclient.List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return ""
+	}
+	var version string
+	for _, resource := range resources.Items {
+		version, _, _ = unstructured.NestedString(resource.Object, []string{"status", "desired", "version"}...)
+
+	}
+	return version
+}
+
+func (cl *cluster) Platfrom() (Platform, error) {
+	v := cl.getOpenShiftVersion(context.Background())
+	if len(v) != 0 {
+		return Platform{Name: "ocp", Version: majorVersion(v)}, nil
+	}
+	nodeName := cl.getNodeName()
+	semVersion, err := cl.clientset.ServerVersion()
+	if err != nil {
+		return Platform{}, err
+	}
+	p := getPlatformInfoFromVersion(semVersion.GitVersion)
+	var name string
+	switch {
+	case strings.Contains(p.Version, k3s):
+		name = k3s
+	case strings.Contains(p.Version, rke2):
+		name = rke2
+	case strings.Contains(p.Version, microk8s):
+		name = microk8s
+	case strings.Contains(nodeName, aks):
+		name = aks
+	case strings.Contains(nodeName, eks):
+		name = eks
+	case strings.Contains(nodeName, gke):
+		name = gke
+	default:
+		name = "k8s"
+	}
+	return Platform{Name: name, Version: p.Version}, nil
+}
+
+func (cluster *cluster) getNodeName() string {
+	nodes, err := cluster.clientset.CoreV1().Nodes().List(context.Background(), metav1.ListOptions{})
+	if err != nil {
+		return "k8s"
+	}
+	return nodes.Items[0].Name
+}
+
+func getPlatformInfoFromVersion(s string) Platform {
+	versionRe := regexp.MustCompile(`v(\d+\.\d+)\.\d+[-+](\w+)(?:[.\-])\w+`)
+	subs := versionRe.FindStringSubmatch(s)
+	if len(subs) < 3 {
+		return Platform{
+			Name:    "k8s",
+			Version: majorVersion(s),
+		}
+	}
+	return Platform{
+		Name:    subs[2],
+		Version: subs[1],
+	}
+}
+
+func (cluster *cluster) getDynamicClient(gvr schema.GroupVersionResource) dynamic.ResourceInterface {
+	return cluster.dynamicClient.Resource(gvr).Namespace("")
+}
+
+func majorVersion(semanticVersion string) string {
+	versionRe := regexp.MustCompile(`v(\d+\.\d+)\.\d+`)
+	version := semanticVersion
+	if !strings.HasPrefix(semanticVersion, "v") {
+		version = fmt.Sprintf("v%s", semanticVersion)
+	}
+	subs := versionRe.FindStringSubmatch(version)
+	return subs[1]
+}
+
+type Platform struct {
+	Name    string
+	Version string
 }

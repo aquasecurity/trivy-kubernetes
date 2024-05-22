@@ -139,20 +139,21 @@ func WithKubeletConfig(kubeletConfig string) JobOption {
 	}
 }
 
-func Withk8sClusterVersion(clusterVersion string) JobOption {
-	return func(j *JobBuilder) {
-		j.clusterVersion = clusterVersion
+func WithK8sKubeletConfigMapping(kubeletConfigMapping string) JobOption {
+	return func(jc *JobBuilder) {
+		jc.kubeletConfigMapping = kubeletConfigMapping
 	}
 }
 
-func WithJobComplianceName(complianceName string) JobOption {
-	return func(c *JobBuilder) {
-		c.complianceName = complianceName
+func WithK8sNodeConfigData(nodeConfigData string) JobOption {
+	return func(jc *JobBuilder) {
+		jc.nodeConfigData = nodeConfigData
 	}
 }
-func WithJobComplianceVersion(complianceVersion string) JobOption {
-	return func(c *JobBuilder) {
-		c.complianceVersion = complianceVersion
+
+func WithK8sNodeCommands(nodeCommands string) JobOption {
+	return func(jc *JobBuilder) {
+		jc.nodeCommands = nodeCommands
 	}
 }
 
@@ -187,9 +188,9 @@ type JobBuilder struct {
 	nodeConfig           bool
 	useNodeSelector      bool
 	kubeletConfig        string
-	clusterVersion       string
-	complianceName       string
-	complianceVersion    string
+	kubeletConfigMapping string
+	nodeConfigData       string
+	nodeCommands         string
 }
 
 func (b *JobBuilder) build() (*batchv1.Job, error) {
@@ -213,16 +214,15 @@ func (b *JobBuilder) build() (*batchv1.Job, error) {
 	if !b.nodeConfig {
 		job.Spec.Template.Spec.Containers[0].Args = append(job.Spec.Template.Spec.Containers[0].Args, "--node", b.nodeName)
 	}
-	if b.clusterVersion != "" {
-		job.Spec.Template.Spec.Containers[0].Args = append(job.Spec.Template.Spec.Containers[0].Args, "--cluster-version", b.clusterVersion)
+	if b.nodeConfigData != "" {
+		job.Spec.Template.Spec.Containers[0].Args = append(job.Spec.Template.Spec.Containers[0].Args, "--node-config", b.nodeConfigData)
 	}
-	if b.complianceName != "" {
-		job.Spec.Template.Spec.Containers[0].Args = append(job.Spec.Template.Spec.Containers[0].Args, "--compliance-name", b.complianceName)
+	if b.kubeletConfigMapping != "" {
+		job.Spec.Template.Spec.Containers[0].Args = append(job.Spec.Template.Spec.Containers[0].Args, "kubelet-config-mapping", b.kubeletConfigMapping)
 	}
-	if b.complianceVersion != "" {
-		job.Spec.Template.Spec.Containers[0].Args = append(job.Spec.Template.Spec.Containers[0].Args, "--compliance-version", b.complianceVersion)
+	if b.nodeCommands != "" {
+		job.Spec.Template.Spec.Containers[0].Args = append(job.Spec.Template.Spec.Containers[0].Args, "--node-commands", b.nodeCommands)
 	}
-
 	if b.useNodeSelector {
 		job.Spec.Template.Spec.NodeSelector = map[string]string{
 			corev1.LabelHostname: b.nodeName,

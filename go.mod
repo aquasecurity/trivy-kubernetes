@@ -5,6 +5,7 @@ go 1.22.0
 toolchain go1.22.2
 
 require (
+	github.com/aquasecurity/go-version v0.0.0-20210121072130-637058cfe492
 	github.com/aws/aws-sdk-go v1.53.5
 	github.com/davecgh/go-spew v1.1.1
 	github.com/google/go-containerregistry v0.19.1
@@ -24,6 +25,7 @@ require (
 	github.com/google/gnostic-models v0.6.8 // indirect
 	github.com/moby/term v0.0.0-20221205130635-1aeaba878587 // indirect
 	golang.org/x/sync v0.6.0 // indirect
+	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
 	k8s.io/klog/v2 v2.120.1 // indirect
 )
 
@@ -71,7 +73,7 @@ require (
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/protobuf v1.33.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
-	gopkg.in/yaml.v2 v2.4.0 // indirect
+	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/kube-openapi v0.0.0-20240228011516-70dd3763d340 // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
 	sigs.k8s.io/kustomize/api v0.13.5-0.20230601165947-6ce0bf390ce3 // indirect

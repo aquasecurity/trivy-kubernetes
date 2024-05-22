@@ -1,0 +1,30 @@
+---
+version_mapping:
+  k8s:
+    - op: ">="
+      cluster_version: "1.21"
+      spec: k8s-cis-1.23.0
+  gke:
+    - op: ">="
+      cluster_version: "1.21"
+      spec: gke-cis-1.2.0
+  eks:
+    - op: ">="
+      cluster_version: "1.21"
+      spec: eks-cis-1.2.0
+  aks:
+    - op: ">="
+      cluster_version: "1.21"
+      spec: aks-cis-1.0
+  rke2:
+    - op: ">="
+      cluster_version: "1.21"
+      spec: rke2-cis-1.24
+  microk8s:
+    - op: ">="
+      cluster_version: "1.21"
+      spec: microk8s-cis-1.24
+  ocp:
+    - op: ">="
+      cluster_version: "4.0"
+      spec: rh-cis-1.0

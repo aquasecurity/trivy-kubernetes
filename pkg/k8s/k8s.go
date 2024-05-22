@@ -3,16 +3,15 @@ package k8s
 import (
 	"context"
 	"fmt"
-	"log/slog"
-	"regexp"
-	"strings"
-
+	semver "github.com/aquasecurity/go-version/pkg/version"
 	"github.com/aquasecurity/trivy-kubernetes/pkg/bom"
 	"github.com/aquasecurity/trivy-kubernetes/pkg/k8s/docker"
+	"github.com/aquasecurity/trivy-kubernetes/pkg/k8s/model"
 	"github.com/aquasecurity/trivy-kubernetes/utils"
 	containerimage "github.com/google/go-containerregistry/pkg/name"
 	ms "github.com/mitchellh/mapstructure"
 	"github.com/opencontainers/go-digest"
+	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	k8sapierror "k8s.io/apimachinery/pkg/api/errors"
@@ -26,6 +25,8 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/utils/strings/slices"
+	"log/slog"
+	"strings"
 )
 
 var (
@@ -90,6 +91,9 @@ const (
 	Nodes                  = "nodes"
 	k8sComponentNamespace  = "kube-system"
 	serviceAccountDefault  = "default"
+	// Version is the version of the output
+	defaultSpecName    = "k8s-cis"
+	defaultSpecVersion = "1.23.0"
 
 	native   = "k8s"
 	gke      = "gke"
@@ -124,6 +128,8 @@ type Cluster interface {
 	GetClusterVersion() string
 	// AuthByResource return image pull secrets by resource pod spec
 	AuthByResource(resource unstructured.Unstructured) (map[string]docker.Auth, error)
+	// SpecByPlatform return spec by platform type and version
+	Platform() Platform
 }
 
 type cluster struct {
@@ -278,6 +284,119 @@ func (c *cluster) GetDynamicClient() dynamic.Interface {
 // GetK8sClientSet returns k8s clientSet
 func (c *cluster) GetK8sClientSet() *kubernetes.Clientset {
 	return c.clientset
+}
+
+// GetK8sClientSet returns k8s clientSet
+func (c *cluster) SpecByPlatform(specVersionData string) (string, string) {
+	versionSpecMapper, err := specVersionMapping(specVersionData)
+	if err != nil {
+		// default to basic k8s spec
+		return defaultSpecName, defaultSpecVersion
+	}
+	platform, err := c.Platfrom()
+	if err != nil {
+		// default to basic k8s spec
+		return defaultSpecName, defaultSpecVersion
+	}
+	speVersions, ok := versionSpecMapper[platform.Name]
+	if ok {
+		for _, cisVer := range speVersions {
+			c, err := semver.NewConstraints(fmt.Sprintf("%s %s", cisVer.Op, cisVer.Version))
+			if err != nil {
+				// default to basic k8s spec
+				return defaultSpecName, defaultSpecVersion
+			}
+			v, err := semver.Parse(platform.Version)
+			if err != nil {
+				// default to basic k8s spec
+				return defaultSpecName, defaultSpecVersion
+			}
+			if ok = c.Check(v); ok {
+				return cisVer.CisSpecName, cisVer.CisSpecVersion
+			}
+		}
+	}
+	return defaultSpecName, defaultSpecVersion
+}
+
+// GetK8sClientSet returns k8s clientSet
+func (c *cluster) Platform() Platform {
+	platform, err := c.Platfrom()
+	if err != nil {
+		return Platform{Name: "k8s", Version: "1.23.0"}
+	}
+	return platform
+}
+
+func specVersionMapping(specVersionData string) (map[string][]model.SpecVersion, error) {
+	var mp model.Mapper
+	err := yaml.Unmarshal([]byte(specVersionData), &mp)
+	if err != nil {
+		return nil, err
+	}
+	return mp.VersionMapping, nil
+}
+
+func (cluster *cluster) Platfrom() (Platform, error) {
+	v := cluster.getOpenShiftVersion(context.Background())
+	if len(v) != 0 {
+		return Platform{Name: "ocp", Version: majorVersion(v)}, nil
+	}
+	nodeName := cluster.getNodeName()
+	semVersion, err := cluster.clientset.ServerVersion()
+	if err != nil {
+		return Platform{}, err
+	}
+	p := getPlatformInfoFromVersion(semVersion.GitVersion)
+	var name string
+	switch {
+	case strings.Contains(p.Version, k3s):
+		name = k3s
+	case strings.Contains(p.Version, rke2):
+		name = rke2
+	case strings.Contains(p.Version, microk8s):
+		name = microk8s
+	case strings.Contains(nodeName, aks):
+		name = aks
+	case strings.Contains(nodeName, eks):
+		name = eks
+	case strings.Contains(nodeName, gke):
+		name = gke
+	default:
+		name = "k8s"
+	}
+	return Platform{Name: name, Version: p.Version}, nil
+}
+
+type Platform struct {
+	Name    string
+	Version string
+}
+
+func (cluster *cluster) getOpenShiftVersion(ctx context.Context) string {
+	gvr, err := cluster.restMapper.ResourceFor(schema.GroupVersionResource{Resource: "clusterversions"})
+	if err != nil {
+		return ""
+	}
+	dclient := cluster.dynamicClient.Resource(gvr).Namespace("")
+	resources, err := dclient.List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return ""
+	}
+	var version string
+	for _, resource := range resources.Items {
+		version, _, _ = unstructured.NestedString(resource.Object, []string{"status", "desired", "version"}...)
+
+	}
+	return version
+}
+
+func (cluster *cluster) getNodeName() string {
+	nodes, err := cluster.clientset.CoreV1().Nodes().List(context.Background(), metav1.ListOptions{})
+	if err != nil {
+		return "k8s"
+	}
+	return nodes.Items[0].Name
 }
 
 // GetGVRs returns cluster GroupVersionResource to query kubernetes, receives
@@ -831,102 +950,4 @@ func getImageID(imageID string, image string) string {
 		return imageParts[1]
 	}
 	return ""
-}
-
-func (cluster *cluster) getOpenShiftVersion(ctx context.Context) string {
-	gvr, err := cluster.restMapper.ResourceFor(schema.GroupVersionResource{Resource: "clusterversions"})
-	if err != nil {
-		return ""
-	}
-	dclient := cluster.getDynamicClient(gvr)
-	resources, err := dclient.List(ctx, metav1.ListOptions{})
-	if err != nil {
-		return ""
-	}
-	var version string
-	for _, resource := range resources.Items {
-		version, _, _ = unstructured.NestedString(resource.Object, []string{"status", "desired", "version"}...)
-
-	}
-	return version
-}
-
-func (cl *cluster) Platfrom() (Platform, error) {
-	v := cl.getOpenShiftVersion(context.Background())
-	if len(v) != 0 {
-		return Platform{Name: "ocp", Version: majorVersion(v)}, nil
-	}
-	nodeName := cl.getNodeName()
-	semVersion, err := cl.clientset.ServerVersion()
-	if err != nil {
-		return Platform{}, err
-	}
-	p := getPlatformInfoFromVersion(semVersion.GitVersion)
-	var name string
-	switch {
-	case strings.Contains(p.Version, k3s):
-		name = k3s
-	case strings.Contains(p.Version, rke2):
-		name = rke2
-	case strings.Contains(p.Version, microk8s):
-		name = microk8s
-	case strings.Contains(nodeName, aks):
-		name = aks
-	case strings.Contains(nodeName, eks):
-		name = eks
-	case strings.Contains(nodeName, gke):
-		name = gke
-	default:
-		name = "k8s"
-	}
-	return Platform{Name: name, Version: p.Version}, nil
-}
-
-func (cluster *cluster) getNodeName() string {
-	nodes, err := cluster.clientset.CoreV1().Nodes().List(context.Background(), metav1.ListOptions{})
-	if err != nil {
-		return "k8s"
-	}
-	return nodes.Items[0].Name
-}
-
-func getPlatformInfoFromVersion(s string) Platform {
-	versionRe := regexp.MustCompile(`v(\d+\.\d+)\.\d+[-+](\w+)(?:[.\-])\w+`)
-	subs := versionRe.FindStringSubmatch(s)
-	if len(subs) < 3 {
-		return Platform{
-			Name:    "k8s",
-			Version: majorVersion(s),
-		}
-	}
-	return Platform{
-		Name:    subs[2],
-		Version: subs[1],
-	}
-}
-
-func (cluster *cluster) getDynamicClient(gvr schema.GroupVersionResource) dynamic.ResourceInterface {
-	return cluster.dynamicClient.Resource(gvr).Namespace("")
-}
-
-func majorVersion(semanticVersion string) string {
-	versionRe := regexp.MustCompile(`v(\d+\.\d+)\.\d+`)
-	version := semanticVersion
-	if !strings.HasPrefix(semanticVersion, "v") {
-		version = fmt.Sprintf("v%s", semanticVersion)
-	}
-	subs := versionRe.FindStringSubmatch(version)
-	return subs[1]
-}
-
-type Platform struct {
-	Name    string
-	Version string
-}
-
-type SpecVersion struct {
-	Name    string
-	Version string `yaml:"cluster_version"`
-	Op      string `yaml:"op"`
-	CisSpec string `yaml:"spec"`
 }

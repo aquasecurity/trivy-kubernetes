@@ -5,9 +5,14 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
+	"strings"
 	"time"
 
+	"os"
+	"path/filepath"
+
 	"github.com/aquasecurity/trivy-kubernetes/pkg/k8s"
+	"gopkg.in/yaml.v3"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	k8sapierror "k8s.io/apimachinery/pkg/api/errors"
@@ -56,9 +61,8 @@ type jobCollector struct {
 	resourceRequirements corev1.ResourceRequirements
 	nodeConfig           bool
 	useNodeSelector      bool
-	clusterVersion       string
-	complianceName       string
-	complianceVersion    string
+	commandsPaths        []string
+	specCommandIds       []string
 }
 
 type CollectorOption func(*jobCollector)
@@ -89,12 +93,6 @@ func WithJobAnnotation(annotation map[string]string) CollectorOption {
 func WithJobNamespace(namespace string) CollectorOption {
 	return func(jc *jobCollector) {
 		jc.namespace = namespace
-	}
-}
-
-func WithClusterVersion(clusterVersion string) CollectorOption {
-	return func(jc *jobCollector) {
-		jc.clusterVersion = clusterVersion
 	}
 }
 
@@ -193,14 +191,15 @@ func WithUseNodeSelector(useNodeSelector bool) CollectorOption {
 	}
 }
 
-func WithComplianceName(complianceName string) CollectorOption {
-	return func(c *jobCollector) {
-		c.complianceName = complianceName
+func WithCommandsPath(commandPaths []string) CollectorOption {
+	return func(jc *jobCollector) {
+		jc.commandsPaths = commandPaths
 	}
 }
-func WithComplianceVersion(complianceVersion string) CollectorOption {
-	return func(c *jobCollector) {
-		c.complianceVersion = complianceVersion
+
+func WithSpecCommands(specCommandIds []string) CollectorOption {
+	return func(jc *jobCollector) {
+		jc.specCommandIds = specCommandIds
 	}
 }
 
@@ -247,6 +246,10 @@ func (jb *jobCollector) ApplyAndCollect(ctx context.Context, nodeName string) (s
 		}
 	}
 
+	ca, err := jb.GetCollectorArgs(jb.commandsPaths, jb.specCommandIds)
+	if err != nil {
+		return "", err
+	}
 	JobOptions := []JobOption{
 		WithTemplate(jb.templateName),
 		WithNamespace(jb.namespace),
@@ -259,10 +262,10 @@ func (jb *jobCollector) ApplyAndCollect(ctx context.Context, nodeName string) (s
 		WithNodeCollectorImageRef(jb.imageRef),
 		WithAffinity(jb.affinity),
 		WithTolerations(jb.tolerations),
+		WithK8sNodeCommands(ca.commands),
+		WithK8sKubeletConfigMapping(ca.kubeletConfigMapping),
+		WithK8sNodeConfigData(ca.nodeConfigData),
 		WithPodVolumes(jb.volumes),
-		WithJobComplianceName(jb.complianceName),
-		WithJobComplianceVersion(jb.complianceVersion),
-		Withk8sClusterVersion(jb.clusterVersion),
 		WithImagePullSecrets(jb.imagePullSecrets),
 		WithContainerVolumeMounts(jb.volumeMounts),
 		WithNodeConfiguration(true),
@@ -318,6 +321,120 @@ func (jb jobCollector) loadNodeConfig(ctx context.Context, nodeName string) stri
 	return base64.RawStdEncoding.EncodeToString(data)
 }
 
+type NodeCommands struct {
+	Commands []any `yaml:"commands"`
+}
+
+func loadCommandFiles(paths []string) (map[string]any, map[string][]byte) {
+	if len(paths) == 0 {
+		return map[string]any{}, map[string][]byte{}
+	}
+	configs := make(map[string][]byte)
+	commands := make(map[string]any)
+
+	e := filepath.Walk(filepath.Join(paths[0], "commands"), func(path string, info os.FileInfo, err error) error {
+		switch {
+		case strings.Contains(info.Name(), "_cmd"):
+			b, err := os.ReadFile(path)
+			if err != nil {
+				return err
+			}
+			var cmd any
+			err = yaml.Unmarshal(b, &cmd)
+			if err != nil {
+				return err
+			}
+			if commandArr, ok := cmd.([]interface{}); ok {
+				if commandMap, ok := commandArr[0].(map[string]any); ok {
+					if id, ok := commandMap["id"]; ok {
+						commands[id.(string)] = commandMap
+					}
+				}
+			}
+		case strings.Contains(info.Name(), "_cfg"):
+			b, err := os.ReadFile(path)
+			if err != nil {
+				return err
+			}
+			configs[info.Name()] = b
+		}
+		return nil
+	})
+	if e != nil {
+		return map[string]any{}, map[string][]byte{}
+	}
+	return commands, configs
+}
+
+func loadCommandFilesByPlatform(paths []string) (map[string][]any, map[string][]byte) {
+	if len(paths) == 0 {
+		return map[string][]any{}, map[string][]byte{}
+	}
+	configs := make(map[string][]byte)
+	commands := make(map[string][]any)
+
+	e := filepath.Walk(filepath.Join(paths[0], "commands"), func(path string, info os.FileInfo, err error) error {
+		switch {
+		case strings.Contains(info.Name(), "_cmd"):
+			b, err := os.ReadFile(path)
+			if err != nil {
+				return err
+			}
+			var cmd any
+			err = yaml.Unmarshal(b, &cmd)
+			if err != nil {
+				return err
+			}
+			if commandArr, ok := cmd.([]interface{}); ok {
+				if commandMap, ok := commandArr[0].(map[string]any); ok {
+					if platform, ok := commandMap["platform"]; ok {
+						if platforms, ok := platform.([]interface{}); ok {
+							for _, p := range platforms {
+								pl := p.(string)
+								if commands[pl] == nil {
+									commands[pl] = make([]any, 0)
+								}
+								commands[pl] = append(commands[pl], commandMap)
+							}
+						}
+					}
+				}
+			}
+		case strings.Contains(info.Name(), "_cfg"):
+			b, err := os.ReadFile(path)
+			if err != nil {
+				return err
+			}
+			configs[info.Name()] = b
+		}
+		return nil
+	})
+	if e != nil {
+		return map[string][]any{}, map[string][]byte{}
+	}
+	return commands, configs
+}
+
+func filterCommandBySpecId(commands map[string]any, specCommandIds []string) *NodeCommands {
+	if len(specCommandIds) == 0 {
+		return nil
+	}
+	filteredCommands := make([]any, 0)
+	for _, id := range specCommandIds {
+		if command, ok := commands[id]; ok {
+			filteredCommands = append(filteredCommands, command)
+		}
+	}
+	return &NodeCommands{Commands: filteredCommands}
+}
+func filterCommandByPlatform(commands map[string][]any, platform string) *NodeCommands {
+	filteredCommands := make([]any, 0)
+	if command, ok := commands[platform]; ok {
+		filteredCommands = append(filteredCommands, command...)
+	}
+	return &NodeCommands{Commands: filteredCommands}
+}
+
 // Apply deploy k8s job by template to specific node and namespace (for operator use case)
 func (jb *jobCollector) Apply(ctx context.Context, nodeName string) (*batchv1.Job, error) {
 	jobOptions := []JobOption{
@@ -371,4 +488,43 @@ func (jb *jobCollector) Cleanup(ctx context.Context) {
 		return
 	}
 	jb.deleteTrivyNamespace(ctx)
+}
+
+func (jb *jobCollector) GetCollectorArgs(commandsPaths []string, specCommandIds []string) (CollectorArgs, error) {
+	var nodeCommands *NodeCommands
+	var configMap map[string][]byte
+	var commandMap map[string]any
+	var commandMapByPlatform map[string][]any
+	if len(specCommandIds) > 0 {
+		commandMap, configMap = loadCommandFiles(commandsPaths)
+		nodeCommands = filterCommandBySpecId(commandMap, specCommandIds)
+	} else {
+		commandMapByPlatform, configMap = loadCommandFilesByPlatform(commandsPaths)
+		platform := jb.cluster.Platform()
+		nodeCommands = filterCommandByPlatform(commandMapByPlatform, platform.Name)
+	}
+	commandsData, err := yaml.Marshal(nodeCommands)
+	if err != nil {
+		return CollectorArgs{}, err
+	}
+	kubeletMapping, ok := configMap["kubelet_mapping_cfg.yaml"]
+	if !ok {
+		return CollectorArgs{}, fmt.Errorf("missing kubelet config mapping")
+	}
+	nodeCfg, ok := configMap["node_cfg.yaml"]
+	if !ok {
+		return CollectorArgs{}, fmt.Errorf("missing node config data")
+	}
+
+	return CollectorArgs{
+		commands:             base64.RawStdEncoding.EncodeToString(commandsData),
+		kubeletConfigMapping: base64.RawStdEncoding.EncodeToString(kubeletMapping),
+		nodeConfigData:       base64.RawStdEncoding.EncodeToString(nodeCfg),
+	}, nil
+}
+
+type CollectorArgs struct {
+	commands             string
+	kubeletConfigMapping string
+	nodeConfigData       string
 }

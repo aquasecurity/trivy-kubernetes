@@ -89,8 +89,7 @@ const (
 	ClusterRoleBindings    = "clusterrolebindings"
 	Nodes                  = "nodes"
 	k8sComponentNamespace  = "kube-system"
-
-	serviceAccountDefault = "default"
+	serviceAccountDefault  = "default"
 
 	native   = "k8s"
 	gke      = "gke"
@@ -923,4 +922,11 @@ func majorVersion(semanticVersion string) string {
 type Platform struct {
 	Name    string
 	Version string
+}
+
+type SpecVersion struct {
+	Name    string
+	Version string `yaml:"cluster_version"`
+	Op      string `yaml:"op"`
+	CisSpec string `yaml:"spec"`
 }

@@ -145,6 +145,17 @@ func Withk8sClusterVersion(clusterVersion string) JobOption {
 	}
 }
 
+func WithJobComplianceName(complianceName string) JobOption {
+	return func(c *JobBuilder) {
+		c.complianceName = complianceName
+	}
+}
+func WithJobComplianceVersion(complianceVersion string) JobOption {
+	return func(c *JobBuilder) {
+		c.complianceVersion = complianceVersion
+	}
+}
+
 func GetJob(opts ...JobOption) (*batchv1.Job, error) {
 	jb := &JobBuilder{}
 	for _, opt := range opts {
@@ -177,6 +188,8 @@ type JobBuilder struct {
 	useNodeSelector      bool
 	kubeletConfig        string
 	clusterVersion       string
+	complianceName       string
+	complianceVersion    string
 }
 
 func (b *JobBuilder) build() (*batchv1.Job, error) {
@@ -203,6 +216,13 @@ func (b *JobBuilder) build() (*batchv1.Job, error) {
 	if b.clusterVersion != "" {
 		job.Spec.Template.Spec.Containers[0].Args = append(job.Spec.Template.Spec.Containers[0].Args, "--cluster-version", b.clusterVersion)
 	}
+	if b.complianceName != "" {
+		job.Spec.Template.Spec.Containers[0].Args = append(job.Spec.Template.Spec.Containers[0].Args, "--compliance-name", b.complianceName)
+	}
+	if b.complianceVersion != "" {
+		job.Spec.Template.Spec.Containers[0].Args = append(job.Spec.Template.Spec.Containers[0].Args, "--compliance-version", b.complianceVersion)
+	}
+
 	if b.useNodeSelector {
 		job.Spec.Template.Spec.NodeSelector = map[string]string{
 			corev1.LabelHostname: b.nodeName,

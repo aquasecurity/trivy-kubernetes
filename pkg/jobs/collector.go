@@ -57,6 +57,8 @@ type jobCollector struct {
 	nodeConfig           bool
 	useNodeSelector      bool
 	clusterVersion       string
+	complianceName       string
+	complianceVersion    string
 }
 
 type CollectorOption func(*jobCollector)
@@ -191,6 +193,17 @@ func WithUseNodeSelector(useNodeSelector bool) CollectorOption {
 	}
 }
 
+func WithComplianceName(complianceName string) CollectorOption {
+	return func(c *jobCollector) {
+		c.complianceName = complianceName
+	}
+}
+func WithComplianceVersion(complianceVersion string) CollectorOption {
+	return func(c *jobCollector) {
+		c.complianceVersion = complianceVersion
+	}
+}
+
 func NewCollector(
 	cluster k8s.Cluster,
 	opts ...CollectorOption,
@@ -247,6 +260,8 @@ func (jb *jobCollector) ApplyAndCollect(ctx context.Context, nodeName string) (s
 		WithAffinity(jb.affinity),
 		WithTolerations(jb.tolerations),
 		WithPodVolumes(jb.volumes),
+		WithJobComplianceName(jb.complianceName),
+		WithJobComplianceVersion(jb.complianceVersion),
 		Withk8sClusterVersion(jb.clusterVersion),
 		WithImagePullSecrets(jb.imagePullSecrets),
 		WithContainerVolumeMounts(jb.volumeMounts),

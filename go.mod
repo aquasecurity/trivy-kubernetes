@@ -5,7 +5,7 @@ go 1.22.0
 toolchain go1.22.2
 
 require (
-	github.com/aws/aws-sdk-go v1.53.5
+	github.com/aws/aws-sdk-go v1.53.10
 	github.com/davecgh/go-spew v1.1.1
 	github.com/google/go-containerregistry v0.19.1
 	github.com/stretchr/testify v1.9.0

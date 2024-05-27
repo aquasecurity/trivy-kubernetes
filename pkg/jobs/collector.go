@@ -61,7 +61,7 @@ type jobCollector struct {
 	resourceRequirements corev1.ResourceRequirements
 	nodeConfig           bool
 	useNodeSelector      bool
-	commandsPaths        []string
+	commandPaths         []string
 	specCommandIds       []string
 }
 
@@ -193,7 +193,7 @@ func WithUseNodeSelector(useNodeSelector bool) CollectorOption {
 
 func WithCommandsPath(commandPaths []string) CollectorOption {
 	return func(jc *jobCollector) {
-		jc.commandsPaths = commandPaths
+		jc.commandPaths = commandPaths
 	}
 }
 
@@ -246,7 +246,7 @@ func (jb *jobCollector) ApplyAndCollect(ctx context.Context, nodeName string) (s
 		}
 	}
 
-	ca, err := jb.GetCollectorArgs(jb.commandsPaths, jb.specCommandIds)
+	ca, err := jb.GetCollectorArgs(jb.commandPaths, jb.specCommandIds)
 	if err != nil {
 		return "", err
 	}

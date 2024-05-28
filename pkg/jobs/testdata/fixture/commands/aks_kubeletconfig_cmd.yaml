@@ -4,6 +4,6 @@
   title: kubelet.conf file permissions
   nodeType: worker
   audit: stat -c %a $kubelet.kubeconfig
-  platform:
+  platforms:
     - k8s
     - aks

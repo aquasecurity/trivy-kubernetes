@@ -16,20 +16,20 @@ func TestLoadConfigFiles(t *testing.T) {
 	}{
 		{name: "node-collector template", commandPaths: []string{"./testdata/fixture"}, wantCmd: map[string]any{
 			"CMD-0001": map[string]interface{}{
-				"id":       "CMD-0001",
-				"title":    "kubelet.conf file permissions",
-				"key":      "kubeletConfFilePermissions",
-				"nodeType": "worker",
-				"audit":    "stat -c %a $kubelet.kubeconfig",
-				"platform": []interface{}{"k8s", "aks"},
+				"id":        "CMD-0001",
+				"key":       "kubeletConfFilePermissions",
+				"title":     "kubelet.conf file permissions",
+				"nodeType":  "worker",
+				"audit":     "stat -c %a $kubelet.kubeconfig",
+				"platforms": []interface{}{"k8s", "aks"},
 			},
 			"CMD-0002": map[string]interface{}{
-				"id":       "CMD-0002",
-				"title":    "kubelet.conf file permissions",
-				"key":      "kubeletConfFilePermissions",
-				"nodeType": "worker",
-				"audit":    "stat -c %a $kubelet.kubeconfig",
-				"platform": []interface{}{"k8s", "aks"},
+				"id":        "CMD-0002",
+				"key":       "kubeletConfFilePermissions",
+				"title":     "kubelet.conf file permissions",
+				"nodeType":  "worker",
+				"audit":     "stat -c %a $kubelet.kubeconfig",
+				"platforms": []interface{}{"k8s", "aks"},
 			},
 		},
 		},
@@ -46,7 +46,6 @@ func TestLoadConfigFiles(t *testing.T) {
 			assert.True(t, ok)
 			_, ok = gotCfg["platform_mapping_cfg.yaml"]
 			assert.True(t, ok)
-
 		})
 	}
 }
@@ -60,20 +59,20 @@ func TestLoadConfigFilesByPlatform(t *testing.T) {
 	}{
 		{name: "node-collector template", commandPaths: []string{"./testdata/fixture"}, wantCmd: map[string]any{
 			"CMD-0001": map[string]interface{}{
-				"id":       "CMD-0001",
-				"title":    "kubelet.conf file permissions",
-				"key":      "kubeletConfFilePermissions",
-				"nodeType": "worker",
-				"audit":    "stat -c %a $kubelet.kubeconfig",
-				"platform": []interface{}{"k8s", "aks"},
+				"id":        "CMD-0001",
+				"title":     "kubelet.conf file permissions",
+				"key":       "kubeletConfFilePermissions",
+				"nodeType":  "worker",
+				"audit":     "stat -c %a $kubelet.kubeconfig",
+				"platforms": []interface{}{"k8s", "aks"},
 			},
 			"CMD-0002": map[string]interface{}{
-				"id":       "CMD-0002",
-				"title":    "kubelet.conf file permissions",
-				"key":      "kubeletConfFilePermissions",
-				"nodeType": "worker",
-				"audit":    "stat -c %a $kubelet.kubeconfig",
-				"platform": []interface{}{"k8s", "aks"},
+				"id":        "CMD-0002",
+				"title":     "kubelet.conf file permissions",
+				"key":       "kubeletConfFilePermissions",
+				"nodeType":  "worker",
+				"audit":     "stat -c %a $kubelet.kubeconfig",
+				"platforms": []interface{}{"k8s", "aks"},
 			},
 		},
 		},
@@ -99,29 +98,29 @@ func TestFilterCommands(t *testing.T) {
 		name           string
 		filterCommands []string
 		commandsMap    map[string]any
-		want           *NodeCommands
+		want           NodeCommands
 	}{
 		{name: "node-collector template",
 			filterCommands: []string{"CMD-0001"},
 			commandsMap: map[string]any{
 				"CMD-0001": map[string]interface{}{
-					"id":       "CMD-0001",
-					"title":    "kubelet.conf file permissions",
-					"key":      "kubeletConfFilePermissions",
-					"nodeType": "worker",
-					"audit":    "stat -c %a $kubelet.kubeconfig",
-					"platform": []interface{}{"k8s", "aks"},
+					"id":        "CMD-0001",
+					"title":     "kubelet.conf file permissions",
+					"key":       "kubeletConfFilePermissions",
+					"nodeType":  "worker",
+					"audit":     "stat -c %a $kubelet.kubeconfig",
+					"platforms": []interface{}{"k8s", "aks"},
 				},
 			},
-			want: &NodeCommands{
+			want: NodeCommands{
 				Commands: []any{
 					map[string]interface{}{
-						"id":       "CMD-0001",
-						"title":    "kubelet.conf file permissions",
-						"key":      "kubeletConfFilePermissions",
-						"nodeType": "worker",
-						"audit":    "stat -c %a $kubelet.kubeconfig",
-						"platform": []interface{}{"k8s", "aks"},
+						"id":        "CMD-0001",
+						"title":     "kubelet.conf file permissions",
+						"key":       "kubeletConfFilePermissions",
+						"nodeType":  "worker",
+						"audit":     "stat -c %a $kubelet.kubeconfig",
+						"platforms": []interface{}{"k8s", "aks"},
 					},
 				},
 			},
@@ -148,58 +147,58 @@ func TestFilterCommandsByPlatform(t *testing.T) {
 			commandsMap: map[string][]any{
 				"k8s": {
 					map[string]interface{}{
-						"id":       "CMD-0001",
-						"title":    "kubelet.conf file permissions",
-						"key":      "kubeletConfFilePermissions",
-						"nodeType": "worker",
-						"audit":    "stat -c %a $kubelet.kubeconfig",
-						"platform": []interface{}{"k8s", "aks"},
+						"id":        "CMD-0001",
+						"title":     "kubelet.conf file permissions",
+						"key":       "kubeletConfFilePermissions",
+						"nodeType":  "worker",
+						"audit":     "stat -c %a $kubelet.kubeconfig",
+						"platforms": []interface{}{"k8s", "aks"},
 					},
 					map[string]interface{}{
-						"id":       "CMD-0002",
-						"title":    "kubelet.conf file permissions",
-						"key":      "kubeletConfFilePermissions",
-						"nodeType": "worker",
-						"audit":    "stat -c %a $kubelet.kubeconfig",
-						"platform": []interface{}{"k8s", "aks"},
+						"id":        "CMD-0002",
+						"title":     "kubelet.conf file permissions",
+						"key":       "kubeletConfFilePermissions",
+						"nodeType":  "worker",
+						"audit":     "stat -c %a $kubelet.kubeconfig",
+						"platforms": []interface{}{"k8s", "aks"},
 					},
 				},
 				"aks": {
 					map[string]interface{}{
-						"id":       "CMD-0001",
-						"title":    "kubelet.conf file permissions",
-						"key":      "kubeletConfFilePermissions",
-						"nodeType": "worker",
-						"audit":    "stat -c %a $kubelet.kubeconfig",
-						"platform": []interface{}{"k8s", "aks"},
+						"id":        "CMD-0001",
+						"title":     "kubelet.conf file permissions",
+						"key":       "kubeletConfFilePermissions",
+						"nodeType":  "worker",
+						"audit":     "stat -c %a $kubelet.kubeconfig",
+						"platforms": []interface{}{"k8s", "aks"},
 					},
 					map[string]interface{}{
-						"id":       "CMD-0002",
-						"title":    "kubelet.conf file permissions",
-						"key":      "kubeletConfFilePermissions",
-						"nodeType": "worker",
-						"audit":    "stat -c %a $kubelet.kubeconfig",
-						"platform": []interface{}{"k8s", "aks"},
+						"id":        "CMD-0002",
+						"title":     "kubelet.conf file permissions",
+						"key":       "kubeletConfFilePermissions",
+						"nodeType":  "worker",
+						"audit":     "stat -c %a $kubelet.kubeconfig",
+						"platforms": []interface{}{"k8s", "aks"},
 					},
 				},
 			},
 			want: &NodeCommands{
 				Commands: []any{
 					map[string]interface{}{
-						"id":       "CMD-0001",
-						"title":    "kubelet.conf file permissions",
-						"key":      "kubeletConfFilePermissions",
-						"nodeType": "worker",
-						"audit":    "stat -c %a $kubelet.kubeconfig",
-						"platform": []interface{}{"k8s", "aks"},
+						"id":        "CMD-0001",
+						"title":     "kubelet.conf file permissions",
+						"key":       "kubeletConfFilePermissions",
+						"nodeType":  "worker",
+						"audit":     "stat -c %a $kubelet.kubeconfig",
+						"platforms": []interface{}{"k8s", "aks"},
 					},
 					map[string]interface{}{
-						"id":       "CMD-0002",
-						"title":    "kubelet.conf file permissions",
-						"key":      "kubeletConfFilePermissions",
-						"nodeType": "worker",
-						"audit":    "stat -c %a $kubelet.kubeconfig",
-						"platform": []interface{}{"k8s", "aks"},
+						"id":        "CMD-0002",
+						"title":     "kubelet.conf file permissions",
+						"key":       "kubeletConfFilePermissions",
+						"nodeType":  "worker",
+						"audit":     "stat -c %a $kubelet.kubeconfig",
+						"platforms": []interface{}{"k8s", "aks"},
 					},
 				},
 			},

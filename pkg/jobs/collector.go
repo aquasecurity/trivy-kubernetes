@@ -1,6 +1,7 @@
 package jobs
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"fmt"
@@ -12,6 +13,7 @@ import (
 	"path/filepath"
 
 	"github.com/aquasecurity/trivy-kubernetes/pkg/k8s"
+	"github.com/dsnet/compress/bzip2"
 	"gopkg.in/yaml.v3"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -318,18 +320,18 @@ func (jb jobCollector) loadNodeConfig(ctx context.Context, nodeName string) stri
 	if err != nil {
 		return ""
 	}
-	return base64.RawStdEncoding.EncodeToString(data)
+	return base64.StdEncoding.EncodeToString(data)
 }
 
 type NodeCommands struct {
 	Commands []any `yaml:"commands"`
 }
 
-func loadCommandFiles(paths []string) (map[string]any, map[string][]byte) {
+func loadCommandFiles(paths []string) (map[string]any, map[string]string) {
 	if len(paths) == 0 {
-		return map[string]any{}, map[string][]byte{}
+		return map[string]any{}, map[string]string{}
 	}
-	configs := make(map[string][]byte)
+	configs := make(map[string]string)
 	commands := make(map[string]any)
 
 	e := filepath.Walk(filepath.Join(paths[0], "commands"), func(path string, info os.FileInfo, err error) error {
@@ -356,21 +358,25 @@ func loadCommandFiles(paths []string) (map[string]any, map[string][]byte) {
 			if err != nil {
 				return err
 			}
-			configs[info.Name()] = b
+			nconfig, err := bzip2Compress(b)
+			if err != nil {
+				return err
+			}
+			configs[info.Name()] = base64.StdEncoding.EncodeToString(nconfig)
 		}
 		return nil
 	})
 	if e != nil {
-		return map[string]any{}, map[string][]byte{}
+		return map[string]any{}, map[string]string{}
 	}
 	return commands, configs
 }
 
-func loadCommandFilesByPlatform(paths []string) (map[string][]any, map[string][]byte) {
+func loadCommandFilesByPlatform(paths []string) (map[string][]any, map[string]string) {
 	if len(paths) == 0 {
-		return map[string][]any{}, map[string][]byte{}
+		return map[string][]any{}, map[string]string{}
 	}
-	configs := make(map[string][]byte)
+	configs := make(map[string]string)
 	commands := make(map[string][]any)
 
 	e := filepath.Walk(filepath.Join(paths[0], "commands"), func(path string, info os.FileInfo, err error) error {
@@ -387,7 +393,7 @@ func loadCommandFilesByPlatform(paths []string) (map[string][]any, map[string][]
 			}
 			if commandArr, ok := cmd.([]interface{}); ok {
 				if commandMap, ok := commandArr[0].(map[string]any); ok {
-					if platform, ok := commandMap["platform"]; ok {
+					if platform, ok := commandMap["platforms"]; ok {
 						if platforms, ok := platform.([]interface{}); ok {
 							for _, p := range platforms {
 								pl := p.(string)
@@ -405,19 +411,23 @@ func loadCommandFilesByPlatform(paths []string) (map[string][]any, map[string][]
 			if err != nil {
 				return err
 			}
-			configs[info.Name()] = b
+			nconfig, err := bzip2Compress(b)
+			if err != nil {
+				return err
+			}
+			configs[info.Name()] = base64.StdEncoding.EncodeToString(nconfig)
 		}
 		return nil
 	})
 	if e != nil {
-		return map[string][]any{}, map[string][]byte{}
+		return map[string][]any{}, map[string]string{}
 	}
 	return commands, configs
 }
 
-func filterCommandBySpecId(commands map[string]any, specCommandIds []string) *NodeCommands {
+func filterCommandBySpecId(commands map[string]any, specCommandIds []string) NodeCommands {
 	if len(specCommandIds) == 0 {
-		return nil
+		return NodeCommands{}
 	}
 	filteredCommands := make([]any, 0)
 	for _, id := range specCommandIds {
@@ -425,18 +435,22 @@ func filterCommandBySpecId(commands map[string]any, specCommandIds []string) *No
 			filteredCommands = append(filteredCommands, command)
 		}
 	}
-	return &NodeCommands{Commands: filteredCommands}
+	return NodeCommands{Commands: filteredCommands}
 }
-func filterCommandByPlatform(commands map[string][]any, platform string) *NodeCommands {
+func filterCommandByPlatform(commands map[string][]any, platform string) NodeCommands {
 	filteredCommands := make([]any, 0)
 	if command, ok := commands[platform]; ok {
 		filteredCommands = append(filteredCommands, command...)
 	}
-	return &NodeCommands{Commands: filteredCommands}
+	return NodeCommands{Commands: filteredCommands}
 }
 
 // Apply deploy k8s job by template to specific node and namespace (for operator use case)
 func (jb *jobCollector) Apply(ctx context.Context, nodeName string) (*batchv1.Job, error) {
+	ca, err := jb.GetCollectorArgs(jb.commandPaths, jb.specCommandIds)
+	if err != nil {
+		return nil, err
+	}
 	jobOptions := []JobOption{
 		WithNamespace(jb.namespace),
 		WithLabels(jb.labels),
@@ -449,6 +463,9 @@ func (jb *jobCollector) Apply(ctx context.Context, nodeName string) (*batchv1.Jo
 		WithNodeCollectorImageRef(jb.imageRef),
 		WithAnnotation(jb.annotation),
 		WithTemplate(jb.templateName),
+		WithK8sNodeCommands(ca.commands),
+		WithK8sKubeletConfigMapping(ca.kubeletConfigMapping),
+		WithK8sNodeConfigData(ca.nodeConfigData),
 		WithPodVolumes(jb.volumes),
 		WithNodeConfiguration(false),
 		WithImagePullSecrets(jb.imagePullSecrets),
@@ -491,8 +508,8 @@ func (jb *jobCollector) Cleanup(ctx context.Context) {
 }
 
 func (jb *jobCollector) GetCollectorArgs(commandsPaths []string, specCommandIds []string) (CollectorArgs, error) {
-	var nodeCommands *NodeCommands
-	var configMap map[string][]byte
+	var nodeCommands NodeCommands
+	var configMap map[string]string
 	var commandMap map[string]any
 	var commandMapByPlatform map[string][]any
 	if len(specCommandIds) > 0 {
@@ -503,7 +520,14 @@ func (jb *jobCollector) GetCollectorArgs(commandsPaths []string, specCommandIds 
 		platform := jb.cluster.Platform()
 		nodeCommands = filterCommandByPlatform(commandMapByPlatform, platform.Name)
 	}
-	commandsData, err := yaml.Marshal(nodeCommands)
+	if len(nodeCommands.Commands) == 0 {
+		return CollectorArgs{}, fmt.Errorf("no compliance commands found")
+	}
+	commands, err := yaml.Marshal(nodeCommands)
+	if err != nil {
+		return CollectorArgs{}, err
+	}
+	cdata, err := bzip2Compress(commands)
 	if err != nil {
 		return CollectorArgs{}, err
 	}
@@ -517,10 +541,25 @@ func (jb *jobCollector) GetCollectorArgs(commandsPaths []string, specCommandIds 
 	}
 
 	return CollectorArgs{
-		commands:             base64.RawStdEncoding.EncodeToString(commandsData),
-		kubeletConfigMapping: base64.RawStdEncoding.EncodeToString(kubeletMapping),
-		nodeConfigData:       base64.RawStdEncoding.EncodeToString(nodeCfg),
+		commands:             base64.StdEncoding.EncodeToString(cdata),
+		kubeletConfigMapping: kubeletMapping,
+		nodeConfigData:       nodeCfg,
 	}, nil
+}
+
+func bzip2Compress(data []byte) ([]byte, error) {
+	var buf bytes.Buffer
+	w, err := bzip2.NewWriter(&buf, &bzip2.WriterConfig{Level: bzip2.DefaultCompression})
+	if err != nil {
+		return []byte{}, err
+	}
+
+	_, err = w.Write(data)
+	if err != nil {
+		return []byte{}, err
+	}
+	w.Close()
+	return buf.Bytes(), nil
 }
 
 type CollectorArgs struct {

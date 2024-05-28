@@ -56,6 +56,8 @@ type client struct {
 	includeKinds      []string
 	excludeNamespaces []string
 	includeNamespaces []string
+	commandPaths      []string
+	specCommandIds    []string
 }
 
 type K8sOption func(*client)
@@ -293,6 +295,16 @@ func WithNodeConfig(nodeConfig bool) NodeCollectorOption {
 		c.nodeConfig = nodeConfig
 	}
 }
+func WithCommandPaths(commandPaths []string) NodeCollectorOption {
+	return func(c *client) {
+		c.commandPaths = commandPaths
+	}
+}
+func WithSpecCommandIds(specCommandIds []string) NodeCollectorOption {
+	return func(c *client) {
+		c.specCommandIds = specCommandIds
+	}
+}
 
 // ListArtifacts returns kubernetes scannable artifacs.
 func (c *client) ListArtifactAndNodeInfo(ctx context.Context,
@@ -319,6 +331,8 @@ func (c *client) ListArtifactAndNodeInfo(ctx context.Context,
 		jobs.WithJobAffinity(c.scanJobParams.affinity),
 		jobs.WithJobTolerations(c.scanJobParams.tolerations),
 		jobs.WithNodeConfig(c.nodeConfig),
+		jobs.WithCommandsPath(c.commandPaths),
+		jobs.WithSpecCommands(c.specCommandIds),
 	)
 	// delete trivy namespace
 	defer jc.Cleanup(ctx)

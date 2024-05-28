@@ -1,7 +1,6 @@
 package jobs
 
 import (
-	"bytes"
 	"context"
 	"encoding/base64"
 	"fmt"
@@ -13,7 +12,6 @@ import (
 	"path/filepath"
 
 	"github.com/aquasecurity/trivy-kubernetes/pkg/k8s"
-	"github.com/dsnet/compress/bzip2"
 	"gopkg.in/yaml.v3"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -545,21 +543,6 @@ func (jb *jobCollector) GetCollectorArgs(commandsPaths []string, specCommandIds 
 		kubeletConfigMapping: kubeletMapping,
 		nodeConfigData:       nodeCfg,
 	}, nil
-}
-
-func bzip2Compress(data []byte) ([]byte, error) {
-	var buf bytes.Buffer
-	w, err := bzip2.NewWriter(&buf, &bzip2.WriterConfig{Level: bzip2.DefaultCompression})
-	if err != nil {
-		return []byte{}, err
-	}
-
-	_, err = w.Write(data)
-	if err != nil {
-		return []byte{}, err
-	}
-	w.Close()
-	return buf.Bytes(), nil
 }
 
 type CollectorArgs struct {

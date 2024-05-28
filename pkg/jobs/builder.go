@@ -218,7 +218,7 @@ func (b *JobBuilder) build() (*batchv1.Job, error) {
 		job.Spec.Template.Spec.Containers[0].Args = append(job.Spec.Template.Spec.Containers[0].Args, "--node-config", b.nodeConfigData)
 	}
 	if b.kubeletConfigMapping != "" {
-		job.Spec.Template.Spec.Containers[0].Args = append(job.Spec.Template.Spec.Containers[0].Args, "kubelet-config-mapping", b.kubeletConfigMapping)
+		job.Spec.Template.Spec.Containers[0].Args = append(job.Spec.Template.Spec.Containers[0].Args, "--kubelet-config-mapping", b.kubeletConfigMapping)
 	}
 	if b.nodeCommands != "" {
 		job.Spec.Template.Spec.Containers[0].Args = append(job.Spec.Template.Spec.Containers[0].Args, "--node-commands", b.nodeCommands)

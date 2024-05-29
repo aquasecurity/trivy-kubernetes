@@ -24,10 +24,13 @@ const (
 	defaultNamespace  = "trivy-temp"
 
 	// job headers
-	TrivyCollectorName = "trivy.collector.name"
-	TrivyAutoCreated   = "trivy.automatic.created"
-	TrivyResourceName  = "trivy.resource.name"
-	TrivyResourceKind  = "trivy.resource.kind"
+	TrivyCollectorName   = "trivy.collector.name"
+	TrivyAutoCreated     = "trivy.automatic.created"
+	TrivyResourceName    = "trivy.resource.name"
+	TrivyResourceKind    = "trivy.resource.kind"
+	commandsRootFolder   = "commands"
+	k8sCommandFolder     = "kubernetes"
+	configCommandsFolder = "config"
 )
 
 type Collector interface {
@@ -377,9 +380,9 @@ func loadCommandFilesByPlatform(paths []string) (map[string][]any, map[string]st
 	configs := make(map[string]string)
 	commands := make(map[string][]any)
 
-	e := filepath.Walk(filepath.Join(paths[0], "commands"), func(path string, info os.FileInfo, err error) error {
+	e := filepath.Walk(filepath.Join(paths[0], commandsRootFolder), func(path string, info os.FileInfo, err error) error {
 		switch {
-		case strings.Contains(info.Name(), "_cmd"):
+		case strings.Contains(path, filepath.Join(commandsRootFolder, k8sCommandFolder)) && filepath.Ext(path) == ".yaml":
 			b, err := os.ReadFile(path)
 			if err != nil {
 				return err
@@ -404,7 +407,7 @@ func loadCommandFilesByPlatform(paths []string) (map[string][]any, map[string]st
 					}
 				}
 			}
-		case strings.Contains(info.Name(), "_cfg"):
+		case strings.Contains(path, filepath.Join(commandsRootFolder, configCommandsFolder)) && filepath.Ext(path) == ".yaml":
 			b, err := os.ReadFile(path)
 			if err != nil {
 				return err

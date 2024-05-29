@@ -328,52 +328,7 @@ type NodeCommands struct {
 	Commands []any `yaml:"commands"`
 }
 
-func loadCommandFiles(paths []string) (map[string]any, map[string]string) {
-	if len(paths) == 0 {
-		return map[string]any{}, map[string]string{}
-	}
-	configs := make(map[string]string)
-	commands := make(map[string]any)
-
-	e := filepath.Walk(filepath.Join(paths[0], "commands"), func(path string, info os.FileInfo, err error) error {
-		switch {
-		case strings.Contains(info.Name(), "_cmd"):
-			b, err := os.ReadFile(path)
-			if err != nil {
-				return err
-			}
-			var cmd any
-			err = yaml.Unmarshal(b, &cmd)
-			if err != nil {
-				return err
-			}
-			if commandArr, ok := cmd.([]interface{}); ok {
-				if commandMap, ok := commandArr[0].(map[string]any); ok {
-					if id, ok := commandMap["id"]; ok {
-						commands[id.(string)] = commandMap
-					}
-				}
-			}
-		case strings.Contains(info.Name(), "_cfg"):
-			b, err := os.ReadFile(path)
-			if err != nil {
-				return err
-			}
-			nconfig, err := bzip2Compress(b)
-			if err != nil {
-				return err
-			}
-			configs[info.Name()] = base64.StdEncoding.EncodeToString(nconfig)
-		}
-		return nil
-	})
-	if e != nil {
-		return map[string]any{}, map[string]string{}
-	}
-	return commands, configs
-}
-
-func loadCommandFilesByPlatform(paths []string) (map[string][]any, map[string]string) {
+func loadCommands(paths []string, AddCheckFunc AddChecks) (map[string][]any, map[string]string) {
 	if len(paths) == 0 {
 		return map[string][]any{}, map[string]string{}
 	}
@@ -394,17 +349,7 @@ func loadCommandFilesByPlatform(paths []string) (map[string][]any, map[string]st
 			}
 			if commandArr, ok := cmd.([]interface{}); ok {
 				if commandMap, ok := commandArr[0].(map[string]any); ok {
-					if platform, ok := commandMap["platforms"]; ok {
-						if platforms, ok := platform.([]interface{}); ok {
-							for _, p := range platforms {
-								pl := p.(string)
-								if commands[pl] == nil {
-									commands[pl] = make([]any, 0)
-								}
-								commands[pl] = append(commands[pl], commandMap)
-							}
-						}
-					}
+					AddCheckFunc(commands, commandMap)
 				}
 			}
 		case strings.Contains(path, filepath.Join(commandsRootFolder, configCommandsFolder)) && filepath.Ext(path) == ".yaml":
@@ -426,14 +371,41 @@ func loadCommandFilesByPlatform(paths []string) (map[string][]any, map[string]st
 	return commands, configs
 }
 
-func filterCommandBySpecId(commands map[string]any, specCommandIds []string) NodeCommands {
+type AddChecks func(addChecks map[string][]any, commandMap map[string]any)
+
+func AddChecksByCheckPlatform(addChecks map[string][]any, commandMap map[string]any) {
+	if platform, ok := commandMap["platforms"]; ok {
+		if platforms, ok := platform.([]interface{}); ok {
+			for _, p := range platforms {
+				pl := p.(string)
+				if addChecks[pl] == nil {
+					addChecks[pl] = make([]any, 0)
+				}
+				addChecks[pl] = append(addChecks[pl], commandMap)
+			}
+		}
+	}
+}
+
+func AddChecksByCheckId(addChecks map[string][]any, commandMap map[string]any) {
+	if id, ok := commandMap["id"]; ok {
+		if idString, ok := id.(string); ok {
+			if addChecks[idString] == nil {
+				addChecks[idString] = make([]any, 0)
+			}
+			addChecks[idString] = append(addChecks[idString], commandMap)
+		}
+	}
+}
+
+func filterCommandBySpecId(commands map[string][]any, specCommandIds []string) NodeCommands {
 	if len(specCommandIds) == 0 {
 		return NodeCommands{}
 	}
 	filteredCommands := make([]any, 0)
 	for _, id := range specCommandIds {
 		if command, ok := commands[id]; ok {
-			filteredCommands = append(filteredCommands, command)
+			filteredCommands = append(filteredCommands, command...)
 		}
 	}
 	return NodeCommands{Commands: filteredCommands}
@@ -511,15 +483,14 @@ func (jb *jobCollector) Cleanup(ctx context.Context) {
 func (jb *jobCollector) GetCollectorArgs(commandsPaths []string, specCommandIds []string) (CollectorArgs, error) {
 	var nodeCommands NodeCommands
 	var configMap map[string]string
-	var commandMap map[string]any
-	var commandMapByPlatform map[string][]any
+	var commandMap map[string][]any
 	if len(specCommandIds) > 0 {
-		commandMap, configMap = loadCommandFiles(commandsPaths)
+		commandMap, configMap = loadCommands(commandsPaths, AddChecksByCheckId)
 		nodeCommands = filterCommandBySpecId(commandMap, specCommandIds)
 	} else {
-		commandMapByPlatform, configMap = loadCommandFilesByPlatform(commandsPaths)
+		commandMap, configMap = loadCommands(commandsPaths, AddChecksByCheckPlatform)
 		platform := jb.cluster.Platform()
-		nodeCommands = filterCommandByPlatform(commandMapByPlatform, platform.Name)
+		nodeCommands = filterCommandByPlatform(commandMap, platform.Name)
 	}
 	if len(nodeCommands.Commands) == 0 {
 		return CollectorArgs{}, fmt.Errorf("no compliance commands found")

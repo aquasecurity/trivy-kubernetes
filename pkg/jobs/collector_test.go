@@ -7,37 +7,42 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestLoadConfigFiles(t *testing.T) {
+func TestLoadCheckFilesByID(t *testing.T) {
 	tests := []struct {
 		name         string
 		commandPaths []string
-		wantCmd      map[string]any
+		wantCmd      map[string][]any
 		wantCfg      map[string][]byte
 	}{
-		{name: "node-collector template", commandPaths: []string{"./testdata/fixture"}, wantCmd: map[string]any{
-			"CMD-0001": map[string]interface{}{
-				"id":        "CMD-0001",
-				"key":       "kubeletConfFilePermissions",
-				"title":     "kubelet.conf file permissions",
-				"nodeType":  "worker",
-				"audit":     "stat -c %a $kubelet.kubeconfig",
-				"platforms": []interface{}{"k8s", "aks"},
+		{name: "node-collector template", commandPaths: []string{"./testdata/fixture"},
+			wantCmd: map[string][]any{
+				"CMD-0001": {
+					map[string]interface{}{
+						"id":        "CMD-0001",
+						"title":     "kubelet.conf file permissions",
+						"key":       "kubeletConfFilePermissions",
+						"nodeType":  "worker",
+						"audit":     "stat -c %a $kubelet.kubeconfig",
+						"platforms": []interface{}{"k8s", "aks"},
+					},
+				},
+				"CMD-0002": {
+					map[string]interface{}{
+						"id":        "CMD-0002",
+						"title":     "kubelet.conf file permissions",
+						"key":       "kubeletConfFilePermissions",
+						"nodeType":  "worker",
+						"audit":     "stat -c %a $kubelet.kubeconfig",
+						"platforms": []interface{}{"k8s", "aks"},
+					},
+				},
 			},
-			"CMD-0002": map[string]interface{}{
-				"id":        "CMD-0002",
-				"key":       "kubeletConfFilePermissions",
-				"title":     "kubelet.conf file permissions",
-				"nodeType":  "worker",
-				"audit":     "stat -c %a $kubelet.kubeconfig",
-				"platforms": []interface{}{"k8s", "aks"},
-			},
-		},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotCmd, gotCfg := loadCommandFiles(tt.commandPaths)
+			gotCmd, gotCfg := loadCommands(tt.commandPaths, AddChecksByCheckId)
 			assert.True(t, reflect.DeepEqual(gotCmd["CMD-0001"], tt.wantCmd["CMD-0001"]))
 			assert.True(t, reflect.DeepEqual(gotCmd["CMD-0002"], tt.wantCmd["CMD-0002"]))
 			_, ok := gotCfg["kubelet_mapping_cfg.yaml"]
@@ -79,7 +84,7 @@ func TestLoadConfigFilesByPlatform(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotCmd, gotCfg := loadCommandFilesByPlatform(tt.commandPaths)
+			gotCmd, gotCfg := loadCommands(tt.commandPaths, AddChecksByCheckPlatform)
 			assert.True(t, len(gotCmd["k8s"]) == 2)
 			assert.True(t, len(gotCmd["aks"]) == 2)
 			_, ok := gotCfg["kubelet_mapping_cfg.yaml"]
@@ -97,19 +102,21 @@ func TestFilterCommands(t *testing.T) {
 	tests := []struct {
 		name           string
 		filterCommands []string
-		commandsMap    map[string]any
+		commandsMap    map[string][]any
 		want           NodeCommands
 	}{
 		{name: "node-collector template",
 			filterCommands: []string{"CMD-0001"},
-			commandsMap: map[string]any{
-				"CMD-0001": map[string]interface{}{
-					"id":        "CMD-0001",
-					"title":     "kubelet.conf file permissions",
-					"key":       "kubeletConfFilePermissions",
-					"nodeType":  "worker",
-					"audit":     "stat -c %a $kubelet.kubeconfig",
-					"platforms": []interface{}{"k8s", "aks"},
+			commandsMap: map[string][]any{
+				"CMD-0001": {
+					map[string]interface{}{
+						"id":        "CMD-0001",
+						"title":     "kubelet.conf file permissions",
+						"key":       "kubeletConfFilePermissions",
+						"nodeType":  "worker",
+						"audit":     "stat -c %a $kubelet.kubeconfig",
+						"platforms": []interface{}{"k8s", "aks"},
+					},
 				},
 			},
 			want: NodeCommands{

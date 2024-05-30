@@ -35,7 +35,7 @@ func deepHashObject(hasher hash.Hash, objectToWrite interface{}) {
 	printer.Fprintf(hasher, "%#v", objectToWrite)
 }
 
-func compressAndDecode(data []byte) (string, error) {
+func compressAndEncode(data []byte) (string, error) {
 	var buf bytes.Buffer
 	w, err := bzip2.NewWriter(&buf, &bzip2.WriterConfig{Level: bzip2.DefaultCompression})
 	if err != nil {

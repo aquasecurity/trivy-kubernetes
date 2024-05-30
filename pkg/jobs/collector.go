@@ -321,7 +321,7 @@ func (jb jobCollector) loadNodeConfig(ctx context.Context, nodeName string) (str
 	if err != nil {
 		return "", err
 	}
-	return compressAndDecode(data)
+	return compressAndEncode(data)
 }
 
 type NodeCommands struct {
@@ -357,7 +357,7 @@ func loadCommands(paths []string, AddCheckFunc AddChecks) (map[string][]any, map
 			if err != nil {
 				return err
 			}
-			nconfig, err := compressAndDecode(b)
+			nconfig, err := compressAndEncode(b)
 			if err != nil {
 				return err
 			}
@@ -499,7 +499,7 @@ func (jb *jobCollector) GetCollectorArgs(commandsPaths []string, specCommandIds 
 	if err != nil {
 		return CollectorArgs{}, err
 	}
-	cdata, err := compressAndDecode(commands)
+	cdata, err := compressAndEncode(commands)
 	if err != nil {
 		return CollectorArgs{}, err
 	}

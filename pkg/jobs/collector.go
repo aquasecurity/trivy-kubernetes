@@ -2,7 +2,6 @@ package jobs
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
 	"io"
 	"strings"
@@ -282,10 +281,11 @@ func (jb *jobCollector) ApplyAndCollect(ctx context.Context, nodeName string) (s
 				Namespace: jb.namespace,
 			}))),
 	}
-	nc := jb.loadNodeConfig(ctx, nodeName)
-	if nc != "" {
-		JobOptions = append(JobOptions, WithKubeletConfig(nc))
+	nc, err := jb.loadNodeConfig(ctx, nodeName)
+	if err != nil {
+		return "", fmt.Errorf("loading node config: %w", err)
 	}
+	JobOptions = append(JobOptions, WithKubeletConfig(nc))
 	job, err := GetJob(JobOptions...)
 	if err != nil {
 		return "", fmt.Errorf("running node-collector job: %w", err)
@@ -316,12 +316,12 @@ func (jb *jobCollector) ApplyAndCollect(ctx context.Context, nodeName string) (s
 	return string(output), nil
 }
 
-func (jb jobCollector) loadNodeConfig(ctx context.Context, nodeName string) string {
+func (jb jobCollector) loadNodeConfig(ctx context.Context, nodeName string) (string, error) {
 	data, err := jb.cluster.GetK8sClientSet().RESTClient().Get().AbsPath(fmt.Sprintf("/api/v1/nodes/%s/proxy/configz", nodeName)).DoRaw(ctx)
 	if err != nil {
-		return ""
+		return "", err
 	}
-	return base64.StdEncoding.EncodeToString(data)
+	return compressAndDecode(data)
 }
 
 type NodeCommands struct {
@@ -357,11 +357,11 @@ func loadCommands(paths []string, AddCheckFunc AddChecks) (map[string][]any, map
 			if err != nil {
 				return err
 			}
-			nconfig, err := bzip2Compress(b)
+			nconfig, err := compressAndDecode(b)
 			if err != nil {
 				return err
 			}
-			configs[info.Name()] = base64.StdEncoding.EncodeToString(nconfig)
+			configs[info.Name()] = nconfig
 		}
 		return nil
 	})
@@ -499,7 +499,7 @@ func (jb *jobCollector) GetCollectorArgs(commandsPaths []string, specCommandIds 
 	if err != nil {
 		return CollectorArgs{}, err
 	}
-	cdata, err := bzip2Compress(commands)
+	cdata, err := compressAndDecode(commands)
 	if err != nil {
 		return CollectorArgs{}, err
 	}
@@ -513,7 +513,7 @@ func (jb *jobCollector) GetCollectorArgs(commandsPaths []string, specCommandIds 
 	}
 
 	return CollectorArgs{
-		commands:             base64.StdEncoding.EncodeToString(cdata),
+		commands:             cdata,
 		kubeletConfigMapping: kubeletMapping,
 		nodeConfigData:       nodeCfg,
 	}, nil

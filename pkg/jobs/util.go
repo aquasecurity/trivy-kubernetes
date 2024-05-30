@@ -2,6 +2,7 @@ package jobs
 
 import (
 	"bytes"
+	"encoding/base64"
 	"fmt"
 	"hash"
 	"hash/fnv"
@@ -34,17 +35,17 @@ func deepHashObject(hasher hash.Hash, objectToWrite interface{}) {
 	printer.Fprintf(hasher, "%#v", objectToWrite)
 }
 
-func bzip2Compress(data []byte) ([]byte, error) {
+func compressAndDecode(data []byte) (string, error) {
 	var buf bytes.Buffer
 	w, err := bzip2.NewWriter(&buf, &bzip2.WriterConfig{Level: bzip2.DefaultCompression})
 	if err != nil {
-		return []byte{}, err
+		return "", err
 	}
 
 	_, err = w.Write(data)
 	if err != nil {
-		return []byte{}, err
+		return "", err
 	}
 	w.Close()
-	return buf.Bytes(), nil
+	return base64.StdEncoding.EncodeToString(buf.Bytes()), nil
 }

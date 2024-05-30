@@ -373,7 +373,7 @@ func loadCommands(paths []string, AddCheckFunc AddChecks) (map[string][]any, map
 
 type AddChecks func(addChecks map[string][]any, commandMap map[string]any)
 
-func AddChecksByCheckPlatform(addChecks map[string][]any, commandMap map[string]any) {
+func AddChecksByPlatform(addChecks map[string][]any, commandMap map[string]any) {
 	if platform, ok := commandMap["platforms"]; ok {
 		if platforms, ok := platform.([]interface{}); ok {
 			for _, p := range platforms {
@@ -488,7 +488,7 @@ func (jb *jobCollector) GetCollectorArgs(commandsPaths []string, specCommandIds 
 		commandMap, configMap = loadCommands(commandsPaths, AddChecksByCheckId)
 		nodeCommands = filterCommandBySpecId(commandMap, specCommandIds)
 	} else {
-		commandMap, configMap = loadCommands(commandsPaths, AddChecksByCheckPlatform)
+		commandMap, configMap = loadCommands(commandsPaths, AddChecksByPlatform)
 		platform := jb.cluster.Platform()
 		nodeCommands = filterCommandByPlatform(commandMap, platform.Name)
 	}

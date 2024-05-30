@@ -84,7 +84,7 @@ func TestLoadConfigFilesByPlatform(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotCmd, gotCfg := loadCommands(tt.commandPaths, AddChecksByCheckPlatform)
+			gotCmd, gotCfg := loadCommands(tt.commandPaths, AddChecksByPlatform)
 			assert.True(t, len(gotCmd["k8s"]) == 2)
 			assert.True(t, len(gotCmd["aks"]) == 2)
 			_, ok := gotCfg["kubelet_mapping_cfg.yaml"]

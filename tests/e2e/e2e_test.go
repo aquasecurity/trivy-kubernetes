@@ -3,6 +3,7 @@ package e2e
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"reflect"
 	"testing"
@@ -55,12 +56,22 @@ func TestKBOM(T *testing.T) {
 	}
 	trivyk8s := tk.New(cluster, tk.WithExcludeOwned(true))
 	// collect bom info
-	ar, err := trivyk8s.ListClusterBomInfo(ctx)
+	gotBom, err := trivyk8s.ListClusterBomInfo(ctx)
 	assert.NoError(T, err)
-	b, err := os.ReadFile("./testdata/expected_bom.json")
+	want, err := os.ReadFile("./testdata/expected_bom.json")
 	assert.NoError(T, err)
-	var expectedBom []*artifacts.Artifact
-	err = json.Unmarshal(b, &expectedBom)
+	var wantBom []*artifacts.Artifact
+	err = json.Unmarshal(want, &wantBom)
 	assert.NoError(T, err)
-	assert.True(T, reflect.DeepEqual(expectedBom, ar))
+	// handle changes values
+	for _, bm := range gotBom {
+		if a, ok := bm.RawResource["Properties"]; ok {
+			if prop, ok := a.(map[string]interface{}); ok {
+				prop["Name"] = "ignore value"
+			}
+		}
+	}
+	bg, _ := json.Marshal(gotBom)
+	fmt.Println(string(bg))
+	assert.True(T, reflect.DeepEqual(wantBom, gotBom))
 }

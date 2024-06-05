@@ -503,11 +503,11 @@ func (jb *jobCollector) GetCollectorArgs(commandsPaths []string, specCommandIds 
 	if err != nil {
 		return CollectorArgs{}, err
 	}
-	kubeletMapping, ok := configMap["kubelet_mapping_cfg.yaml"]
+	kubeletMapping, ok := configMap["kubelet_mapping.yaml"]
 	if !ok {
 		return CollectorArgs{}, fmt.Errorf("missing kubelet config mapping")
 	}
-	nodeCfg, ok := configMap["node_cfg.yaml"]
+	nodeCfg, ok := configMap["node.yaml"]
 	if !ok {
 		return CollectorArgs{}, fmt.Errorf("missing node config data")
 	}

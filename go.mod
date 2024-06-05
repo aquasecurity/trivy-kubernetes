@@ -28,6 +28,7 @@ require (
 )
 
 require (
+	github.com/dsnet/compress v0.0.1
 	github.com/emicklei/go-restful/v3 v3.11.0 // indirect
 	github.com/evanphx/json-patch v5.6.0+incompatible // indirect
 	github.com/go-errors/errors v1.4.2 // indirect

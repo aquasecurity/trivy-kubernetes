@@ -3,6 +3,7 @@ package k8s
 import (
 	"context"
 	"fmt"
+
 	"github.com/aquasecurity/trivy-kubernetes/pkg/bom"
 	"github.com/aquasecurity/trivy-kubernetes/pkg/k8s/docker"
 	"github.com/aquasecurity/trivy-kubernetes/utils"
@@ -87,8 +88,16 @@ const (
 	ClusterRoleBindings    = "clusterrolebindings"
 	Nodes                  = "nodes"
 	k8sComponentNamespace  = "kube-system"
+	serviceAccountDefault  = "default"
 
-	serviceAccountDefault = "default"
+	native   = "k8s"
+	gke      = "gke"
+	aks      = "aks"
+	eks      = "eks"
+	rke2     = "rke2"
+	k3s      = "k3s"
+	ocp      = "ocp"
+	microk8s = "microk8s"
 )
 
 // Cluster interface represents the operations needed to scan a cluster
@@ -114,6 +123,8 @@ type Cluster interface {
 	GetClusterVersion() string
 	// AuthByResource return image pull secrets by resource pod spec
 	AuthByResource(resource unstructured.Unstructured) (map[string]docker.Auth, error)
+	// SpecByPlatform return spec by platform type and version
+	Platform() Platform
 }
 
 type cluster struct {
@@ -268,6 +279,77 @@ func (c *cluster) GetDynamicClient() dynamic.Interface {
 // GetK8sClientSet returns k8s clientSet
 func (c *cluster) GetK8sClientSet() *kubernetes.Clientset {
 	return c.clientset
+}
+
+// GetK8sClientSet returns k8s clientSet
+func (c *cluster) Platform() Platform {
+	platform, err := c.Platfrom()
+	if err != nil {
+		return Platform{Name: "k8s", Version: "1.23.0"}
+	}
+	return platform
+}
+
+func (cluster *cluster) Platfrom() (Platform, error) {
+	v := cluster.getOpenShiftVersion(context.Background())
+	if len(v) != 0 {
+		return Platform{Name: "ocp", Version: majorVersion(v)}, nil
+	}
+	nodeName := cluster.getNodeName()
+	semVersion, err := cluster.clientset.ServerVersion()
+	if err != nil {
+		return Platform{}, err
+	}
+	p := getPlatformInfoFromVersion(semVersion.GitVersion)
+	var name string
+	switch {
+	case strings.Contains(p.Version, k3s):
+		name = k3s
+	case strings.Contains(p.Version, rke2):
+		name = rke2
+	case strings.Contains(p.Version, microk8s):
+		name = microk8s
+	case strings.Contains(nodeName, aks):
+		name = aks
+	case strings.Contains(nodeName, eks):
+		name = eks
+	case strings.Contains(nodeName, gke):
+		name = gke
+	default:
+		name = "k8s"
+	}
+	return Platform{Name: name, Version: p.Version}, nil
+}
+
+type Platform struct {
+	Name    string
+	Version string
+}
+
+func (cluster *cluster) getOpenShiftVersion(ctx context.Context) string {
+	gvr, err := cluster.restMapper.ResourceFor(schema.GroupVersionResource{Resource: "clusterversions"})
+	if err != nil {
+		return ""
+	}
+	dclient := cluster.dynamicClient.Resource(gvr).Namespace("")
+	resources, err := dclient.List(ctx, metav1.ListOptions{})
+	if err != nil {
+		return ""
+	}
+	var version string
+	for _, resource := range resources.Items {
+		version, _, _ = unstructured.NestedString(resource.Object, []string{"status", "desired", "version"}...)
+
+	}
+	return version
+}
+
+func (cluster *cluster) getNodeName() string {
+	nodes, err := cluster.clientset.CoreV1().Nodes().List(context.Background(), metav1.ListOptions{})
+	if err != nil {
+		return "k8s"
+	}
+	return nodes.Items[0].Name
 }
 
 // GetGVRs returns cluster GroupVersionResource to query kubernetes, receives

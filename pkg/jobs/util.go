@@ -1,11 +1,14 @@
 package jobs
 
 import (
+	"bytes"
+	"encoding/base64"
 	"fmt"
 	"hash"
 	"hash/fnv"
 
 	"github.com/davecgh/go-spew/spew"
+	"github.com/dsnet/compress/bzip2"
 
 	"k8s.io/apimachinery/pkg/util/rand"
 )
@@ -30,4 +33,19 @@ func deepHashObject(hasher hash.Hash, objectToWrite interface{}) {
 		SpewKeys:       true,
 	}
 	printer.Fprintf(hasher, "%#v", objectToWrite)
+}
+
+func compressAndEncode(data []byte) (string, error) {
+	var buf bytes.Buffer
+	w, err := bzip2.NewWriter(&buf, &bzip2.WriterConfig{Level: bzip2.DefaultCompression})
+	if err != nil {
+		return "", err
+	}
+
+	_, err = w.Write(data)
+	if err != nil {
+		return "", err
+	}
+	w.Close()
+	return base64.StdEncoding.EncodeToString(buf.Bytes()), nil
 }

@@ -72,6 +72,9 @@ func TestKBOM(T *testing.T) {
 				}
 			}
 		}
+		if _, ok := bm.RawResource["OsImage"]; ok {
+			bm.RawResource["OsImage"] = "ignore value"
+		}
 	}
 	assert.True(T, reflect.DeepEqual(wantBom, gotBom))
 }

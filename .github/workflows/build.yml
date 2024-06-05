@@ -109,7 +109,7 @@ jobs:
           chmod +x ./kind
 
           sudo mv ./kind /usr/local/bin/kind
-          
+
           kind create cluster
 
           curl -LO https://dl.k8s.io/release/v1.26.0/bin/linux/amd64/kubectl

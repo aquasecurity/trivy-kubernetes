@@ -89,7 +89,7 @@ jobs:
         uses: codecov/codecov-action@v4
         with:
           files: ./coverage.txt
-  e2e-testing:
+  integrations-testing:
     name: Run end to end testing
     runs-on: ubuntu-latest
     env:
@@ -121,4 +121,4 @@ jobs:
           kubectl wait --for=condition=Ready nodes --all --timeout=300s
           kubectl describe node
       - name: Run end to end tests
-        run: make e2e-tests
+        run: make integrations-tests

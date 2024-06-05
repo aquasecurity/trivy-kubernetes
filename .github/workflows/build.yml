@@ -107,11 +107,6 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
-      - name: Release snapshot
-        uses: goreleaser/goreleaser-action@v5
-        with:
-          version: v1.7.0
-          args: release -f=goreleaser-e2e.yaml --snapshot --skip-publish --rm-dist
       - name: Install kind and create cluster
         run: >
           curl -Lo ./kind https://kind.sigs.k8s.io/dl/${{ env.KIND_VERSION

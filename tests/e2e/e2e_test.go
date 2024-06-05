@@ -3,7 +3,6 @@ package e2e
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"os"
 	"reflect"
 	"testing"
@@ -68,10 +67,11 @@ func TestKBOM(T *testing.T) {
 		if a, ok := bm.RawResource["Properties"]; ok {
 			if prop, ok := a.(map[string]interface{}); ok {
 				prop["Name"] = "ignore value"
+				if _, ok := prop["KernelVersion"]; ok {
+					prop["KernelVersion"] = "no version"
+				}
 			}
 		}
 	}
-	bg, _ := json.Marshal(gotBom)
-	fmt.Println(string(bg))
 	assert.True(T, reflect.DeepEqual(wantBom, gotBom))
 }

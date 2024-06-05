@@ -2,6 +2,7 @@ package jobs
 
 import (
 	"context"
+	"embed"
 	"fmt"
 	"io"
 	"strings"
@@ -30,6 +31,9 @@ const (
 	commandsRootFolder   = "commands"
 	k8sCommandFolder     = "kubernetes"
 	configCommandsFolder = "config"
+
+	commandPath = "commands/kubernetes"
+	configPath  = "commands/config"
 )
 
 type Collector interface {
@@ -65,6 +69,8 @@ type jobCollector struct {
 	useNodeSelector      bool
 	commandPaths         []string
 	specCommandIds       []string
+	commandsFileSystem   embed.FS
+	nodeConfigFileSystem embed.FS
 }
 
 type CollectorOption func(*jobCollector)
@@ -205,6 +211,18 @@ func WithSpecCommands(specCommandIds []string) CollectorOption {
 	}
 }
 
+func WithEmbeddedCommandFileSystem(commandsFileSystem embed.FS) CollectorOption {
+	return func(c *jobCollector) {
+		c.commandsFileSystem = commandsFileSystem
+	}
+}
+
+func WithEmbeddedNodeConfigFilesystem(nodeConfigFileSystem embed.FS) CollectorOption {
+	return func(c *jobCollector) {
+		c.nodeConfigFileSystem = nodeConfigFileSystem
+	}
+}
+
 func NewCollector(
 	cluster k8s.Cluster,
 	opts ...CollectorOption,
@@ -248,7 +266,7 @@ func (jb *jobCollector) ApplyAndCollect(ctx context.Context, nodeName string) (s
 		}
 	}
 
-	ca, err := jb.GetCollectorArgs(jb.commandPaths, jb.specCommandIds)
+	ca, err := jb.GetCollectorArgs()
 	if err != nil {
 		return "", err
 	}
@@ -371,6 +389,53 @@ func loadCommands(paths []string, AddCheckFunc AddChecks) (map[string][]any, map
 	return commands, configs
 }
 
+func GetEmbeddedCommands(commandsFileSystem embed.FS, nodeConfigFileSystem embed.FS, AddCheckFunc AddChecks) (map[string][]any, map[string]string) {
+	commands := make(map[string][]any)
+	configs := make(map[string]string)
+	commandEntries, err := commandsFileSystem.ReadDir(commandPath)
+	if err != nil {
+		return map[string][]any{}, map[string]string{}
+	}
+	for _, entry := range commandEntries {
+		if entry.IsDir() {
+			continue
+		}
+		fContent, err := commandsFileSystem.ReadFile(filepath.Join(commandPath, entry.Name()))
+		if err != nil {
+			return map[string][]any{}, map[string]string{}
+		}
+		var cmd any
+		err = yaml.Unmarshal(fContent, &cmd)
+		if err != nil {
+			return map[string][]any{}, map[string]string{}
+		}
+		if commandArr, ok := cmd.([]interface{}); ok {
+			if commandMap, ok := commandArr[0].(map[string]any); ok {
+				AddCheckFunc(commands, commandMap)
+			}
+		}
+	}
+	configEntries, err := nodeConfigFileSystem.ReadDir(configPath)
+	if err != nil {
+		return map[string][]any{}, map[string]string{}
+	}
+	for _, entry := range configEntries {
+		if entry.IsDir() {
+			continue
+		}
+		fContent, err := nodeConfigFileSystem.ReadFile(filepath.Join(configPath, entry.Name()))
+		if err != nil {
+			return map[string][]any{}, map[string]string{}
+		}
+		nconfig, err := compressAndEncode(fContent)
+		if err != nil {
+			return map[string][]any{}, map[string]string{}
+		}
+		configs[entry.Name()] = nconfig
+	}
+	return commands, configs
+}
+
 type AddChecks func(addChecks map[string][]any, commandMap map[string]any)
 
 func AddChecksByPlatform(addChecks map[string][]any, commandMap map[string]any) {
@@ -420,7 +485,7 @@ func filterCommandByPlatform(commands map[string][]any, platform string) NodeCom
 
 // Apply deploy k8s job by template to specific node and namespace (for operator use case)
 func (jb *jobCollector) Apply(ctx context.Context, nodeName string) (*batchv1.Job, error) {
-	ca, err := jb.GetCollectorArgs(jb.commandPaths, jb.specCommandIds)
+	ca, err := jb.GetCollectorArgs()
 	if err != nil {
 		return nil, err
 	}
@@ -480,15 +545,23 @@ func (jb *jobCollector) Cleanup(ctx context.Context) {
 	jb.deleteTrivyNamespace(ctx)
 }
 
-func (jb *jobCollector) GetCollectorArgs(commandsPaths []string, specCommandIds []string) (CollectorArgs, error) {
+func (jb *jobCollector) GetCollectorArgs() (CollectorArgs, error) {
 	var nodeCommands NodeCommands
 	var configMap map[string]string
 	var commandMap map[string][]any
-	if len(specCommandIds) > 0 {
-		commandMap, configMap = loadCommands(commandsPaths, AddChecksByCheckId)
-		nodeCommands = filterCommandBySpecId(commandMap, specCommandIds)
+	if len(jb.specCommandIds) > 0 {
+		if len(commandPath) > 0 {
+			commandMap, configMap = loadCommands(jb.commandPaths, AddChecksByCheckId)
+		} else {
+			GetEmbeddedCommands(jb.commandsFileSystem, jb.nodeConfigFileSystem, AddChecksByCheckId)
+		}
+		nodeCommands = filterCommandBySpecId(commandMap, jb.specCommandIds)
 	} else {
-		commandMap, configMap = loadCommands(commandsPaths, AddChecksByPlatform)
+		if len(commandPath) > 0 {
+			commandMap, configMap = loadCommands(jb.commandPaths, AddChecksByPlatform)
+		} else {
+			GetEmbeddedCommands(jb.commandsFileSystem, jb.nodeConfigFileSystem, AddChecksByPlatform)
+		}
 		platform := jb.cluster.Platform()
 		nodeCommands = filterCommandByPlatform(commandMap, platform.Name)
 	}

@@ -19,8 +19,8 @@ unit-tests: $(SOURCES)
 
 .PHONY: e2e-tests
 ## Runs e2e tests
-e2e-tests: $(SOURCES)
-	go test -v -race -timeout 30s -coverprofile=coverage.txt ./tests/e2e
+integrations-tests: $(SOURCES)
+	go test -v -race -timeout 30s -coverprofile=coverage.txt ./tests/integrations
 
 $(GOBIN)/golangci-lint:
 	curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh| sh -s -- -b $(GOBIN) v1.46.0

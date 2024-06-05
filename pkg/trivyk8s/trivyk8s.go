@@ -2,6 +2,7 @@ package trivyk8s
 
 import (
 	"context"
+	"embed"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -45,19 +46,21 @@ type ArtifactsK8S interface {
 }
 
 type client struct {
-	cluster           k8s.Cluster
-	namespace         string
-	resources         []string
-	allNamespaces     bool
-	excludeOwned      bool
-	scanJobParams     scanJobParams
-	nodeConfig        bool // feature flag to enable/disable node config collection
-	excludeKinds      []string
-	includeKinds      []string
-	excludeNamespaces []string
-	includeNamespaces []string
-	commandPaths      []string
-	specCommandIds    []string
+	cluster              k8s.Cluster
+	namespace            string
+	resources            []string
+	allNamespaces        bool
+	excludeOwned         bool
+	scanJobParams        scanJobParams
+	nodeConfig           bool // feature flag to enable/disable node config collection
+	excludeKinds         []string
+	includeKinds         []string
+	excludeNamespaces    []string
+	includeNamespaces    []string
+	commandPaths         []string
+	specCommandIds       []string
+	commandFilesystem    embed.FS
+	nodeConfigFilesystem embed.FS
 }
 
 type K8sOption func(*client)
@@ -298,6 +301,18 @@ func WithNodeConfig(nodeConfig bool) NodeCollectorOption {
 func WithCommandPaths(commandPaths []string) NodeCollectorOption {
 	return func(c *client) {
 		c.commandPaths = commandPaths
+	}
+}
+
+func WithEmbeddedCommandFileSystem(commandsFileSystem embed.FS) NodeCollectorOption {
+	return func(c *client) {
+		c.commandFilesystem = commandsFileSystem
+	}
+}
+
+func WithEmbeddedNodeConfigFilesystem(nodeConfigFileSystem embed.FS) NodeCollectorOption {
+	return func(c *client) {
+		c.nodeConfigFilesystem = nodeConfigFileSystem
 	}
 }
 func WithSpecCommandIds(specCommandIds []string) NodeCollectorOption {

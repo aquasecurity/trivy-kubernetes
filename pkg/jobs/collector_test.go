@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"testing"
 
+	trivy_checks "github.com/aquasecurity/trivy-checks"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -50,6 +51,40 @@ func TestLoadCheckFilesByID(t *testing.T) {
 			_, ok = gotCfg["node_cfg.yaml"]
 			assert.True(t, ok)
 			_, ok = gotCfg["platform_mapping_cfg.yaml"]
+			assert.True(t, ok)
+		})
+	}
+}
+
+func TestLoadEmbeddedCommandsByID(t *testing.T) {
+	tests := []struct {
+		name    string
+		wantCmd map[string][]any
+		wantCfg map[string][]byte
+	}{
+		{name: "node-collector template",
+			wantCmd: map[string][]any{
+				"CMD-0001": {
+					map[string]interface{}{
+						"id":        "CMD-0001",
+						"title":     "API server pod specification file permissions",
+						"key":       "kubeAPIServerSpecFilePermission",
+						"nodeType":  "master",
+						"audit":     "stat -c %a $apiserver.confs",
+						"platforms": []interface{}{"k8s"},
+					},
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotCmd, gotCfg := GetEmbeddedCommands(trivy_checks.EmbeddedK8sCommandsFileSystem, trivy_checks.EmbeddedConfigCommandsFileSystem, AddChecksByCheckId)
+			assert.True(t, reflect.DeepEqual(gotCmd["CMD-0001"], tt.wantCmd["CMD-0001"]))
+			_, ok := gotCfg["kubelet_mapping.yaml"]
+			assert.True(t, ok)
+			_, ok = gotCfg["node.yaml"]
 			assert.True(t, ok)
 		})
 	}

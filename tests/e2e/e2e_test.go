@@ -65,16 +65,23 @@ func TestKBOM(T *testing.T) {
 	// handle changes values
 	for _, bm := range gotBom {
 		if a, ok := bm.RawResource["Properties"]; ok {
-			if prop, ok := a.(map[string]interface{}); ok {
+			prop, ok := a.(map[string]interface{})
+			if ok {
 				prop["Name"] = "ignore value"
+
+				if _, ok := prop["Architecture"]; ok {
+					prop["Name"] = "ignore value"
+				}
 				if _, ok := prop["KernelVersion"]; ok {
-					prop["KernelVersion"] = "no version"
+					prop["KernelVersion"] = "ignore value"
 				}
 			}
-		}
-		if _, ok := bm.RawResource["OsImage"]; ok {
-			bm.RawResource["OsImage"] = "ignore value"
+			if _, ok := bm.RawResource["OsImage"]; ok {
+				bm.RawResource["OsImage"] = "ignore value"
+			}
 		}
 	}
+//	bg, _ := json.Marshal(gotBom)
+//	os.WriteFile("./testdata/expected_bom.json", bg, 0600)
 	assert.True(T, reflect.DeepEqual(wantBom, gotBom))
 }

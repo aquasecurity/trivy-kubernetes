@@ -389,7 +389,7 @@ func loadCommands(paths []string, AddCheckFunc AddChecks) (map[string][]any, map
 	return commands, configs
 }
 
-func GetEmbeddedCommands(commandsFileSystem embed.FS, nodeConfigFileSystem embed.FS, AddCheckFunc AddChecks) (map[string][]any, map[string]string) {
+func getEmbeddedCommands(commandsFileSystem embed.FS, nodeConfigFileSystem embed.FS, AddCheckFunc AddChecks) (map[string][]any, map[string]string) {
 	commands := make(map[string][]any)
 	configs := make(map[string]string)
 	commandEntries, err := commandsFileSystem.ReadDir(commandPath)
@@ -553,14 +553,14 @@ func (jb *jobCollector) GetCollectorArgs() (CollectorArgs, error) {
 		if len(commandPath) > 0 {
 			commandMap, configMap = loadCommands(jb.commandPaths, AddChecksByCheckId)
 		} else {
-			GetEmbeddedCommands(jb.commandsFileSystem, jb.nodeConfigFileSystem, AddChecksByCheckId)
+			commandMap, configMap = getEmbeddedCommands(jb.commandsFileSystem, jb.nodeConfigFileSystem, AddChecksByCheckId)
 		}
 		nodeCommands = filterCommandBySpecId(commandMap, jb.specCommandIds)
 	} else {
 		if len(commandPath) > 0 {
 			commandMap, configMap = loadCommands(jb.commandPaths, AddChecksByPlatform)
 		} else {
-			GetEmbeddedCommands(jb.commandsFileSystem, jb.nodeConfigFileSystem, AddChecksByPlatform)
+			commandMap, configMap = getEmbeddedCommands(jb.commandsFileSystem, jb.nodeConfigFileSystem, AddChecksByPlatform)
 		}
 		platform := jb.cluster.Platform()
 		nodeCommands = filterCommandByPlatform(commandMap, platform.Name)

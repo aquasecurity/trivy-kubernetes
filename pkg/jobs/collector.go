@@ -5,6 +5,7 @@ import (
 	"embed"
 	"fmt"
 	"io"
+	"io/fs"
 	"strings"
 	"time"
 
@@ -392,46 +393,52 @@ func loadCommands(paths []string, AddCheckFunc AddChecks) (map[string][]any, map
 func getEmbeddedCommands(commandsFileSystem embed.FS, nodeConfigFileSystem embed.FS, AddCheckFunc AddChecks) (map[string][]any, map[string]string) {
 	commands := make(map[string][]any)
 	configs := make(map[string]string)
-	commandEntries, err := commandsFileSystem.ReadDir(commandPath)
-	if err != nil {
-		return map[string][]any{}, map[string]string{}
-	}
-	for _, entry := range commandEntries {
-		if entry.IsDir() {
-			continue
-		}
-		fContent, err := commandsFileSystem.ReadFile(filepath.Join(commandPath, entry.Name()))
+	err := fs.WalkDir(commandsFileSystem, commandPath, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
-			return map[string][]any{}, map[string]string{}
+			return err
+		}
+		if d.IsDir() {
+			return nil
+		}
+		fContent, err := commandsFileSystem.ReadFile(path)
+		if err != nil {
+			return err
 		}
 		var cmd any
 		err = yaml.Unmarshal(fContent, &cmd)
 		if err != nil {
-			return map[string][]any{}, map[string]string{}
+			return err
 		}
 		if commandArr, ok := cmd.([]interface{}); ok {
 			if commandMap, ok := commandArr[0].(map[string]any); ok {
 				AddCheckFunc(commands, commandMap)
 			}
 		}
-	}
-	configEntries, err := nodeConfigFileSystem.ReadDir(configPath)
+		return nil
+	})
 	if err != nil {
 		return map[string][]any{}, map[string]string{}
 	}
-	for _, entry := range configEntries {
-		if entry.IsDir() {
-			continue
-		}
-		fContent, err := nodeConfigFileSystem.ReadFile(filepath.Join(configPath, entry.Name()))
+	err = fs.WalkDir(nodeConfigFileSystem, configPath, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
-			return map[string][]any{}, map[string]string{}
+			return err
+		}
+		if d.IsDir() {
+			return nil
+		}
+		fContent, err := nodeConfigFileSystem.ReadFile(path)
+		if err != nil {
+			return err
 		}
 		nconfig, err := compressAndEncode(fContent)
 		if err != nil {
-			return map[string][]any{}, map[string]string{}
+			return err
 		}
-		configs[entry.Name()] = nconfig
+		configs[d.Name()] = nconfig
+		return nil
+	})
+	if err != nil {
+		return map[string][]any{}, map[string]string{}
 	}
 	return commands, configs
 }

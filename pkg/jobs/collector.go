@@ -394,6 +394,9 @@ func getEmbeddedCommands(commandsFileSystem embed.FS, nodeConfigFileSystem embed
 	commands := make(map[string][]any)
 	configs := make(map[string]string)
 	err := fs.WalkDir(commandsFileSystem, commandPath, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
 		if d.IsDir() {
 			return nil
 		}
@@ -417,10 +420,14 @@ func getEmbeddedCommands(commandsFileSystem embed.FS, nodeConfigFileSystem embed
 		return map[string][]any{}, map[string]string{}
 	}
 	err = fs.WalkDir(nodeConfigFileSystem, configPath, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
 		if d.IsDir() {
 			return nil
 		}
-		fContent, err := nodeConfigFileSystem.ReadFile(path)
+		var fContent []byte
+		fContent, err = nodeConfigFileSystem.ReadFile(path)
 		if err != nil {
 			return err
 		}

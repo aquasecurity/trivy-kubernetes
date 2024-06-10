@@ -6,7 +6,7 @@ toolchain go1.22.2
 
 require (
 	github.com/aquasecurity/trivy-checks v0.11.1-0.20240605040856-20a101a1c9a2
-	github.com/aws/aws-sdk-go v1.53.16
+	github.com/aws/aws-sdk-go v1.53.19
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 	github.com/google/go-containerregistry v0.19.1
 	github.com/stretchr/testify v1.9.0

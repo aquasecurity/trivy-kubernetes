@@ -3,6 +3,8 @@ package k8s
 import (
 	"context"
 	"fmt"
+	"log/slog"
+	"strings"
 
 	"github.com/aquasecurity/trivy-kubernetes/pkg/bom"
 	"github.com/aquasecurity/trivy-kubernetes/pkg/k8s/docker"
@@ -23,8 +25,6 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/utils/strings/slices"
-	"log/slog"
-	"strings"
 )
 
 var (
@@ -712,6 +712,9 @@ func (r *cluster) ListByLocalObjectReferences(ctx context.Context, refs []corev1
 	secrets := make([]*corev1.Secret, 0)
 
 	for _, secretRef := range refs {
+		if secretRef.Name == "" {
+			continue
+		}
 		secret, err := r.clientset.CoreV1().Secrets(ns).Get(ctx, secretRef.Name, metav1.GetOptions{})
 		if err != nil {
 			if k8sapierror.IsNotFound(err) || k8sapierror.IsForbidden(err) {

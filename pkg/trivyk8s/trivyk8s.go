@@ -348,6 +348,8 @@ func (c *client) ListArtifactAndNodeInfo(ctx context.Context,
 		jobs.WithNodeConfig(c.nodeConfig),
 		jobs.WithCommandsPath(c.commandPaths),
 		jobs.WithSpecCommands(c.specCommandIds),
+		jobs.WithEmbeddedCommandFileSystem(c.commandFilesystem),
+		jobs.WithEmbeddedNodeConfigFilesystem(c.nodeConfigFilesystem),
 	)
 	// delete trivy namespace
 	defer jc.Cleanup(ctx)

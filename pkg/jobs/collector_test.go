@@ -71,7 +71,7 @@ func TestLoadEmbeddedCommandsByID(t *testing.T) {
 						"key":       "kubeAPIServerSpecFilePermission",
 						"nodeType":  "master",
 						"audit":     "stat -c %a $apiserver.confs",
-						"platforms": []interface{}{"k8s"},
+						"platforms": []interface{}{"k8s", "rke2"},
 					},
 				},
 			},

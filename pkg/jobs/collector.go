@@ -33,8 +33,8 @@ const (
 	k8sCommandFolder     = "kubernetes"
 	configCommandsFolder = "config"
 
-	commandPath = "commands/kubernetes"
-	configPath  = "commands/config"
+	k8sFsCommandPath    = "commands/kubernetes"
+	configFsCommandPath = "commands/config"
 )
 
 type Collector interface {
@@ -393,7 +393,7 @@ func loadCommands(paths []string, AddCheckFunc AddChecks) (map[string][]any, map
 func getEmbeddedCommands(commandsFileSystem embed.FS, nodeConfigFileSystem embed.FS, AddCheckFunc AddChecks) (map[string][]any, map[string]string) {
 	commands := make(map[string][]any)
 	configs := make(map[string]string)
-	err := fs.WalkDir(commandsFileSystem, commandPath, func(path string, d fs.DirEntry, err error) error {
+	err := fs.WalkDir(commandsFileSystem, k8sFsCommandPath, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -419,7 +419,7 @@ func getEmbeddedCommands(commandsFileSystem embed.FS, nodeConfigFileSystem embed
 	if err != nil {
 		return map[string][]any{}, map[string]string{}
 	}
-	err = fs.WalkDir(nodeConfigFileSystem, configPath, func(path string, d fs.DirEntry, err error) error {
+	err = fs.WalkDir(nodeConfigFileSystem, configFsCommandPath, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -558,14 +558,14 @@ func (jb *jobCollector) GetCollectorArgs() (CollectorArgs, error) {
 	var configMap map[string]string
 	var commandMap map[string][]any
 	if len(jb.specCommandIds) > 0 {
-		if len(commandPath) > 0 {
+		if len(jb.commandPaths) > 0 {
 			commandMap, configMap = loadCommands(jb.commandPaths, AddChecksByCheckId)
 		} else {
 			commandMap, configMap = getEmbeddedCommands(jb.commandsFileSystem, jb.nodeConfigFileSystem, AddChecksByCheckId)
 		}
 		nodeCommands = filterCommandBySpecId(commandMap, jb.specCommandIds)
 	} else {
-		if len(commandPath) > 0 {
+		if len(jb.commandPaths) > 0 {
 			commandMap, configMap = loadCommands(jb.commandPaths, AddChecksByPlatform)
 		} else {
 			commandMap, configMap = getEmbeddedCommands(jb.commandsFileSystem, jb.nodeConfigFileSystem, AddChecksByPlatform)

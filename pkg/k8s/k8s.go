@@ -14,6 +14,7 @@ import (
 	"github.com/opencontainers/go-digest"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	k8sapierror "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -480,8 +481,9 @@ func GetContainer(hex string, imageName containerimage.Reference) (bom.Container
 
 func (c *cluster) CollectNodes(components []bom.Component) ([]bom.NodeInfo, error) {
 	nodes, err := c.clientset.CoreV1().Nodes().List(context.Background(), metav1.ListOptions{})
-	if err != nil {
-		return []bom.NodeInfo{}, err
+	if errors.IsNotFound(err) || errors.IsForbidden(err) {
+		slog.Error("Unable to list node resources", "error", err)
+		return []bom.NodeInfo{}, nil
 	}
 	nodesInfo := make([]bom.NodeInfo, 0)
 	for _, node := range nodes.Items {

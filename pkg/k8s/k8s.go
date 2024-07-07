@@ -481,9 +481,12 @@ func GetContainer(hex string, imageName containerimage.Reference) (bom.Container
 
 func (c *cluster) CollectNodes(components []bom.Component) ([]bom.NodeInfo, error) {
 	nodes, err := c.clientset.CoreV1().Nodes().List(context.Background(), metav1.ListOptions{})
-	if errors.IsNotFound(err) || errors.IsForbidden(err) {
-		slog.Error("Unable to list node resources", "error", err)
-		return []bom.NodeInfo{}, nil
+	if err != nil {
+		if errors.IsNotFound(err) || errors.IsForbidden(err) {
+			slog.Error("Unable to list node resources", "error", err)
+			return []bom.NodeInfo{}, nil
+		}
+		return nil, err
 	}
 	nodesInfo := make([]bom.NodeInfo, 0)
 	for _, node := range nodes.Items {

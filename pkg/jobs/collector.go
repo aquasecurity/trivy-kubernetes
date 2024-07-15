@@ -3,6 +3,7 @@ package jobs
 import (
 	"context"
 	"embed"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/fs"
@@ -12,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 
+	nc "github.com/aquasecurity/k8s-node-collector/pkg/collector"
 	"github.com/aquasecurity/trivy-kubernetes/pkg/k8s"
 	"gopkg.in/yaml.v3"
 	batchv1 "k8s.io/api/batch/v1"
@@ -255,84 +257,136 @@ type ObjectRef struct {
 // ApplyAndCollect deploy k8s job by template to  specific node  and namespace, it read pod logs
 // cleaning up job and returning it output (for cli use-case)
 func (jb *jobCollector) ApplyAndCollect(ctx context.Context, nodeName string) (string, error) {
-
-	_, err := jb.getTrivyNamespace(ctx)
-	if err != nil {
-		if k8sapierror.IsNotFound(err) {
-			trivyNamespace := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: jb.namespace}}
-			_, err = jb.cluster.GetK8sClientSet().CoreV1().Namespaces().Create(ctx, trivyNamespace, metav1.CreateOptions{})
-			if err != nil {
-				return "", err
-			}
-		}
-	}
-
 	ca, err := jb.GetCollectorArgs()
 	if err != nil {
 		return "", err
 	}
-	JobOptions := []JobOption{
-		WithTemplate(jb.templateName),
-		WithNamespace(jb.namespace),
-		WithNodeName(nodeName),
-		WithAnnotation(jb.annotation),
-		WithLabels(jb.labels),
-		WithJobTimeout(jb.collectorTimeout),
-		withSecurityContext(jb.securityContext),
-		withPodSecurityContext(jb.podSecurityContext),
-		WithNodeCollectorImageRef(jb.imageRef),
-		WithAffinity(jb.affinity),
-		WithTolerations(jb.tolerations),
-		WithK8sNodeCommands(ca.commands),
-		WithK8sKubeletConfigMapping(ca.kubeletConfigMapping),
-		WithK8sNodeConfigData(ca.nodeConfigData),
-		WithPodVolumes(jb.volumes),
-		WithImagePullSecrets(jb.imagePullSecrets),
-		WithContainerVolumeMounts(jb.volumeMounts),
-		WithNodeConfiguration(true),
-		WithPriorityClassName(jb.priorityClassName),
-		WithResourceRequirements(jb.resourceRequirements),
-		WithUseNodeSelectorParam(true),
-		WithJobName(fmt.Sprintf("%s-%s", jb.templateName, ComputeHash(
-			ObjectRef{
-				Kind:      "Node-Info",
-				Name:      nodeName,
-				Namespace: jb.namespace,
-			}))),
+	var localNodeInfo map[string]*nc.Info
+	var jobNodeInfo nc.Node
+	var localNode nc.Node
+	if ca.localCommands != "" {
+		shellCmd := nc.NewShellCmd()
+		nodeType, err := shellCmd.FindNodeType()
+		if err != nil {
+			return "", err
+		}
+		commands, err := nc.GetNodesCommands(ca.localCommands, map[string]string{}, nodeType)
+		if err != nil {
+			return "", err
+		}
+		if len(commands) == 0 {
+			return "", fmt.Errorf("spec not found")
+		}
+		localNodeInfo, err = nc.ExecuteCommands(shellCmd, commands)
+		if err != nil {
+			return "", err
+		}
+		localNode = nc.Node{
+			APIVersion: nc.Version,
+			Kind:       nc.Kind,
+			Type:       nodeType,
+			Metadata:   map[string]string{"creationTimestamp": time.Now().Format(time.RFC3339)},
+			Info:       localNodeInfo,
+		}
 	}
-	nc, err := jb.loadNodeConfig(ctx, nodeName)
-	if err != nil {
-		return "", fmt.Errorf("loading node config: %w", err)
-	}
-	JobOptions = append(JobOptions, WithKubeletConfig(nc))
-	job, err := GetJob(JobOptions...)
-	if err != nil {
-		return "", fmt.Errorf("running node-collector job: %w", err)
-	}
+	if ca.commands != "" {
+		_, err = jb.getTrivyNamespace(ctx)
+		if err != nil {
+			if k8sapierror.IsNotFound(err) {
+				trivyNamespace := &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: jb.namespace}}
+				_, err = jb.cluster.GetK8sClientSet().CoreV1().Namespaces().Create(ctx, trivyNamespace, metav1.CreateOptions{})
+				if err != nil {
+					return "", err
+				}
+			}
+		}
+		JobOptions := []JobOption{
+			WithTemplate(jb.templateName),
+			WithNamespace(jb.namespace),
+			WithNodeName(nodeName),
+			WithAnnotation(jb.annotation),
+			WithLabels(jb.labels),
+			WithJobTimeout(jb.collectorTimeout),
+			withSecurityContext(jb.securityContext),
+			withPodSecurityContext(jb.podSecurityContext),
+			WithNodeCollectorImageRef(jb.imageRef),
+			WithAffinity(jb.affinity),
+			WithTolerations(jb.tolerations),
+			WithK8sNodeCommands(ca.commands),
+			WithK8sKubeletConfigMapping(ca.kubeletConfigMapping),
+			WithK8sNodeConfigData(ca.nodeConfigData),
+			WithPodVolumes(jb.volumes),
+			WithImagePullSecrets(jb.imagePullSecrets),
+			WithContainerVolumeMounts(jb.volumeMounts),
+			WithNodeConfiguration(true),
+			WithPriorityClassName(jb.priorityClassName),
+			WithResourceRequirements(jb.resourceRequirements),
+			WithUseNodeSelectorParam(true),
+			WithJobName(fmt.Sprintf("%s-%s", jb.templateName, ComputeHash(
+				ObjectRef{
+					Kind:      "Node-Info",
+					Name:      nodeName,
+					Namespace: jb.namespace,
+				}))),
+		}
+		nc, err := jb.loadNodeConfig(ctx, nodeName)
+		if err != nil {
+			return "", fmt.Errorf("loading node config: %w", err)
+		}
+		JobOptions = append(JobOptions, WithKubeletConfig(nc))
+		job, err := GetJob(JobOptions...)
+		if err != nil {
+			return "", fmt.Errorf("running node-collector job: %w", err)
+		}
 
-	err = New(WithTimeout(jb.timeout)).Run(ctx, NewRunnableJob(jb.cluster.GetK8sClientSet(), job))
-	if err != nil {
-		return "", fmt.Errorf("running node-collector job: %w", err)
-	}
-	defer func() {
-		background := metav1.DeletePropagationBackground
-		_ = jb.cluster.GetK8sClientSet().BatchV1().Jobs(job.Namespace).Delete(ctx, job.Name, metav1.DeleteOptions{
-			PropagationPolicy: &background,
-		})
-	}()
+		err = New(WithTimeout(jb.timeout)).Run(ctx, NewRunnableJob(jb.cluster.GetK8sClientSet(), job))
+		if err != nil {
+			return "", fmt.Errorf("running node-collector job: %w", err)
+		}
+		defer func() {
+			background := metav1.DeletePropagationBackground
+			_ = jb.cluster.GetK8sClientSet().BatchV1().Jobs(job.Namespace).Delete(ctx, job.Name, metav1.DeleteOptions{
+				PropagationPolicy: &background,
+			})
+		}()
 
-	logsStream, err := jb.logsReader.GetLogsByJobAndContainerName(ctx, job, NodeCollectorName)
-	if err != nil {
-		return "", fmt.Errorf("getting logs: %w", err)
+		logsStream, err := jb.logsReader.GetLogsByJobAndContainerName(ctx, job, NodeCollectorName)
+		if err != nil {
+			return "", fmt.Errorf("getting logs: %w", err)
+		}
+		defer func() {
+			_ = logsStream.Close()
+		}()
+		output, err := io.ReadAll(logsStream)
+		if err != nil {
+			return "", fmt.Errorf("reading logs: %w", err)
+		}
+		err = json.Unmarshal(output, &jobNodeInfo)
+		if err != nil {
+			return "", fmt.Errorf("reading logs: %w", err)
+		}
 	}
-	defer func() {
-		_ = logsStream.Close()
-	}()
-	output, err := io.ReadAll(logsStream)
+	localNode = mergeConfigValues(localNode, jobNodeInfo)
+	output, err := json.Marshal(localNode)
 	if err != nil {
-		return "", fmt.Errorf("reading logs: %w", err)
+		return "", fmt.Errorf("marshal node output : %w", err)
 	}
 	return string(output), nil
+}
+
+func mergeConfigValues(localNodeInfo nc.Node, jobNodeInfo nc.Node) nc.Node {
+	if len(localNodeInfo.Info) == 0 {
+		return jobNodeInfo
+	}
+	if len(jobNodeInfo.Info) == 0 {
+		return localNodeInfo
+	}
+	for k, v := range jobNodeInfo.Info {
+		if _, ok := localNodeInfo.Info[k]; !ok {
+			localNodeInfo.Info[k] = v
+		}
+	}
+	return localNodeInfo
 }
 
 func (jb jobCollector) loadNodeConfig(ctx context.Context, nodeName string) (string, error) {
@@ -347,12 +401,13 @@ type NodeCommands struct {
 	Commands []any `yaml:"commands"`
 }
 
-func loadCommands(paths []string, AddCheckFunc AddChecks) (map[string][]any, map[string]string) {
+func loadCommands(paths []string, AddCheckFunc AddChecks) (map[string][]any, map[string][]any, map[string]string) {
 	if len(paths) == 0 {
-		return map[string][]any{}, map[string]string{}
+		return map[string][]any{}, map[string][]any{}, map[string]string{}
 	}
 	configs := make(map[string]string)
-	commands := make(map[string][]any)
+	nodeCollectorCommands := make(map[string][]any)
+	localCollectorCommands := make(map[string][]any)
 
 	e := filepath.Walk(filepath.Join(paths[0], commandsRootFolder), func(path string, info os.FileInfo, err error) error {
 		switch {
@@ -368,7 +423,7 @@ func loadCommands(paths []string, AddCheckFunc AddChecks) (map[string][]any, map
 			}
 			if commandArr, ok := cmd.([]interface{}); ok {
 				if commandMap, ok := commandArr[0].(map[string]any); ok {
-					AddCheckFunc(commands, commandMap)
+					AddCheckFunc(nodeCollectorCommands, localCollectorCommands, commandMap)
 				}
 			}
 		case strings.Contains(path, filepath.Join(commandsRootFolder, configCommandsFolder)) && filepath.Ext(path) == ".yaml":
@@ -385,13 +440,15 @@ func loadCommands(paths []string, AddCheckFunc AddChecks) (map[string][]any, map
 		return nil
 	})
 	if e != nil {
-		return map[string][]any{}, map[string]string{}
+		return map[string][]any{}, map[string][]any{}, map[string]string{}
 	}
-	return commands, configs
+	return nodeCollectorCommands, localCollectorCommands, configs
 }
 
-func getEmbeddedCommands(commandsFileSystem embed.FS, nodeConfigFileSystem embed.FS, AddCheckFunc AddChecks) (map[string][]any, map[string]string) {
-	commands := make(map[string][]any)
+func getEmbeddedCommands(commandsFileSystem embed.FS, nodeConfigFileSystem embed.FS, AddCheckFunc AddChecks) (map[string][]any, map[string][]any, map[string]string) {
+	nodeCollectorCommands := make(map[string][]any)
+	localCollectorCommands := make(map[string][]any)
+
 	configs := make(map[string]string)
 	err := fs.WalkDir(commandsFileSystem, k8sFsCommandPath, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -411,13 +468,13 @@ func getEmbeddedCommands(commandsFileSystem embed.FS, nodeConfigFileSystem embed
 		}
 		if commandArr, ok := cmd.([]interface{}); ok {
 			if commandMap, ok := commandArr[0].(map[string]any); ok {
-				AddCheckFunc(commands, commandMap)
+				AddCheckFunc(nodeCollectorCommands, localCollectorCommands, commandMap)
 			}
 		}
 		return nil
 	})
 	if err != nil {
-		return map[string][]any{}, map[string]string{}
+		return map[string][]any{}, map[string][]any{}, map[string]string{}
 	}
 	err = fs.WalkDir(nodeConfigFileSystem, configFsCommandPath, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -439,34 +496,57 @@ func getEmbeddedCommands(commandsFileSystem embed.FS, nodeConfigFileSystem embed
 		return nil
 	})
 	if err != nil {
-		return map[string][]any{}, map[string]string{}
+		return map[string][]any{}, map[string][]any{}, map[string]string{}
 	}
-	return commands, configs
+	return nodeCollectorCommands, localCollectorCommands, configs
 }
 
-type AddChecks func(addChecks map[string][]any, commandMap map[string]any)
+type AddChecks func(addChecks map[string][]any, addChecksLocal map[string][]any, commandMap map[string]any)
 
-func AddChecksByPlatform(addChecks map[string][]any, commandMap map[string]any) {
+func AddChecksByPlatform(addChecks map[string][]any, addChecksLocal map[string][]any, commandMap map[string]any) {
 	if platform, ok := commandMap["platforms"]; ok {
 		if platforms, ok := platform.([]interface{}); ok {
 			for _, p := range platforms {
 				pl := p.(string)
-				if addChecks[pl] == nil {
-					addChecks[pl] = make([]any, 0)
+				if pl == "ocp" {
+					if addChecksLocal[pl] == nil {
+						addChecksLocal[pl] = make([]any, 0)
+					}
+					addChecksLocal[pl] = append(addChecksLocal[pl], commandMap)
+				} else {
+					if addChecks[pl] == nil {
+						addChecks[pl] = make([]any, 0)
+					}
+					addChecks[pl] = append(addChecks[pl], commandMap)
 				}
-				addChecks[pl] = append(addChecks[pl], commandMap)
 			}
 		}
 	}
 }
 
-func AddChecksByCheckId(addChecks map[string][]any, commandMap map[string]any) {
+func AddChecksByCheckId(addChecks map[string][]any, addChecksLocal map[string][]any, commandMap map[string]any) {
 	if id, ok := commandMap["id"]; ok {
 		if idString, ok := id.(string); ok {
-			if addChecks[idString] == nil {
-				addChecks[idString] = make([]any, 0)
+			if platform, ok := commandMap["platforms"]; ok {
+				if platforms, ok := platform.([]interface{}); ok {
+					for _, p := range platforms {
+						pl := p.(string)
+						if pl == "ocp" {
+							if addChecksLocal[idString] == nil {
+								addChecksLocal[idString] = make([]any, 0)
+							}
+							addChecksLocal[idString] = append(addChecksLocal[idString], commandMap)
+							break
+						} else {
+							if addChecks[idString] == nil {
+								addChecks[idString] = make([]any, 0)
+							}
+							addChecks[idString] = append(addChecks[idString], commandMap)
+							break
+						}
+					}
+				}
 			}
-			addChecks[idString] = append(addChecks[idString], commandMap)
 		}
 	}
 }
@@ -555,32 +635,36 @@ func (jb *jobCollector) Cleanup(ctx context.Context) {
 
 func (jb *jobCollector) GetCollectorArgs() (CollectorArgs, error) {
 	var nodeCommands NodeCommands
+	var localCommands NodeCommands
 	var configMap map[string]string
 	var commandMap map[string][]any
+	var localCommandMap map[string][]any
 	if len(jb.specCommandIds) > 0 {
 		if len(jb.commandPaths) > 0 {
-			commandMap, configMap = loadCommands(jb.commandPaths, AddChecksByCheckId)
+			commandMap, localCommandMap, configMap = loadCommands(jb.commandPaths, AddChecksByCheckId)
 		} else {
-			commandMap, configMap = getEmbeddedCommands(jb.commandsFileSystem, jb.nodeConfigFileSystem, AddChecksByCheckId)
+			commandMap, localCommandMap, configMap = getEmbeddedCommands(jb.commandsFileSystem, jb.nodeConfigFileSystem, AddChecksByCheckId)
 		}
 		nodeCommands = filterCommandBySpecId(commandMap, jb.specCommandIds)
+		localCommands = filterCommandBySpecId(localCommandMap, jb.specCommandIds)
 	} else {
 		if len(jb.commandPaths) > 0 {
-			commandMap, configMap = loadCommands(jb.commandPaths, AddChecksByPlatform)
+			commandMap, localCommandMap, configMap = loadCommands(jb.commandPaths, AddChecksByPlatform)
 		} else {
-			commandMap, configMap = getEmbeddedCommands(jb.commandsFileSystem, jb.nodeConfigFileSystem, AddChecksByPlatform)
+			commandMap, localCommandMap, configMap = getEmbeddedCommands(jb.commandsFileSystem, jb.nodeConfigFileSystem, AddChecksByPlatform)
 		}
 		platform := jb.cluster.Platform()
 		nodeCommands = filterCommandByPlatform(commandMap, platform.Name)
+		localCommands = filterCommandByPlatform(localCommandMap, platform.Name)
 	}
-	if len(nodeCommands.Commands) == 0 {
+	if len(nodeCommands.Commands) == 0 && len(localCommands.Commands) == 0 {
 		return CollectorArgs{}, fmt.Errorf("no compliance commands found")
 	}
-	commands, err := yaml.Marshal(nodeCommands)
+	ncdata, err := GetCompressedCommands(nodeCommands)
 	if err != nil {
 		return CollectorArgs{}, err
 	}
-	cdata, err := compressAndEncode(commands)
+	lcdata, err := GetCompressedCommands(localCommands)
 	if err != nil {
 		return CollectorArgs{}, err
 	}
@@ -594,7 +678,8 @@ func (jb *jobCollector) GetCollectorArgs() (CollectorArgs, error) {
 	}
 
 	return CollectorArgs{
-		commands:             cdata,
+		commands:             ncdata,
+		localCommands:        lcdata,
 		kubeletConfigMapping: kubeletMapping,
 		nodeConfigData:       nodeCfg,
 	}, nil
@@ -602,6 +687,18 @@ func (jb *jobCollector) GetCollectorArgs() (CollectorArgs, error) {
 
 type CollectorArgs struct {
 	commands             string
+	localCommands        string
 	kubeletConfigMapping string
 	nodeConfigData       string
+}
+
+func GetCompressedCommands(commands NodeCommands) (string, error) {
+	if len(commands.Commands) == 0 {
+		return "", nil
+	}
+	commandsData, err := yaml.Marshal(commands)
+	if err != nil {
+		return "", err
+	}
+	return compressAndEncode(commandsData)
 }

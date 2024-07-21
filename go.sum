@@ -4,8 +4,8 @@ github.com/Azure/go-ansiterm v0.0.0-20230124172434-306776ec8161/go.mod h1:xomTg6
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/aquasecurity/trivy-checks v0.13.0 h1:na6PTdY4U0uK/fjz3HNRYBxvYSJ8vgTb57a5T8Y5t9w=
 github.com/aquasecurity/trivy-checks v0.13.0/go.mod h1:Xec/SMVGV66I7RgUqOX9MEr+YxBqHXDVLTYmpspPi3E=
-github.com/aws/aws-sdk-go v1.54.15 h1:ErgCEVbzuSfuZl9nR+g8FFnzjgeJ/AqAGOEWn6tgAHo=
-github.com/aws/aws-sdk-go v1.54.15/go.mod h1:eRwEWoyTWFMVYVQzKMNHWP5/RV4xIUGMQfXQHfHkpNU=
+github.com/aws/aws-sdk-go v1.54.20 h1:FZ2UcXya7bUkvkpf7TaPmiL7EubK0go1nlXGLRwEsoo=
+github.com/aws/aws-sdk-go v1.54.20/go.mod h1:eRwEWoyTWFMVYVQzKMNHWP5/RV4xIUGMQfXQHfHkpNU=
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
 github.com/chzyer/logex v1.1.10/go.mod h1:+Ywpsq7O8HXn0nuIou7OrIPyXbp3wmkHB+jjWRnGsAI=
 github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e/go.mod h1:nSuG5e5PlCu98SY8svDHJxuZscDgtXS6KTTbou5AhLI=

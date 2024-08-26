@@ -187,18 +187,40 @@ func (c *client) initResourceList() {
 	}
 }
 
-func (c *client) initNamespaces() {
+// getNamespaces collects scannable namespaces
+func (c *client) getNamespaces() []string {
 	if len(c.includeNamespaces) > 0 {
-
+		return c.includeNamespaces
 	}
-
+	if len(c.excludeNamespaces) == 0 {
+		return nil
+	}
+	// ToDo: get all namespaces and exclude
+	return []string{}
 }
 
 // ListArtifacts returns kubernetes scannable artifacs.
 func (c *client) ListArtifacts(ctx context.Context) ([]*artifacts.Artifact, error) {
 	c.initResourceList()
-	c.initNamespaces()
+	namespaces := c.getNamespaces()
+	if len(namespaces) == 0 {
+		return c.ListSpecificArtifacts(ctx)
+	}
+	artifactList := make([]*artifacts.Artifact, 0)
 
+	for _, namespace := range namespaces {
+		c.namespace = namespace
+		arts, err := c.ListSpecificArtifacts(ctx)
+		if err != nil {
+			return nil, err
+		}
+		artifactList = append(artifactList, arts...)
+	}
+	return artifactList, nil
+}
+
+// ListSpecificArtifacts returns kubernetes scannable artifacs for a specific namespace or a cluster
+func (c *client) ListSpecificArtifacts(ctx context.Context) ([]*artifacts.Artifact, error) {
 	artifactList := make([]*artifacts.Artifact, 0)
 
 	namespaced := isNamespaced(c.namespace, c.allNamespaces)
@@ -229,15 +251,6 @@ func (c *client) ListArtifacts(ctx context.Context) ([]*artifacts.Artifact, erro
 
 			// if excludeOwned is enabled and the resource is owned by built-in workload, then we skip it
 			if c.excludeOwned && c.hasOwner(resource) {
-				continue
-			}
-			// filter resources by kind
-			if FilterResources(c.includeKinds, c.excludeKinds, resource.GetKind()) {
-				continue
-			}
-
-			// filter resources by namespace
-			if FilterResources(c.includeNamespaces, c.excludeNamespaces, resource.GetNamespace()) {
 				continue
 			}
 
@@ -506,7 +519,7 @@ func rawResource(resource interface{}) (map[string]interface{}, error) {
 func (c *client) getDynamicClient(gvr schema.GroupVersionResource) dynamic.ResourceInterface {
 	dclient := c.cluster.GetDynamicClient()
 
-	// don't use namespace if it is a cluster levle resource,
+	// don't use namespace if it is a cluster level resource,
 	// or namespace is empty
 	if k8s.IsClusterResource(gvr) || len(c.namespace) == 0 {
 		return dclient.Resource(gvr)

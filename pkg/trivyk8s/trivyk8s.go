@@ -161,8 +161,44 @@ func (c client) GetIncludeKinds() []string {
 	return c.includeKinds
 }
 
+// initResourceList collects scannable resources.
+func (c *client) initResourceList() {
+	// skip if resources are already created
+	if len(c.resources) > 0 {
+		return
+	}
+
+	// collect only included kinds
+	if len(c.includeKinds) != 0 {
+		// `includeKinds` are already low cased.
+		c.resources = c.includeKinds
+		return
+	}
+	// if there are no included and excluded kinds - don't collect resources
+	if len(c.excludeKinds) == 0 {
+		return
+	}
+	// skip excluded resources
+	for _, kind := range k8s.GetAllResources() {
+		if slices.Contains(c.excludeKinds, kind) {
+			continue
+		}
+		c.resources = append(c.resources, kind)
+	}
+}
+
+func (c *client) initNamespaces() {
+	if len(c.includeNamespaces) > 0 {
+
+	}
+
+}
+
 // ListArtifacts returns kubernetes scannable artifacs.
 func (c *client) ListArtifacts(ctx context.Context) ([]*artifacts.Artifact, error) {
+	c.initResourceList()
+	c.initNamespaces()
+
 	artifactList := make([]*artifacts.Artifact, 0)
 
 	namespaced := isNamespaced(c.namespace, c.allNamespaces)

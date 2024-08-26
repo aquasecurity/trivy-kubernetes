@@ -195,7 +195,7 @@ func (c *client) getNamespaces() []string {
 	if len(c.excludeNamespaces) == 0 {
 		return nil
 	}
-	// ToDo: get all namespaces and exclude
+	// ToDo: get all namespaces and skip excluded namespaces
 	return []string{}
 }
 

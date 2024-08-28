@@ -43,7 +43,7 @@ func TestLoadCheckFilesByID(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotCmd, gotCfg := loadCommands(tt.commandPaths, AddChecksByCheckId)
+			gotCmd, _, gotCfg := loadCommands(tt.commandPaths, AddChecksByCheckId)
 			assert.True(t, reflect.DeepEqual(gotCmd["CMD-0001"], tt.wantCmd["CMD-0001"]))
 			assert.True(t, reflect.DeepEqual(gotCmd["CMD-0002"], tt.wantCmd["CMD-0002"]))
 			_, ok := gotCfg["kubelet_mapping_cfg.yaml"]
@@ -80,7 +80,7 @@ func TestLoadEmbeddedCommandsByID(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotCmd, gotCfg := getEmbeddedCommands(trivy_checks.EmbeddedK8sCommandsFileSystem, trivy_checks.EmbeddedConfigCommandsFileSystem, AddChecksByCheckId)
+			gotCmd, _, gotCfg := getEmbeddedCommands(trivy_checks.EmbeddedK8sCommandsFileSystem, trivy_checks.EmbeddedConfigCommandsFileSystem, AddChecksByCheckId)
 			assert.True(t, reflect.DeepEqual(gotCmd["CMD-0001"], tt.wantCmd["CMD-0001"]))
 			_, ok := gotCfg["kubelet_mapping.yaml"]
 			assert.True(t, ok)
@@ -119,7 +119,7 @@ func TestLoadConfigFilesByPlatform(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotCmd, gotCfg := loadCommands(tt.commandPaths, AddChecksByPlatform)
+			gotCmd, _, gotCfg := loadCommands(tt.commandPaths, AddChecksByPlatform)
 			assert.True(t, len(gotCmd["k8s"]) == 2)
 			assert.True(t, len(gotCmd["aks"]) == 2)
 			_, ok := gotCfg["kubelet_mapping_cfg.yaml"]

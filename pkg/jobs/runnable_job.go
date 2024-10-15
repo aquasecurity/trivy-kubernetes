@@ -64,11 +64,15 @@ func (r *runnableJob) Run(ctx context.Context) error {
 			if len(newJob.Status.Conditions) == 0 {
 				return
 			}
-
-			if newJob.Status.Conditions[0].Type == batchv1.JobComplete || newJob.Status.Conditions[0].Type == batchv1.JobSuccessCriteriaMet {
-				complete <- nil
-			} else if condition := newJob.Status.Conditions[len(newJob.Status.Conditions)-1]; condition.Type == batchv1.JobFailed {
-				complete <- fmt.Errorf("job failed: %s: %s", condition.Reason, condition.Message)
+			for _, condition := range newJob.Status.Conditions {
+				switch condition.Type {
+				case batchv1.JobComplete, batchv1.JobSuccessCriteriaMet:
+					complete <- nil
+					return
+				case batchv1.JobFailed:
+					complete <- fmt.Errorf("job failed: %s: %s", condition.Reason, condition.Message)
+					return
+				}
 			}
 		},
 	})

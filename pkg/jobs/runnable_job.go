@@ -61,9 +61,6 @@ func (r *runnableJob) Run(ctx context.Context) error {
 			if r.job.UID != newJob.UID {
 				return
 			}
-			if len(newJob.Status.Conditions) == 0 {
-				return
-			}
 			for _, condition := range newJob.Status.Conditions {
 				switch condition.Type {
 				case batchv1.JobComplete, batchv1.JobSuccessCriteriaMet:

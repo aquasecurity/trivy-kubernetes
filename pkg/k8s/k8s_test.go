@@ -196,7 +196,6 @@ func TestNodeInfo(t *testing.T) {
 						KernelVersion:           "6.5.9-300.fc39.aarch64",
 						OperatingSystem:         "linux",
 						OSImage:                 "Ubuntu 21.04",
-						KubeProxyVersion:        "1.21.1",
 					},
 				},
 			},
@@ -204,7 +203,6 @@ func TestNodeInfo(t *testing.T) {
 			want: bom.NodeInfo{
 				NodeName:                "node1",
 				KubeletVersion:          "1.21.1",
-				KubeProxyVersion:        "1.21.1",
 				ContainerRuntimeVersion: "containerd://1.5.2",
 				OsImage:                 "Ubuntu 21.04",
 				Properties: map[string]string{

@@ -65,9 +65,9 @@ func (r *runnableJob) Run(ctx context.Context) error {
 				return
 			}
 			switch condition := newJob.Status.Conditions[0]; condition.Type {
-			case batchv1.JobComplete:
+			case batchv1.JobComplete, batchv1.JobSuccessCriteriaMet:
 				complete <- nil
-			case batchv1.JobFailed:
+			case batchv1.JobFailed, batchv1.JobFailureTarget:
 				complete <- fmt.Errorf("job failed: %s: %s", condition.Reason, condition.Message)
 			}
 		},

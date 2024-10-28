@@ -61,14 +61,15 @@ func (r *runnableJob) Run(ctx context.Context) error {
 			if r.job.UID != newJob.UID {
 				return
 			}
-			if len(newJob.Status.Conditions) == 0 {
-				return
-			}
-			switch condition := newJob.Status.Conditions[0]; condition.Type {
-			case batchv1.JobComplete:
-				complete <- nil
-			case batchv1.JobFailed:
-				complete <- fmt.Errorf("job failed: %s: %s", condition.Reason, condition.Message)
+			for _, condition := range newJob.Status.Conditions {
+				switch condition.Type {
+				case batchv1.JobComplete, batchv1.JobSuccessCriteriaMet:
+					complete <- nil
+					return
+				case batchv1.JobFailed:
+					complete <- fmt.Errorf("job failed: %s: %s", condition.Reason, condition.Message)
+					return
+				}
 			}
 		},
 	})

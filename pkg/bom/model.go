@@ -31,7 +31,6 @@ type NodeInfo struct {
 	ContainerRuntimeVersion string
 	OsImage                 string
 	Properties              map[string]string
-	KubeProxyVersion        string
 	Images                  []string
 }
 

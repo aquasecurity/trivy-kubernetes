@@ -521,7 +521,6 @@ func NodeInfo(node v1.Node) bom.NodeInfo {
 		KubeletVersion:          trimString(k8sVersions(node.Status.NodeInfo.KubeletVersion), []string{"v", "V"}),
 		ContainerRuntimeVersion: node.Status.NodeInfo.ContainerRuntimeVersion,
 		OsImage:                 node.Status.NodeInfo.OSImage,
-		KubeProxyVersion:        trimString(k8sVersions(node.Status.NodeInfo.KubeProxyVersion), []string{"v", "V"}),
 		Properties: map[string]string{
 			"NodeRole":        nodeRole,
 			"HostName":        node.ObjectMeta.Name,

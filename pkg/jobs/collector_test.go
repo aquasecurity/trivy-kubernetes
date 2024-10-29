@@ -195,6 +195,14 @@ func TestFilterCommandsByPlatform(t *testing.T) {
 			"audit":     "stat -c %a $kubelet.kubeconfig",
 			"platforms": []interface{}{"k8s", "rke2"},
 		},
+		map[string]interface{}{
+			"id":        "CMD-0001",
+			"title":     "kubelet.conf file permissions",
+			"key":       "kubeletConfFilePermissions",
+			"nodeType":  "worker",
+			"audit":     "stat -c %a $kubelet.kubeconfig",
+			"platforms": []interface{}{"k8s"},
+		},
 	}
 	commandsRKE2 := []any{
 		map[string]interface{}{

@@ -178,71 +178,82 @@ func TestFilterCommands(t *testing.T) {
 }
 
 func TestFilterCommandsByPlatform(t *testing.T) {
+	commandsK8s := []any{
+		map[string]interface{}{
+			"id":        "CMD-0001",
+			"title":     "kubelet.conf file permissions",
+			"key":       "kubeletConfFilePermissions",
+			"nodeType":  "worker",
+			"audit":     "stat -c %a $kubelet.kubeconfig",
+			"platforms": []interface{}{"k8s", "rke2"},
+		},
+		map[string]interface{}{
+			"id":        "CMD-0002",
+			"title":     "kubelet.conf file permissions",
+			"key":       "kubeletConfFilePermissions",
+			"nodeType":  "worker",
+			"audit":     "stat -c %a $kubelet.kubeconfig",
+			"platforms": []interface{}{"k8s", "rke2"},
+		},
+	}
+	commandsRKE2 := []any{
+		map[string]interface{}{
+			"id":        "CMD-0001",
+			"title":     "kubelet.conf file permissions",
+			"key":       "kubeletConfFilePermissions",
+			"nodeType":  "worker",
+			"audit":     "stat -c %a $kubelet.kubeconfig",
+			"platforms": []interface{}{"k8s", "rke2"},
+		},
+		map[string]interface{}{
+			"id":        "CMD-0002",
+			"title":     "kubelet.conf file permissions",
+			"key":       "kubeletConfFilePermissions",
+			"nodeType":  "worker",
+			"audit":     "stat -c %a $kubelet.kubeconfig",
+			"platforms": []interface{}{"k8s", "rke2"},
+		},
+	}
+	commandsMap := map[string][]any{
+		"k8s":  commandsK8s,
+		"rke2": commandsRKE2,
+	}
+
 	tests := []struct {
 		name        string
 		platform    string
 		commandsMap map[string][]any
 		want        *NodeCommands
 	}{
-		{name: "node-collector template",
-			platform: "k8s",
-			commandsMap: map[string][]any{
-				"k8s": {
-					map[string]interface{}{
-						"id":        "CMD-0001",
-						"title":     "kubelet.conf file permissions",
-						"key":       "kubeletConfFilePermissions",
-						"nodeType":  "worker",
-						"audit":     "stat -c %a $kubelet.kubeconfig",
-						"platforms": []interface{}{"k8s", "aks"},
-					},
-					map[string]interface{}{
-						"id":        "CMD-0002",
-						"title":     "kubelet.conf file permissions",
-						"key":       "kubeletConfFilePermissions",
-						"nodeType":  "worker",
-						"audit":     "stat -c %a $kubelet.kubeconfig",
-						"platforms": []interface{}{"k8s", "aks"},
-					},
-				},
-				"aks": {
-					map[string]interface{}{
-						"id":        "CMD-0001",
-						"title":     "kubelet.conf file permissions",
-						"key":       "kubeletConfFilePermissions",
-						"nodeType":  "worker",
-						"audit":     "stat -c %a $kubelet.kubeconfig",
-						"platforms": []interface{}{"k8s", "aks"},
-					},
-					map[string]interface{}{
-						"id":        "CMD-0002",
-						"title":     "kubelet.conf file permissions",
-						"key":       "kubeletConfFilePermissions",
-						"nodeType":  "worker",
-						"audit":     "stat -c %a $kubelet.kubeconfig",
-						"platforms": []interface{}{"k8s", "aks"},
-					},
-				},
-			},
+		{
+			name:        "select k8s commands",
+			platform:    "k8s",
+			commandsMap: commandsMap,
 			want: &NodeCommands{
-				Commands: []any{
-					map[string]interface{}{
-						"id":        "CMD-0001",
-						"title":     "kubelet.conf file permissions",
-						"key":       "kubeletConfFilePermissions",
-						"nodeType":  "worker",
-						"audit":     "stat -c %a $kubelet.kubeconfig",
-						"platforms": []interface{}{"k8s", "aks"},
-					},
-					map[string]interface{}{
-						"id":        "CMD-0002",
-						"title":     "kubelet.conf file permissions",
-						"key":       "kubeletConfFilePermissions",
-						"nodeType":  "worker",
-						"audit":     "stat -c %a $kubelet.kubeconfig",
-						"platforms": []interface{}{"k8s", "aks"},
-					},
-				},
+				Commands: commandsK8s,
+			},
+		},
+		{
+			name:        "select RKE2 commands",
+			platform:    "rke2",
+			commandsMap: commandsMap,
+			want: &NodeCommands{
+				Commands: commandsRKE2,
+			},
+		},
+		{
+			name:        "select AKS commands",
+			platform:    "aks",
+			commandsMap: commandsMap,
+			want: &NodeCommands{
+				Commands: commandsK8s,
+			},
+		},
+		{
+			name:     "without command maps",
+			platform: "aks",
+			want: &NodeCommands{
+				Commands: make([]any, 0),
 			},
 		},
 	}

@@ -487,6 +487,8 @@ func filterCommandByPlatform(commands map[string][]any, platform string) NodeCom
 	filteredCommands := make([]any, 0)
 	if command, ok := commands[platform]; ok {
 		filteredCommands = append(filteredCommands, command...)
+	} else {
+		filteredCommands = append(filteredCommands, commands["k8s"]...)
 	}
 	return NodeCommands{Commands: filteredCommands}
 }

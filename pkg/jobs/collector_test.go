@@ -250,8 +250,8 @@ func TestFilterCommandsByPlatform(t *testing.T) {
 			},
 		},
 		{
-			name:        "select AKS commands",
-			platform:    "aks",
+			name:        "select commands for unknown platform (by default, using `k8s`)",
+			platform:    "unknown-ks",
 			commandsMap: commandsMap,
 			want: &NodeCommands{
 				Commands: commandsK8s,

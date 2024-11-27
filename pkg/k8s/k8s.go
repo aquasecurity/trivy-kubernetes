@@ -234,10 +234,12 @@ func getCluster(clientConfig clientcmd.ClientConfig, kubeConfig *rest.Config, re
 	if context, ok := rawCfg.Contexts[currentContext]; ok {
 		namespace = context.Namespace
 	}
+	/*
+		if len(namespace) == 0 {
+			namespace = "default"
+		}
 
-	if len(namespace) == 0 {
-		namespace = "default"
-	}
+	*/
 	var serverVersion string
 	if !fakeConfig {
 		sv, err := kubeClientset.ServerVersion()

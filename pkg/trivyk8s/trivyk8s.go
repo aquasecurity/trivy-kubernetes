@@ -470,13 +470,13 @@ func rawResource(resource interface{}) (map[string]interface{}, error) {
 func (c *client) getDynamicClient(gvr schema.GroupVersionResource) dynamic.ResourceInterface {
 	dclient := c.cluster.GetDynamicClient()
 
-	// don't use namespace if it is a cluster levle resource,
-	// or namespace is empty
-	if k8s.IsClusterResource(gvr) || len(c.namespace) == 0 {
+	clusterNamespace := c.cluster.GetCurrentNamespace()
+	// don't use namespace if it is a cluster level resource, or namespace is empty
+	if k8s.IsClusterResource(gvr) || len(clusterNamespace) == 0 {
 		return dclient.Resource(gvr)
 	}
 
-	return dclient.Resource(gvr).Namespace(c.namespace)
+	return dclient.Resource(gvr).Namespace(clusterNamespace)
 }
 
 // ignore resources to avoid duplication,

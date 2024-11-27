@@ -188,21 +188,41 @@ func (c *client) initResourceList() {
 }
 
 // getNamespaces collects scannable namespaces
-func (c *client) getNamespaces() []string {
+func (c *client) getNamespaces() ([]string, error) {
 	if len(c.includeNamespaces) > 0 {
-		return c.includeNamespaces
+		return c.includeNamespaces, nil
 	}
+
+	result := []string{}
 	if len(c.excludeNamespaces) == 0 {
-		return nil
+		return result, nil
 	}
-	// ToDo: get all namespaces and skip excluded namespaces
-	return []string{}
+	namespaceGVR := schema.GroupVersionResource{
+		Group:    "",
+		Version:  "v1",
+		Resource: "namespaces",
+	}
+	dClient := c.getDynamicClient(namespaceGVR)
+	namespaces, err := dClient.List(context.TODO(), v1.ListOptions{})
+	if err != nil {
+		return result, err
+	}
+	for _, ns := range namespaces.Items {
+		if slices.Contains(c.excludeNamespaces, ns.GetName()) {
+			continue
+		}
+		result = append(result, ns.GetName())
+	}
+	return result, nil
 }
 
 // ListArtifacts returns kubernetes scannable artifacs.
 func (c *client) ListArtifacts(ctx context.Context) ([]*artifacts.Artifact, error) {
 	c.initResourceList()
-	namespaces := c.getNamespaces()
+	namespaces, err := c.getNamespaces()
+	if err != nil {
+		return nil, err
+	}
 	if len(namespaces) == 0 {
 		return c.ListSpecificArtifacts(ctx)
 	}

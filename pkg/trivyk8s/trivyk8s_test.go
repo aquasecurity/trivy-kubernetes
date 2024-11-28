@@ -98,16 +98,16 @@ func TestInitResources(t *testing.T) {
 		want         []string
 	}{
 		{
-			"scan only pods",
-			[]string{"pods"},
-			nil,
-			[]string{k8s.Pods},
+			name:         "scan only pods",
+			includeKinds: []string{"pods"},
+			excludeKinds: nil,
+			want:         []string{k8s.Pods},
 		},
 		{
-			"skip ClusterRoles, Deployments and Ingresses",
-			nil,
-			[]string{"deployments", "ingresses", "clusterroles"},
-			[]string{
+			name:         "skip ClusterRoles, Deployments and Ingresses",
+			includeKinds: nil,
+			excludeKinds: []string{"deployments", "ingresses", "clusterroles"},
+			want: []string{
 				k8s.ClusterRoleBindings,
 				k8s.Nodes,
 				k8s.Pods,

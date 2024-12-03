@@ -206,7 +206,7 @@ func (c *client) getNamespaces() ([]string, error) {
 	namespaces, err := dClient.List(context.TODO(), v1.ListOptions{})
 	if err != nil {
 		if errors.IsForbidden(err) {
-			return result, fmt.Errorf("'exclude namespace' option requires a cluster role with permissions to list namespaces")
+			return result, fmt.Errorf("'exclude namespaces' option requires a cluster role with permissions to list namespaces")
 		}
 		return result, fmt.Errorf("unable to list namespaces: %w", err)
 	}

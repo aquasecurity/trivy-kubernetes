@@ -205,7 +205,10 @@ func (c *client) getNamespaces() ([]string, error) {
 	dClient := c.getDynamicClient(namespaceGVR)
 	namespaces, err := dClient.List(context.TODO(), v1.ListOptions{})
 	if err != nil {
-		return result, err
+		if errors.IsForbidden(err) {
+			return result, fmt.Errorf("'exclude namespace' option requires a cluster role with permissions to list namespaces")
+		}
+		return result, fmt.Errorf("unable to list namespaces: %w", err)
 	}
 	for _, ns := range namespaces.Items {
 		if slices.Contains(c.excludeNamespaces, ns.GetName()) {

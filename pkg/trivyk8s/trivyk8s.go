@@ -161,8 +161,90 @@ func (c client) GetIncludeKinds() []string {
 	return c.includeKinds
 }
 
+// initResourceList collects scannable resources.
+func (c *client) initResourceList() {
+	// skip if resources are already created
+	if len(c.resources) > 0 {
+		return
+	}
+
+	// collect only included kinds
+	if len(c.includeKinds) != 0 {
+		// a customer can input resources in different cases: Pods, deployments etc.
+		// `includeKinds` are already low cased, so we can just assign the values
+		c.resources = c.includeKinds
+		return
+	}
+	// if there are no included and excluded kinds - don't collect resources
+	if len(c.excludeKinds) == 0 {
+		return
+	}
+	// skip excluded resources
+	for _, kind := range k8s.GetAllResources() {
+		if slices.Contains(c.excludeKinds, kind) {
+			continue
+		}
+		c.resources = append(c.resources, kind)
+	}
+}
+
+// getNamespaces collects scannable namespaces
+func (c *client) getNamespaces() ([]string, error) {
+	if len(c.includeNamespaces) > 0 {
+		return c.includeNamespaces, nil
+	}
+
+	result := []string{}
+	if len(c.excludeNamespaces) == 0 {
+		return result, nil
+	}
+	namespaceGVR := schema.GroupVersionResource{
+		Group:    "",
+		Version:  "v1",
+		Resource: "namespaces",
+	}
+	dClient := c.getDynamicClient(namespaceGVR)
+	namespaces, err := dClient.List(context.TODO(), v1.ListOptions{})
+	if err != nil {
+		if errors.IsForbidden(err) {
+			return result, fmt.Errorf("'exclude namespaces' option requires a cluster role with permissions to list namespaces")
+		}
+		return result, fmt.Errorf("unable to list namespaces: %w", err)
+	}
+	for _, ns := range namespaces.Items {
+		if slices.Contains(c.excludeNamespaces, ns.GetName()) {
+			continue
+		}
+		result = append(result, ns.GetName())
+	}
+	return result, nil
+}
+
 // ListArtifacts returns kubernetes scannable artifacs.
 func (c *client) ListArtifacts(ctx context.Context) ([]*artifacts.Artifact, error) {
+	c.initResourceList()
+	namespaces, err := c.getNamespaces()
+	if err != nil {
+		return nil, err
+	}
+	if len(namespaces) == 0 {
+		return c.ListSpecificArtifacts(ctx)
+	}
+	artifactList := make([]*artifacts.Artifact, 0)
+
+	for _, namespace := range namespaces {
+		c.namespace = namespace
+		arts, err := c.ListSpecificArtifacts(ctx)
+		if err != nil {
+			return nil, err
+		}
+		artifactList = append(artifactList, arts...)
+	}
+	return artifactList, nil
+}
+
+// ListSpecificArtifacts returns kubernetes scannable artifacs for a specific namespace or a cluster
+func (c *client) ListSpecificArtifacts(ctx context.Context) ([]*artifacts.Artifact, error) {
 	artifactList := make([]*artifacts.Artifact, 0)
 
 	namespaced := isNamespaced(c.namespace, c.allNamespaces)
@@ -193,15 +275,6 @@ func (c *client) ListArtifacts(ctx context.Context) ([]*artifacts.Artifact, erro
 
 			// if excludeOwned is enabled and the resource is owned by built-in workload, then we skip it
 			if c.excludeOwned && c.hasOwner(resource) {
-				continue
-			}
-			// filter resources by kind
-			if FilterResources(c.includeKinds, c.excludeKinds, resource.GetKind()) {
-				continue
-			}
-
-			// filter resources by namespace
-			if FilterResources(c.includeNamespaces, c.excludeNamespaces, resource.GetNamespace()) {
 				continue
 			}
 
@@ -470,7 +543,7 @@ func rawResource(resource interface{}) (map[string]interface{}, error) {
 func (c *client) getDynamicClient(gvr schema.GroupVersionResource) dynamic.ResourceInterface {
 	dclient := c.cluster.GetDynamicClient()
 
-	// don't use namespace if it is a cluster levle resource,
+	// don't use namespace if it is a cluster level resource,
 	// or namespace is empty
 	if k8s.IsClusterResource(gvr) || len(c.namespace) == 0 {
 		return dclient.Resource(gvr)

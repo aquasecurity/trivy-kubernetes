@@ -170,7 +170,8 @@ func (c *client) initResourceList() {
 
 	// collect only included kinds
 	if len(c.includeKinds) != 0 {
-		// `includeKinds` are already low cased.
+		// a customer can input resources in different cases: Pods, deployments etc.
+		// `includeKinds` are already low cased, so we can just assign the values
 		c.resources = c.includeKinds
 		return
 	}

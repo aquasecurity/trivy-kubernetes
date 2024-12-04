@@ -24,6 +24,7 @@ require (
 	github.com/Azure/go-ansiterm v0.0.0-20230124172434-306776ec8161 // indirect
 	github.com/google/gnostic-models v0.6.8 // indirect
 	github.com/moby/term v0.5.0 // indirect
+	github.com/stretchr/objx v0.5.2 // indirect
 	golang.org/x/sync v0.7.0 // indirect
 	k8s.io/klog/v2 v2.120.1 // indirect
 )

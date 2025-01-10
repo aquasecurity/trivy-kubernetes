@@ -107,7 +107,7 @@ func newMockCluster(dynamicClient dynamic.Interface) *MockCluster {
 	}
 }
 
-// GetDynamicClient возвращает dynamic.Interface
+// GetDynamicClient returns dynamic.Interface
 func (m *MockCluster) GetDynamicClient() dynamic.Interface {
 	return m.dynamicClient
 }
@@ -192,7 +192,6 @@ func TestGetNamespaces(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Create your client with the mocked dependencies
 			client := &client{
 				includeNamespaces: tt.includeNamespaces,
 				excludeNamespaces: tt.excludeNamespaces,

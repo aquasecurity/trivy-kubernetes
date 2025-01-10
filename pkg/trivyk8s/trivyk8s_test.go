@@ -37,47 +37,47 @@ type MockNamespaceableResourceInterface struct {
 }
 
 func (m MockNamespaceableResourceInterface) Namespace(s string) dynamic.ResourceInterface {
-	panic("implement me")
+	return nil
 }
 
 func (m MockNamespaceableResourceInterface) Create(ctx context.Context, obj *unstructured.Unstructured, options metav1.CreateOptions, subresources ...string) (*unstructured.Unstructured, error) {
-	panic("implement me")
+	return &unstructured.Unstructured{}, nil
 }
 
 func (m MockNamespaceableResourceInterface) Update(ctx context.Context, obj *unstructured.Unstructured, options metav1.UpdateOptions, subresources ...string) (*unstructured.Unstructured, error) {
-	panic("implement me")
+	return &unstructured.Unstructured{}, nil
 }
 
 func (m MockNamespaceableResourceInterface) UpdateStatus(ctx context.Context, obj *unstructured.Unstructured, options metav1.UpdateOptions) (*unstructured.Unstructured, error) {
-	panic("implement me")
+	return &unstructured.Unstructured{}, nil
 }
 
 func (m MockNamespaceableResourceInterface) Delete(ctx context.Context, name string, options metav1.DeleteOptions, subresources ...string) error {
-	panic("implement me")
+	return nil
 }
 
 func (m MockNamespaceableResourceInterface) DeleteCollection(ctx context.Context, options metav1.DeleteOptions, listOptions metav1.ListOptions) error {
-	panic("implement me")
+	return nil
 }
 
 func (m MockNamespaceableResourceInterface) Get(ctx context.Context, name string, options metav1.GetOptions, subresources ...string) (*unstructured.Unstructured, error) {
-	panic("implement me")
+	return &unstructured.Unstructured{}, nil
 }
 
 func (m MockNamespaceableResourceInterface) Watch(ctx context.Context, opts metav1.ListOptions) (watch.Interface, error) {
-	panic("implement me")
+	return nil, nil
 }
 
 func (m MockNamespaceableResourceInterface) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, options metav1.PatchOptions, subresources ...string) (*unstructured.Unstructured, error) {
-	panic("implement me")
+	return &unstructured.Unstructured{}, nil
 }
 
 func (m MockNamespaceableResourceInterface) Apply(ctx context.Context, name string, obj *unstructured.Unstructured, options metav1.ApplyOptions, subresources ...string) (*unstructured.Unstructured, error) {
-	panic("implement me")
+	return &unstructured.Unstructured{}, nil
 }
 
 func (m MockNamespaceableResourceInterface) ApplyStatus(ctx context.Context, name string, obj *unstructured.Unstructured, options metav1.ApplyOptions) (*unstructured.Unstructured, error) {
-	panic("implement me")
+	return &unstructured.Unstructured{}, nil
 }
 
 func (m MockNamespaceableResourceInterface) List(ctx context.Context, opts metav1.ListOptions) (*unstructured.UnstructuredList, error) {

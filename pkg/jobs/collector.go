@@ -302,7 +302,7 @@ func (jb *jobCollector) ApplyAndCollect(ctx context.Context, nodeName string) (s
 	}
 	nc, err := jb.loadNodeConfig(ctx, nodeName)
 	if err != nil {
-		return "", fmt.Errorf("loading node config: %w", err)
+		return "", fmt.Errorf("loading node config for %q: %w", nodeName, err)
 	}
 	JobOptions = append(JobOptions, WithKubeletConfig(nc))
 	job, err := GetJob(JobOptions...)

@@ -403,6 +403,10 @@ func IsBuiltInWorkload(resource *metav1.OwnerReference) bool {
 			resource.Kind == string(KindJob))
 }
 
+func GetAllResources() []string {
+	return append(getClusterResources(), getNamespaceResources()...)
+}
+
 func getClusterResources() []string {
 	return []string{
 		ClusterRoles,

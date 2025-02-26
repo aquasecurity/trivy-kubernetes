@@ -52,6 +52,7 @@ type client struct {
 	allNamespaces        bool
 	excludeOwned         bool
 	scanJobParams        scanJobParams
+	useActualConfig      bool
 	nodeConfig           bool // feature flag to enable/disable node config collection
 	excludeKinds         []string
 	includeKinds         []string
@@ -111,19 +112,25 @@ func New(cluster k8s.Cluster, opts ...K8sOption) TrivyK8S {
 	return c
 }
 
-// Namespace configure the namespace to execute the queries
+// UseActualConfig configures using actual resource data from k8s instead of `last-applied-configuration`
+func (c *client) UseActualConfig() TrivyK8S {
+	c.useActualConfig = true
+	return c
+}
+
+// Namespace configures the namespace to execute the queries
 func (c *client) Namespace(namespace string) TrivyK8S {
 	c.namespace = namespace
 	return c
 }
 
-// Namespace configure the namespace to execute the queries
+// AllNamespaces configures the namespace to execute the queries
 func (c *client) AllNamespaces() TrivyK8S {
 	c.allNamespaces = true
 	return c
 }
 
-// Resource configure which resources to execute the queries
+// Resources configures which resources to execute the queries
 func (c *client) Resources(resources string) TrivyK8S {
 	if len(resources) == 0 {
 		return c
@@ -141,12 +148,12 @@ func isNamespaced(namespace string, allNamespace bool) bool {
 	return false
 }
 
-// return list of namespaces to exclude
+// GetExcludeNamespaces returns list of namespaces to exclude
 func (c *client) GetExcludeNamespaces() []string {
 	return c.excludeNamespaces
 }
 
-// return list of namespaces to include
+// GetIncludeNamespaces returns list of namespaces to include
 func (c *client) GetIncludeNamespaces() []string {
 	return c.includeNamespaces
 }
@@ -279,7 +286,8 @@ func (c *client) ListSpecificArtifacts(ctx context.Context) ([]*artifacts.Artifa
 			}
 
 			lastAppliedResource := resource
-			if jsonManifest, ok := resource.GetAnnotations()["kubectl.kubernetes.io/last-applied-configuration"]; ok { // required for outdated-api when k8s convert resources
+			// required for outdated-api when k8s convert resources
+			if jsonManifest, ok := resource.GetAnnotations()["kubectl.kubernetes.io/last-applied-configuration"]; ok && !c.useActualConfig {
 				err := json.Unmarshal([]byte(jsonManifest), &lastAppliedResource)
 				if err != nil {
 					continue

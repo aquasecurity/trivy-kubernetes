@@ -404,6 +404,33 @@ func TestSetActualResource(t *testing.T) {
 			},
 		},
 		{
+			name: "useActualState is true without annotations, should not modify actualResource",
+			actualResource: &unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"kind":       "Pod",
+					"apiVersion": "v1",
+					"metadata": map[string]interface{}{
+						"annotations": map[string]interface{}{
+							"kubectl.kubernetes.io/version": "1",
+						},
+					},
+				},
+			},
+			useActualState: true,
+			expectError:    false,
+			expectedResult: &unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"kind":       "Pod",
+					"apiVersion": "v1",
+					"metadata": map[string]interface{}{
+						"annotations": map[string]interface{}{
+							"kubectl.kubernetes.io/version": "1",
+						},
+					},
+				},
+			},
+		},
+		{
 			name: "invalid last-applied-configuration annotation",
 			actualResource: &unstructured.Unstructured{
 				Object: map[string]interface{}{

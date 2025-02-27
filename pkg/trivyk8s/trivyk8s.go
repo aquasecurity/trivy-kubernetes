@@ -71,6 +71,13 @@ func WithExcludeOwned(excludeOwned bool) K8sOption {
 		c.excludeOwned = excludeOwned
 	}
 }
+
+func WithUseActualConfig(useActualConfig bool) K8sOption {
+	return func(c *client) {
+		c.useActualConfig = useActualConfig
+	}
+}
+
 func WithExcludeKinds(excludeKinds []string) K8sOption {
 	return func(c *client) {
 		for _, kind := range excludeKinds {

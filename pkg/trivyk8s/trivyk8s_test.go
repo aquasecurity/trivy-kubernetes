@@ -362,7 +362,7 @@ func TestSetActualResource(t *testing.T) {
 					"apiVersion": "v1",
 					"metadata": map[string]interface{}{
 						"annotations": map[string]interface{}{
-							"kubectl.kubernetes.io/last-applied-configuration": "{\"kind\":\"Pod\",\"apiVersion\":\"v1\"}",
+							"kubectl.kubernetes.io/last-applied-configuration": "{\"kind\":\"Pod\",\"apiVersion\":\"v1beta\"}",
 						},
 					},
 				},
@@ -375,7 +375,7 @@ func TestSetActualResource(t *testing.T) {
 					"apiVersion": "v1",
 					"metadata": map[string]interface{}{
 						"annotations": map[string]interface{}{
-							"kubectl.kubernetes.io/last-applied-configuration": "{\"kind\":\"Pod\",\"apiVersion\":\"v1\"}",
+							"kubectl.kubernetes.io/last-applied-configuration": "{\"kind\":\"Pod\",\"apiVersion\":\"v1beta\"}",
 						},
 					},
 				},

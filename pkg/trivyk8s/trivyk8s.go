@@ -284,14 +284,11 @@ func (c *client) ListSpecificArtifacts(ctx context.Context) ([]*artifacts.Artifa
 			if c.excludeOwned && c.hasOwner(resource) {
 				continue
 			}
-
 			lastAppliedResource := resource
-			// required for outdated-api when k8s convert resources
-			if jsonManifest, ok := resource.GetAnnotations()["kubectl.kubernetes.io/last-applied-configuration"]; ok && !c.useActualConfig {
-				err := json.Unmarshal([]byte(jsonManifest), &lastAppliedResource)
-				if err != nil {
-					continue
-				}
+
+			if err := setActualResource(&resource, c.useActualConfig); err != nil {
+				slog.Error("Unable to get actual resource", "error", err)
+				continue
 			}
 			auths, err := c.cluster.AuthByResource(lastAppliedResource)
 			if err != nil {
@@ -313,6 +310,20 @@ func (c *client) ListSpecificArtifacts(ctx context.Context) ([]*artifacts.Artifa
 		artifactList = append(artifactList, bomArtifacts...)
 	}
 	return artifactList, nil
+}
+
+func setActualResource(actualResource *unstructured.Unstructured, useActualState bool) error {
+	if useActualState {
+		return nil
+	}
+	// required for outdated-api when k8s convert resources
+	if jsonManifest, ok := actualResource.GetAnnotations()["kubectl.kubernetes.io/last-applied-configuration"]; ok {
+		err := json.Unmarshal([]byte(jsonManifest), actualResource)
+		if err != nil {
+			return fmt.Errorf("failed unmarshal resource %v: %v", actualResource.GetName(), err)
+		}
+	}
+	return nil
 }
 
 func FilterResources(include []string, exclude []string, key string) bool {

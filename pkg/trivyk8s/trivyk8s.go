@@ -293,7 +293,7 @@ func (c *client) ListSpecificArtifacts(ctx context.Context) ([]*artifacts.Artifa
 			}
 			lastAppliedResource := resource
 
-			if err := setActualResource(&resource, c.useActualConfig); err != nil {
+			if err := setActualResource(&lastAppliedResource, c.useActualConfig); err != nil {
 				slog.Error("Unable to get actual resource", "error", err)
 				continue
 			}

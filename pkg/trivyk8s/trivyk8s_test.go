@@ -3,7 +3,9 @@ package trivyk8s
 import (
 	"context"
 	"fmt"
+	"os/exec"
 	"testing"
+	"time"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -15,6 +17,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/aquasecurity/trivy-kubernetes/pkg/artifacts"
 	"github.com/aquasecurity/trivy-kubernetes/pkg/bom"
@@ -342,6 +345,108 @@ func TestInitResources(t *testing.T) {
 			c := &client{excludeKinds: tt.excludeKinds, includeKinds: tt.includeKinds}
 			c.initResourceList()
 			assert.Equal(t, tt.want, c.resources)
+		})
+	}
+}
+
+func setupKindCluster(t *testing.T) {
+	t.Log("Setting up kind cluster...")
+	cmd := exec.Command("kind", "create", "cluster", "--name", "test-cluster")
+	require.NoError(t, cmd.Run())
+	t.Cleanup(func() {
+		t.Log("Tearing down kind cluster...")
+		exec.Command("kind", "delete", "cluster", "--name", "test-cluster").Run()
+	})
+
+	t.Log("Wait for nodes")
+	cmd = exec.Command("kubectl", "wait", "--for=condition=Ready", "--timeout", "300s", "nodes", "--all")
+	require.NoError(t, cmd.Run())
+}
+
+func loadTestResources(t *testing.T) {
+	t.Log("Loading test resources into kind cluster...")
+	cmd := exec.Command("kubectl", "apply", "-f", "testdata/single-pod.yaml")
+	require.NoError(t, cmd.Run())
+}
+
+type kubectlAction func()
+
+func TestListSpecificArtifacts(t *testing.T) {
+	setupKindCluster(t)
+	loadTestResources(t)
+
+	tests := []struct {
+		name              string
+		namespace         string
+		kinds             []string
+		action            kubectlAction
+		expectedArtifacts []*artifacts.Artifact
+	}{
+		{
+			"good way for pod",
+			"default",
+			[]string{"pods"},
+			nil,
+			[]*artifacts.Artifact{
+
+				&artifacts.Artifact{
+					Namespace:   "default",
+					Kind:        "Pod",
+					Labels:      nil,
+					Name:        "single-pod",
+					Images:      []string{"alpine:3.17.1"},
+					Credentials: []docker.Auth{},
+					RawResource: map[string]interface{}{
+						"apiVersion": "v1",
+						"kind":       "Pod",
+						"metadata": map[string]interface{}{
+							"annotations": map[string]interface{}{},
+							"name":        "single-pod",
+							"namespace":   "default",
+						},
+						"spec": map[string]interface{}{
+							"containers": []interface{}{
+								map[string]interface{}{
+									"args": []interface{}{
+										"while true; do sleep 30; done;",
+									},
+									"command": []interface{}{
+										"/bin/sh",
+										"-c",
+										"--",
+									},
+									"image": "alpine:3.17.1",
+									"name":  "my-image2-alpine-sleep",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+			defer cancel()
+
+			cluster, err := k8s.GetCluster()
+			require.NoError(t, err)
+
+			c := &client{
+				cluster:   cluster,
+				namespace: test.namespace,
+				resources: test.kinds,
+			}
+
+			if test.action != nil {
+				test.action()
+			}
+
+			artifacts, err := c.ListSpecificArtifacts(ctx)
+			require.NoError(t, err)
+			assert.Equal(t, test.expectedArtifacts, artifacts)
 		})
 	}
 }

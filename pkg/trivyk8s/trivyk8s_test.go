@@ -388,35 +388,26 @@ func TestListSpecificArtifacts(t *testing.T) {
 			[]string{"pods"},
 			nil,
 			[]*artifacts.Artifact{
-
 				&artifacts.Artifact{
 					Namespace:   "default",
 					Kind:        "Pod",
 					Labels:      nil,
-					Name:        "single-pod",
-					Images:      []string{"alpine:3.17.1"},
+					Name:        "nginx-pod",
+					Images:      []string{"nginx:1.14.1"},
 					Credentials: []docker.Auth{},
 					RawResource: map[string]interface{}{
 						"apiVersion": "v1",
 						"kind":       "Pod",
 						"metadata": map[string]interface{}{
 							"annotations": map[string]interface{}{},
-							"name":        "single-pod",
+							"name":        "nginx-pod",
 							"namespace":   "default",
 						},
 						"spec": map[string]interface{}{
 							"containers": []interface{}{
 								map[string]interface{}{
-									"args": []interface{}{
-										"while true; do sleep 30; done;",
-									},
-									"command": []interface{}{
-										"/bin/sh",
-										"-c",
-										"--",
-									},
-									"image": "alpine:3.17.1",
-									"name":  "my-image2-alpine-sleep",
+									"image": "nginx:1.14.1",
+									"name":  "test-nginx",
 								},
 							},
 						},

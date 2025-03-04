@@ -1,10 +1,8 @@
 apiVersion: v1
 kind: Pod
 metadata:
-  name: single-pod
+  name: nginx-pod
 spec:
   containers:
-    - name: my-image2-alpine-sleep
-      image: alpine:3.17.1
-      command: [ "/bin/sh", "-c", "--" ]
-      args: [ "while true; do sleep 30; done;"]
+    - name: test-nginx
+      image: nginx:1.14.1

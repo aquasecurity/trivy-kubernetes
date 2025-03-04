@@ -379,7 +379,7 @@ func removeTestResource(t *testing.T, resource string) {
 	require.NoError(t, cmd.Run())
 }
 
-type kubectlAction func()
+type kubectlAction func() error
 
 func TestListSpecificArtifacts(t *testing.T) {
 	setupKindCluster(t)
@@ -398,6 +398,42 @@ func TestListSpecificArtifacts(t *testing.T) {
 			[]string{filepath.Join("testdata", "single-pod.yaml")},
 			[]string{"pods"},
 			nil,
+			[]*artifacts.Artifact{
+				&artifacts.Artifact{
+					Namespace:   "default",
+					Kind:        "Pod",
+					Labels:      nil,
+					Name:        "nginx-pod",
+					Images:      []string{"nginx:1.14.1"},
+					Credentials: []docker.Auth{},
+					RawResource: map[string]interface{}{
+						"apiVersion": "v1",
+						"kind":       "Pod",
+						"metadata": map[string]interface{}{
+							"annotations": map[string]interface{}{},
+							"name":        "nginx-pod",
+							"namespace":   "default",
+						},
+						"spec": map[string]interface{}{
+							"containers": []interface{}{
+								map[string]interface{}{
+									"image": "nginx:1.14.1",
+									"name":  "test-nginx",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			"use last-applied-config",
+			"default",
+			[]string{filepath.Join("testdata", "single-pod.yaml")},
+			[]string{"pods"},
+			func() error {
+				return exec.Command("kubectl", "set", "image", "pod/nginx-pod", "test-nginx=nginx:1.27.4").Run()
+			},
 			[]*artifacts.Artifact{
 				&artifacts.Artifact{
 					Namespace:   "default",
@@ -452,7 +488,7 @@ func TestListSpecificArtifacts(t *testing.T) {
 			}
 
 			if test.action != nil {
-				test.action()
+				require.NoError(t, test.action())
 			}
 
 			artifacts, err := c.ListSpecificArtifacts(ctx)

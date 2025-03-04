@@ -15,7 +15,7 @@ test: unit-tests
 .PHONY: unit-tests
 ## Runs unit tests with code coverage enabled
 unit-tests: $(SOURCES)
-	go test -v -short -race -timeout 30s -coverprofile=coverage.txt ./...
+	go test -v -short -race -timeout 300s -coverprofile=coverage.txt ./...
 
 .PHONY: e2e-tests
 ## Runs e2e tests

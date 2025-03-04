@@ -3,7 +3,10 @@ package trivyk8s
 import (
 	"context"
 	"fmt"
+	"os/exec"
+	"path/filepath"
 	"testing"
+	"time"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -15,6 +18,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/aquasecurity/trivy-kubernetes/pkg/artifacts"
 	"github.com/aquasecurity/trivy-kubernetes/pkg/bom"
@@ -342,6 +346,154 @@ func TestInitResources(t *testing.T) {
 			c := &client{excludeKinds: tt.excludeKinds, includeKinds: tt.includeKinds}
 			c.initResourceList()
 			assert.Equal(t, tt.want, c.resources)
+		})
+	}
+}
+
+func setupKindCluster(t *testing.T) {
+	t.Log("Setting up kind cluster...")
+	cmd := exec.Command("kind", "create", "cluster", "--name", "test-cluster")
+	require.NoError(t, cmd.Run())
+	t.Cleanup(func() {
+		t.Log("Tearing down kind cluster...")
+		err := exec.Command("kind", "delete", "cluster", "--name", "test-cluster").Run()
+		if err != nil {
+			t.Logf("error in cluster deleting: %v", err)
+		}
+	})
+
+	t.Log("Wait for nodes")
+	cmd = exec.Command("kubectl", "wait", "--for=condition=Ready", "--timeout", "300s", "nodes", "--all")
+	require.NoError(t, cmd.Run())
+}
+
+func loadTestResource(t *testing.T, resource string) {
+	t.Logf("Loading test resources %q into kind cluster...", resource)
+	cmd := exec.Command("kubectl", "apply", "-f", resource)
+	require.NoError(t, cmd.Run())
+}
+
+func removeTestResource(t *testing.T, resource string) {
+	t.Logf("Removing test resource %q from kind cluster...", resource)
+	cmd := exec.Command("kubectl", "delete", "-f", resource)
+	require.NoError(t, cmd.Run())
+}
+
+type kubectlAction func() error
+
+func TestListSpecificArtifacts(t *testing.T) {
+	setupKindCluster(t)
+
+	tests := []struct {
+		name              string
+		namespace         string
+		resources         []string
+		kinds             []string
+		action            kubectlAction
+		expectedArtifacts []*artifacts.Artifact
+	}{
+		{
+			"good way for pod",
+			"default",
+			[]string{filepath.Join("testdata", "single-pod.yaml")},
+			[]string{"pods"},
+			nil,
+			[]*artifacts.Artifact{
+				&artifacts.Artifact{
+					Namespace:   "default",
+					Kind:        "Pod",
+					Labels:      nil,
+					Name:        "nginx-pod",
+					Images:      []string{"nginx:1.14.1"},
+					Credentials: []docker.Auth{},
+					RawResource: map[string]interface{}{
+						"apiVersion": "v1",
+						"kind":       "Pod",
+						"metadata": map[string]interface{}{
+							"annotations": map[string]interface{}{},
+							"name":        "nginx-pod",
+							"namespace":   "default",
+						},
+						"spec": map[string]interface{}{
+							"containers": []interface{}{
+								map[string]interface{}{
+									"image": "nginx:1.14.1",
+									"name":  "test-nginx",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			"use last-applied-config",
+			"default",
+			[]string{filepath.Join("testdata", "single-pod.yaml")},
+			[]string{"pods"},
+			func() error {
+				return exec.Command("kubectl", "set", "image", "pod/nginx-pod", "test-nginx=nginx:1.27.4").Run()
+			},
+			[]*artifacts.Artifact{
+				&artifacts.Artifact{
+					Namespace:   "default",
+					Kind:        "Pod",
+					Labels:      nil,
+					Name:        "nginx-pod",
+					Images:      []string{"nginx:1.14.1"},
+					Credentials: []docker.Auth{},
+					RawResource: map[string]interface{}{
+						"apiVersion": "v1",
+						"kind":       "Pod",
+						"metadata": map[string]interface{}{
+							"annotations": map[string]interface{}{},
+							"name":        "nginx-pod",
+							"namespace":   "default",
+						},
+						"spec": map[string]interface{}{
+							"containers": []interface{}{
+								map[string]interface{}{
+									"image": "nginx:1.14.1",
+									"name":  "test-nginx",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+			defer cancel()
+
+			for _, r := range test.resources {
+				loadTestResource(t, r)
+			}
+			defer func() {
+				for _, r := range test.resources {
+					removeTestResource(t, r)
+				}
+			}()
+
+			cluster, err := k8s.GetCluster()
+			require.NoError(t, err)
+
+			c := &client{
+				cluster:   cluster,
+				namespace: test.namespace,
+				resources: test.kinds,
+			}
+
+			if test.action != nil {
+				require.NoError(t, test.action())
+			}
+
+			artifacts, err := c.ListSpecificArtifacts(ctx)
+			require.NoError(t, err)
+			assert.Equal(t, test.expectedArtifacts, artifacts)
 		})
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -366,9 +367,15 @@ func setupKindCluster(t *testing.T) {
 	require.NoError(t, cmd.Run())
 }
 
-func loadTestResources(t *testing.T) {
-	t.Log("Loading test resources into kind cluster...")
-	cmd := exec.Command("kubectl", "apply", "-f", "testdata/single-pod.yaml")
+func loadTestResource(t *testing.T, resource string) {
+	t.Logf("Loading test resources %q into kind cluster...", resource)
+	cmd := exec.Command("kubectl", "apply", "-f", resource)
+	require.NoError(t, cmd.Run())
+}
+
+func removeTestResource(t *testing.T, resource string) {
+	t.Logf("Removing test resource %q from kind cluster...", resource)
+	cmd := exec.Command("kubectl", "delete", "-f", resource)
 	require.NoError(t, cmd.Run())
 }
 
@@ -376,11 +383,11 @@ type kubectlAction func()
 
 func TestListSpecificArtifacts(t *testing.T) {
 	setupKindCluster(t)
-	loadTestResources(t)
 
 	tests := []struct {
 		name              string
 		namespace         string
+		resources         []string
 		kinds             []string
 		action            kubectlAction
 		expectedArtifacts []*artifacts.Artifact
@@ -388,6 +395,7 @@ func TestListSpecificArtifacts(t *testing.T) {
 		{
 			"good way for pod",
 			"default",
+			[]string{filepath.Join("testdata", "single-pod.yaml")},
 			[]string{"pods"},
 			nil,
 			[]*artifacts.Artifact{
@@ -424,6 +432,15 @@ func TestListSpecificArtifacts(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 			defer cancel()
+
+			for _, r := range test.resources {
+				loadTestResource(t, r)
+			}
+			defer func() {
+				for _, r := range test.resources {
+					removeTestResource(t, r)
+				}
+			}()
 
 			cluster, err := k8s.GetCluster()
 			require.NoError(t, err)

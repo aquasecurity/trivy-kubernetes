@@ -355,7 +355,10 @@ func setupKindCluster(t *testing.T) {
 	require.NoError(t, cmd.Run())
 	t.Cleanup(func() {
 		t.Log("Tearing down kind cluster...")
-		exec.Command("kind", "delete", "cluster", "--name", "test-cluster").Run()
+		err := exec.Command("kind", "delete", "cluster", "--name", "test-cluster").Run()
+		if err != nil {
+			t.Logf("error in cluster deleting: %v", err)
+		}
 	})
 
 	t.Log("Wait for nodes")

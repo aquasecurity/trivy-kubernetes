@@ -84,14 +84,8 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
 
-      - name: Install kind and kubectl
+      - name: Install kubectl
         run: >
-          curl -Lo ./kind https://kind.sigs.k8s.io/dl/${{ env.KIND_VERSION }}/kind-linux-amd64
-
-          chmod +x ./kind
-
-          sudo mv ./kind /usr/local/bin/kind
-
           curl -LO https://dl.k8s.io/release/v1.26.0/bin/linux/amd64/kubectl
 
           sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl

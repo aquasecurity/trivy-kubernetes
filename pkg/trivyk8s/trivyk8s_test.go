@@ -391,12 +391,12 @@ func TestListSpecificArtifacts(t *testing.T) {
 		expectedArtifacts []*artifacts.Artifact
 	}{
 		{
-			"good way for pod",
-			"default",
-			[]string{filepath.Join("testdata", "single-pod.yaml")},
-			[]string{"pod"},
-			nil,
-			[]*artifacts.Artifact{
+			name:      "good way for pod",
+			namespace: "default",
+			resources: []string{filepath.Join("testdata", "single-pod.yaml")},
+			kinds:     []string{"pod"},
+			action:    nil,
+			expectedArtifacts: []*artifacts.Artifact{
 				{
 					Namespace:   "default",
 					Kind:        "Pod",
@@ -408,14 +408,14 @@ func TestListSpecificArtifacts(t *testing.T) {
 			},
 		},
 		{
-			"use last-applied-config",
-			"default",
-			[]string{filepath.Join("testdata", "single-pod.yaml")},
-			[]string{"pod"},
-			func() error {
+			name:      "use last-applied-config",
+			namespace: "default",
+			resources: []string{filepath.Join("testdata", "single-pod.yaml")},
+			kinds:     []string{"pod"},
+			action: func() error {
 				return exec.Command("kubectl", "set", "image", "pod/nginx-pod", "test-nginx=nginx:1.27.4", "--kubeconfig", configPath).Run()
 			},
-			[]*artifacts.Artifact{
+			expectedArtifacts: []*artifacts.Artifact{
 				{
 					Namespace:   "default",
 					Kind:        "Pod",

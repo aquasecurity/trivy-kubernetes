@@ -433,7 +433,7 @@ func TestListSpecificArtifacts(t *testing.T) {
 			for _, resource := range test.resources {
 				err := exec.Command("kubectl", "apply", "-f", resource, "--kubeconfig", configPath).Run()
 				require.NoError(t, err)
-				err = exec.Command("kubectl", "wait", "--for=condition=Ready", "pods", "--all", "--kubeconfig", configPath).Run()
+				err = exec.Command("kubectl", "wait", "--for=condition=Ready", "pods", "--timeout", "300s", "--all", "--kubeconfig", configPath).Run()
 				require.NoError(t, err)
 			}
 

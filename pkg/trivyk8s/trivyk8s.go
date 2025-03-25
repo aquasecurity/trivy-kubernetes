@@ -52,6 +52,7 @@ type client struct {
 	allNamespaces        bool
 	excludeOwned         bool
 	scanJobParams        scanJobParams
+	useActualConfig      bool
 	nodeConfig           bool // feature flag to enable/disable node config collection
 	excludeKinds         []string
 	includeKinds         []string
@@ -70,6 +71,13 @@ func WithExcludeOwned(excludeOwned bool) K8sOption {
 		c.excludeOwned = excludeOwned
 	}
 }
+
+func WithUseActualConfig(useActualConfig bool) K8sOption {
+	return func(c *client) {
+		c.useActualConfig = useActualConfig
+	}
+}
+
 func WithExcludeKinds(excludeKinds []string) K8sOption {
 	return func(c *client) {
 		for _, kind := range excludeKinds {
@@ -111,19 +119,25 @@ func New(cluster k8s.Cluster, opts ...K8sOption) TrivyK8S {
 	return c
 }
 
-// Namespace configure the namespace to execute the queries
+// UseActualConfig configures using actual resource data from k8s instead of `last-applied-configuration`
+func (c *client) UseActualConfig() TrivyK8S {
+	c.useActualConfig = true
+	return c
+}
+
+// Namespace configures the namespace to execute the queries
 func (c *client) Namespace(namespace string) TrivyK8S {
 	c.namespace = namespace
 	return c
 }
 
-// Namespace configure the namespace to execute the queries
+// AllNamespaces configures the namespace to execute the queries
 func (c *client) AllNamespaces() TrivyK8S {
 	c.allNamespaces = true
 	return c
 }
 
-// Resource configure which resources to execute the queries
+// Resources configures which resources to execute the queries
 func (c *client) Resources(resources string) TrivyK8S {
 	if len(resources) == 0 {
 		return c
@@ -141,12 +155,12 @@ func isNamespaced(namespace string, allNamespace bool) bool {
 	return false
 }
 
-// return list of namespaces to exclude
+// GetExcludeNamespaces returns list of namespaces to exclude
 func (c *client) GetExcludeNamespaces() []string {
 	return c.excludeNamespaces
 }
 
-// return list of namespaces to include
+// GetIncludeNamespaces returns list of namespaces to include
 func (c *client) GetIncludeNamespaces() []string {
 	return c.includeNamespaces
 }
@@ -277,13 +291,11 @@ func (c *client) ListSpecificArtifacts(ctx context.Context) ([]*artifacts.Artifa
 			if c.excludeOwned && c.hasOwner(resource) {
 				continue
 			}
-
 			lastAppliedResource := resource
-			if jsonManifest, ok := resource.GetAnnotations()["kubectl.kubernetes.io/last-applied-configuration"]; ok { // required for outdated-api when k8s convert resources
-				err := json.Unmarshal([]byte(jsonManifest), &lastAppliedResource)
-				if err != nil {
-					continue
-				}
+
+			if err := setActualResource(&lastAppliedResource, c.useActualConfig); err != nil {
+				slog.Error("Unable to get actual resource", "error", err)
+				continue
 			}
 			auths, err := c.cluster.AuthByResource(lastAppliedResource)
 			if err != nil {
@@ -305,6 +317,20 @@ func (c *client) ListSpecificArtifacts(ctx context.Context) ([]*artifacts.Artifa
 		artifactList = append(artifactList, bomArtifacts...)
 	}
 	return artifactList, nil
+}
+
+func setActualResource(actualResource *unstructured.Unstructured, useActualState bool) error {
+	if useActualState {
+		return nil
+	}
+	// required for outdated-api when k8s convert resources
+	if jsonManifest, ok := actualResource.GetAnnotations()["kubectl.kubernetes.io/last-applied-configuration"]; ok {
+		err := json.Unmarshal([]byte(jsonManifest), actualResource)
+		if err != nil {
+			return fmt.Errorf("failed unmarshal resource %v: %v", actualResource.GetName(), err)
+		}
+	}
+	return nil
 }
 
 func FilterResources(include []string, exclude []string, key string) bool {

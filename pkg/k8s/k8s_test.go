@@ -161,6 +161,42 @@ func TestPodInfo(t *testing.T) {
 				},
 			},
 		},
+		{
+			Name:          "etcd pod with image in another format",
+			labelSelector: "component",
+			pod: corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "etcd-minikube",
+					Namespace: "kube-system",
+					Labels:    map[string]string{"component": "etcd"},
+				},
+				Status: corev1.PodStatus{
+					ContainerStatuses: []corev1.ContainerStatus{{
+						Image:   "registry.k8s.io/etcd:3.5.15-0",
+						ImageID: "docker-pullable://registry.k8s.io/etcd@sha256:a6dc63e6e8cfa0307d7851762fa6b629afb18f28d8aa3fab5a6e91b4af60026a",
+					},
+					},
+				},
+			},
+			want: &bom.Component{
+				Namespace: "kube-system",
+				Name:      "go.etcd.io/etcd/v3",
+				Version:   "3.5.15-0",
+				Properties: map[string]string{
+					"Name": "etcd-minikube",
+					"Type": "controlPlane",
+				},
+				Containers: []bom.Container{
+					{
+						ID:         "etcd:3.5.15-0",
+						Version:    "3.5.15-0",
+						Repository: "etcd",
+						Registry:   "registry.k8s.io",
+						Digest:     "a6dc63e6e8cfa0307d7851762fa6b629afb18f28d8aa3fab5a6e91b4af60026a",
+					},
+				},
+			},
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.Name, func(t *testing.T) {

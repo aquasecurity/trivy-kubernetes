@@ -579,6 +579,7 @@ func PodInfo(pod corev1.Pod, labelSelector string) (*bom.Component, error) {
 			continue
 		}
 		hex := imageRef.Context().Digest(imageRef.Identifier()).DigestStr()
+		hex = strings.TrimPrefix(hex, string(digest.Canonical)+":")
 		// skip non sha256 digests
 		if len(hex) != digest.Canonical.Size()*2 {
 			continue

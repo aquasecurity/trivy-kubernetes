@@ -564,7 +564,6 @@ func (c *cluster) collectComponents(ctx context.Context, labels map[string]strin
 func PodInfo(pod corev1.Pod, labelSelector string) (*bom.Component, error) {
 	containers := make([]bom.Container, 0)
 	for _, s := range pod.Status.ContainerStatuses {
-
 		imageName, err := utils.ParseReference(s.Image)
 		if err != nil {
 			slog.Warn(fmt.Sprintf("unable to parse image reference, skipping: %s", s.Image))

@@ -595,6 +595,7 @@ func PodInfo(pod corev1.Pod, labelSelector string) (*bom.Component, error) {
 
 	name, version := labels["app.kubernetes.io/name"], labels["app.kubernetes.io/version"]
 	props["Name"] = pod.Name
+	props["Type"] = labels["app.kubernetes.io/component"]
 
 	if name == "" {
 		componentValue := labels[labelSelector]
@@ -606,10 +607,6 @@ func PodInfo(pod corev1.Pod, labelSelector string) (*bom.Component, error) {
 	orgName := upstreamOrgByName(name)
 	if len(orgName) > 0 {
 		name = fmt.Sprintf("%s/%s", orgName, name)
-	}
-
-	if props["Type"] == "" {
-		props["Type"] = "controlPlane"
 	}
 
 	if version == "" {

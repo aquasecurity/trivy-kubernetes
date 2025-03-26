@@ -597,7 +597,7 @@ func PodInfo(pod corev1.Pod, labelSelector string) (*bom.Component, error) {
 	props["Name"] = pod.Name
 
 	if name == "" {
-		componentValue := pod.GetLabels()[labelSelector]
+		componentValue := labels[labelSelector]
 		name = upstreamRepoByName(componentValue)
 		if val, ok := CoreComponentPropertyType[name]; ok {
 			props["Type"] = val
@@ -613,7 +613,7 @@ func PodInfo(pod corev1.Pod, labelSelector string) (*bom.Component, error) {
 	}
 
 	if version == "" {
-		version = trimString(findComponentVersion(containers, pod.GetLabels()[labelSelector]), []string{"v", "V"})
+		version = trimString(findComponentVersion(containers, labels[labelSelector]), []string{"v", "V"})
 	}
 
 	return &bom.Component{

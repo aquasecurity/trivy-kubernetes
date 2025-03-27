@@ -197,6 +197,40 @@ func TestPodInfo(t *testing.T) {
 				},
 			},
 		},
+		{
+			Name:          "ingress-nginx controller",
+			labelSelector: "app.kubernetes.io/component=controller",
+			pod: corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "ingress-nginx-controller-8547bfc86c-dr7lq",
+					Namespace: "ingress-nginx",
+					Labels: map[string]string{
+						"app.kubernetes.io/component": "controller",
+						"app.kubernetes.io/instance":  "ingress-nginx",
+						"app.kubernetes.io/name":      "ingress-nginx",
+						"app.kubernetes.io/part-of":   "ingress-nginx",
+						"app.kubernetes.io/version":   "1.11.0",
+					},
+				},
+				Status: corev1.PodStatus{
+					ContainerStatuses: []corev1.ContainerStatus{{
+						Image:   "sha256:560a9fa980f663e5b71a6ca2df40f504fa577d0e38f9d0aed06c2a8eff53cb50",
+						ImageID: "registry.k8s.io/ingress-nginx/controller@sha256:a886e56d532d1388c77c8340261149d974370edca1093af4c97a96fb1467cb39",
+					},
+					},
+				},
+			},
+			want: &bom.Component{
+				Namespace: "ingress-nginx",
+				Name:      "k8s.io/ingress-nginx",
+				Version:   "1.11.0",
+				Properties: map[string]string{
+					"Name": "ingress-nginx-controller-8547bfc86c-dr7lq",
+					"Type": "controller",
+				},
+				Containers: []bom.Container{},
+			},
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.Name, func(t *testing.T) {

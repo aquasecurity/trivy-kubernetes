@@ -30,7 +30,7 @@ import (
 
 var (
 	UpstreamOrgName = map[string]string{
-		"k8s.io":      "controller-manager,kubelet,apiserver,kubectl,kubernetes,kube-scheduler,kube-proxy,cloud-provider",
+		"k8s.io":      "controller-manager,kubelet,apiserver,kubectl,kubernetes,kube-scheduler,kube-proxy,cloud-provider,ingress-nginx",
 		"sigs.k8s.io": "secrets-store-csi-driver",
 		"go.etcd.io":  "etcd/v3",
 	}
@@ -456,6 +456,7 @@ func (c *cluster) CreateClusterBom(ctx context.Context) (*bom.Result, error) {
 		return nil, err
 	}
 	addonLabels := map[string]string{
+		"":                    "app.kubernetes.io/component=controller",
 		k8sComponentNamespace: "k8s-app",
 	}
 	addons, err := c.collectComponents(ctx, addonLabels)
@@ -473,7 +474,6 @@ func (c *cluster) CreateClusterBom(ctx context.Context) (*bom.Result, error) {
 func GetContainer(hex string, imageName containerimage.Reference) (bom.Container, error) {
 	repoName := imageName.Context().RepositoryStr()
 	registryName := imageName.Context().RegistryStr()
-
 	return bom.Container{
 		Repository: repoName,
 		Registry:   registryName,
@@ -590,24 +590,32 @@ func PodInfo(pod corev1.Pod, labelSelector string) (*bom.Component, error) {
 		containers = append(containers, co)
 	}
 	props := make(map[string]string)
-	componentValue, ok := pod.GetLabels()[labelSelector]
-	if ok {
-		props["Name"] = pod.Name
+
+	labels := pod.GetLabels()
+
+	name, version := labels["app.kubernetes.io/name"], labels["app.kubernetes.io/version"]
+	props["Name"] = pod.Name
+	props["Type"] = labels["app.kubernetes.io/component"]
+
+	if name == "" {
+		componentValue := labels[labelSelector]
+		name = upstreamRepoByName(componentValue)
+		if val, ok := CoreComponentPropertyType[name]; ok {
+			props["Type"] = val
+		}
+	}
+	orgName := upstreamOrgByName(name)
+	if len(orgName) > 0 {
+		name = fmt.Sprintf("%s/%s", orgName, name)
 	}
 
-	repoName := upstreamRepoByName(componentValue)
-	if val, ok := CoreComponentPropertyType[repoName]; ok {
-		props["Type"] = val
+	if version == "" {
+		version = trimString(findComponentVersion(containers, labels[labelSelector]), []string{"v", "V"})
 	}
-	orgName := upstreamOrgByName(repoName)
-	upstreamComponentName := repoName
-	if len(orgName) > 0 {
-		upstreamComponentName = fmt.Sprintf("%s/%s", orgName, repoName)
-	}
-	version := trimString(findComponentVersion(containers, componentValue), []string{"v", "V"})
+
 	return &bom.Component{
 		Namespace:  pod.Namespace,
-		Name:       upstreamComponentName,
+		Name:       name,
 		Version:    version,
 		Properties: props,
 		Containers: containers,
@@ -895,6 +903,7 @@ func upstreamRepoByName(component string) string {
 	if val, ok := UpstreamRepoName[component]; ok {
 		return val
 	}
+
 	return component
 }
 

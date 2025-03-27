@@ -214,8 +214,8 @@ func TestPodInfo(t *testing.T) {
 				},
 				Status: corev1.PodStatus{
 					ContainerStatuses: []corev1.ContainerStatus{{
-						Image:   "sha256:560a9fa980f663e5b71a6ca2df40f504fa577d0e38f9d0aed06c2a8eff53cb50",
-						ImageID: "registry.k8s.io/ingress-nginx/controller@sha256:a886e56d532d1388c77c8340261149d974370edca1093af4c97a96fb1467cb39",
+						Image:   "registry.k8s.io/ingress-nginx/controller@sha256:a886e56d532d1388c77c8340261149d974370edca1093af4c97a96fb1467cb39",
+						ImageID: "docker-pullable://registry.k8s.io/ingress-nginx/controller@sha256:a886e56d532d1388c77c8340261149d974370edca1093af4c97a96fb1467cb39",
 					},
 					},
 				},
@@ -228,7 +228,15 @@ func TestPodInfo(t *testing.T) {
 					"Name": "ingress-nginx-controller-8547bfc86c-dr7lq",
 					"Type": "controller",
 				},
-				Containers: []bom.Container{},
+				Containers: []bom.Container{
+					{
+						ID:         "ingress-nginx/controller:sha256:a886e56d532d1388c77c8340261149d974370edca1093af4c97a96fb1467cb39",
+						Version:    "sha256:a886e56d532d1388c77c8340261149d974370edca1093af4c97a96fb1467cb39",
+						Repository: "ingress-nginx/controller",
+						Registry:   "registry.k8s.io",
+						Digest:     "a886e56d532d1388c77c8340261149d974370edca1093af4c97a96fb1467cb39",
+					},
+				},
 			},
 		},
 	}

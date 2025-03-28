@@ -134,6 +134,9 @@ func TestPodInfo(t *testing.T) {
 					Namespace: "kube-system",
 					Labels:    map[string]string{"component": "kube-apiserver"},
 				},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{{Image: "k8s.gcr.io/kube-apiserver:v1.21.1"}},
+				},
 				Status: corev1.PodStatus{
 					ContainerStatuses: []corev1.ContainerStatus{{
 						Image:   "k8s.gcr.io/kube-apiserver:v1.21.1",
@@ -162,6 +165,45 @@ func TestPodInfo(t *testing.T) {
 			},
 		},
 		{
+			Name:          "etcd pod with image in another format",
+			labelSelector: "component",
+			pod: corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "etcd-minikube",
+					Namespace: "kube-system",
+					Labels:    map[string]string{"component": "etcd"},
+				},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{{Image: "registry.k8s.io/etcd:3.5.15-0"}},
+				},
+				Status: corev1.PodStatus{
+					ContainerStatuses: []corev1.ContainerStatus{{
+						Image:   "registry.k8s.io/etcd:3.5.15-0",
+						ImageID: "docker-pullable://registry.k8s.io/etcd@sha256:a6dc63e6e8cfa0307d7851762fa6b629afb18f28d8aa3fab5a6e91b4af60026a",
+					},
+					},
+				},
+			},
+			want: &bom.Component{
+				Namespace: "kube-system",
+				Name:      "go.etcd.io/etcd/v3",
+				Version:   "3.5.15-0",
+				Properties: map[string]string{
+					"Name": "etcd-minikube",
+					"Type": "controlPlane",
+				},
+				Containers: []bom.Container{
+					{
+						ID:         "etcd:3.5.15-0",
+						Version:    "3.5.15-0",
+						Repository: "etcd",
+						Registry:   "registry.k8s.io",
+						Digest:     "a6dc63e6e8cfa0307d7851762fa6b629afb18f28d8aa3fab5a6e91b4af60026a",
+					},
+				},
+			},
+		},
+		{
 			Name:          "ingress-nginx controller",
 			labelSelector: "app.kubernetes.io/component=controller",
 			pod: corev1.Pod{
@@ -176,10 +218,13 @@ func TestPodInfo(t *testing.T) {
 						"app.kubernetes.io/version":   "1.11.0",
 					},
 				},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{{Image: "registry.k8s.io/ingress-nginx/controller:v1.11.0@sha256:a886e56d532d1388c77c8340261149d974370edca1093af4c97a96fb1467cb39"}},
+				},
 				Status: corev1.PodStatus{
 					ContainerStatuses: []corev1.ContainerStatus{{
-						Image:   "sha256:560a9fa980f663e5b71a6ca2df40f504fa577d0e38f9d0aed06c2a8eff53cb50",
-						ImageID: "registry.k8s.io/ingress-nginx/controller@sha256:a886e56d532d1388c77c8340261149d974370edca1093af4c97a96fb1467cb39",
+						Image:   "registry.k8s.io/ingress-nginx/controller@sha256:a886e56d532d1388c77c8340261149d974370edca1093af4c97a96fb1467cb39",
+						ImageID: "docker-pullable://registry.k8s.io/ingress-nginx/controller@sha256:a886e56d532d1388c77c8340261149d974370edca1093af4c97a96fb1467cb39",
 					},
 					},
 				},
@@ -192,7 +237,15 @@ func TestPodInfo(t *testing.T) {
 					"Name": "ingress-nginx-controller-8547bfc86c-dr7lq",
 					"Type": "controller",
 				},
-				Containers: []bom.Container{},
+				Containers: []bom.Container{
+					{
+						ID:         "ingress-nginx/controller:sha256:a886e56d532d1388c77c8340261149d974370edca1093af4c97a96fb1467cb39",
+						Version:    "v1.11.0",
+						Repository: "ingress-nginx/controller",
+						Registry:   "registry.k8s.io",
+						Digest:     "a886e56d532d1388c77c8340261149d974370edca1093af4c97a96fb1467cb39",
+					},
+				},
 			},
 		},
 	}
@@ -255,4 +308,41 @@ func TestNodeInfo(t *testing.T) {
 			assert.Equal(t, got, test.want)
 		})
 	}
+}
+
+func TestGetImageId(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		imageId string
+	}{
+		{
+			"sha256 (ex. KinD)",
+			"sha256:a6daed8429c54f0008910fc4ecc17aefa1dfcd7cc2ff0089570854d4f95213ed",
+			"sha256:a6daed8429c54f0008910fc4ecc17aefa1dfcd7cc2ff0089570854d4f95213ed",
+		},
+		{
+			"docker pullable (ex. Minikube)",
+			"docker-pullable://registry.k8s.io/kube-apiserver@sha256:a6daed8429c54f0008910fc4ecc17aefa1dfcd7cc2ff0089570854d4f95213ed",
+			"sha256:a6daed8429c54f0008910fc4ecc17aefa1dfcd7cc2ff0089570854d4f95213ed",
+		},
+		{
+			"image name",
+			"registry.k8s.io/ingress-nginx/controller:v1.11.0@sha256:a886e56d532d1388c77c8340261149d974370edca1093af4c97a96fb1467cb39",
+			"sha256:a886e56d532d1388c77c8340261149d974370edca1093af4c97a96fb1467cb39",
+		},
+		{
+			"id with data",
+			"docker.io/library/import-2023-05-12@sha256:346b96f3a1892101fc63ca880036b4f72562961984d208df71c299041c3f0e51",
+			"sha256:346b96f3a1892101fc63ca880036b4f72562961984d208df71c299041c3f0e51",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			got := getImageID(test.input)
+			assert.Equal(t, got, test.imageId)
+		})
+	}
+
 }

@@ -134,6 +134,9 @@ func TestPodInfo(t *testing.T) {
 					Namespace: "kube-system",
 					Labels:    map[string]string{"component": "kube-apiserver"},
 				},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{{Image: "k8s.gcr.io/kube-apiserver:v1.21.1"}},
+				},
 				Status: corev1.PodStatus{
 					ContainerStatuses: []corev1.ContainerStatus{{
 						Image:   "k8s.gcr.io/kube-apiserver:v1.21.1",
@@ -169,6 +172,9 @@ func TestPodInfo(t *testing.T) {
 					Name:      "etcd-minikube",
 					Namespace: "kube-system",
 					Labels:    map[string]string{"component": "etcd"},
+				},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{{Image: "registry.k8s.io/etcd:3.5.15-0"}},
 				},
 				Status: corev1.PodStatus{
 					ContainerStatuses: []corev1.ContainerStatus{{
@@ -212,6 +218,9 @@ func TestPodInfo(t *testing.T) {
 						"app.kubernetes.io/version":   "1.11.0",
 					},
 				},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{{Image: "registry.k8s.io/ingress-nginx/controller:v1.11.0@sha256:a886e56d532d1388c77c8340261149d974370edca1093af4c97a96fb1467cb39"}},
+				},
 				Status: corev1.PodStatus{
 					ContainerStatuses: []corev1.ContainerStatus{{
 						Image:   "registry.k8s.io/ingress-nginx/controller@sha256:a886e56d532d1388c77c8340261149d974370edca1093af4c97a96fb1467cb39",
@@ -231,7 +240,7 @@ func TestPodInfo(t *testing.T) {
 				Containers: []bom.Container{
 					{
 						ID:         "ingress-nginx/controller:sha256:a886e56d532d1388c77c8340261149d974370edca1093af4c97a96fb1467cb39",
-						Version:    "sha256:a886e56d532d1388c77c8340261149d974370edca1093af4c97a96fb1467cb39",
+						Version:    "v1.11.0",
 						Repository: "ingress-nginx/controller",
 						Registry:   "registry.k8s.io",
 						Digest:     "a886e56d532d1388c77c8340261149d974370edca1093af4c97a96fb1467cb39",
@@ -299,4 +308,41 @@ func TestNodeInfo(t *testing.T) {
 			assert.Equal(t, got, test.want)
 		})
 	}
+}
+
+func TestGetImageId(t *testing.T) {
+	tests := []struct {
+		name    string
+		input   string
+		imageId string
+	}{
+		{
+			"sha256 (ex. KinD)",
+			"sha256:a6daed8429c54f0008910fc4ecc17aefa1dfcd7cc2ff0089570854d4f95213ed",
+			"sha256:a6daed8429c54f0008910fc4ecc17aefa1dfcd7cc2ff0089570854d4f95213ed",
+		},
+		{
+			"docker pullable (ex. Minikube)",
+			"docker-pullable://registry.k8s.io/kube-apiserver@sha256:a6daed8429c54f0008910fc4ecc17aefa1dfcd7cc2ff0089570854d4f95213ed",
+			"sha256:a6daed8429c54f0008910fc4ecc17aefa1dfcd7cc2ff0089570854d4f95213ed",
+		},
+		{
+			"image name",
+			"registry.k8s.io/ingress-nginx/controller:v1.11.0@sha256:a886e56d532d1388c77c8340261149d974370edca1093af4c97a96fb1467cb39",
+			"sha256:a886e56d532d1388c77c8340261149d974370edca1093af4c97a96fb1467cb39",
+		},
+		{
+			"id with data",
+			"docker.io/library/import-2023-05-12@sha256:346b96f3a1892101fc63ca880036b4f72562961984d208df71c299041c3f0e51",
+			"sha256:346b96f3a1892101fc63ca880036b4f72562961984d208df71c299041c3f0e51",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			got := getImageID(test.input)
+			assert.Equal(t, got, test.imageId)
+		})
+	}
+
 }

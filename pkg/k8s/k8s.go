@@ -6,9 +6,6 @@ import (
 	"log/slog"
 	"strings"
 
-	"github.com/aquasecurity/trivy-kubernetes/pkg/bom"
-	"github.com/aquasecurity/trivy-kubernetes/pkg/k8s/docker"
-	"github.com/aquasecurity/trivy-kubernetes/utils"
 	containerimage "github.com/google/go-containerregistry/pkg/name"
 	ms "github.com/mitchellh/mapstructure"
 	"github.com/opencontainers/go-digest"
@@ -26,6 +23,10 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/utils/strings/slices"
+
+	"github.com/aquasecurity/trivy-kubernetes/pkg/bom"
+	"github.com/aquasecurity/trivy-kubernetes/pkg/k8s/docker"
+	"github.com/aquasecurity/trivy-kubernetes/utils"
 )
 
 var (
@@ -474,12 +475,18 @@ func (c *cluster) CreateClusterBom(ctx context.Context) (*bom.Result, error) {
 func GetContainer(hex string, imageName containerimage.Reference) (bom.Container, error) {
 	repoName := imageName.Context().RepositoryStr()
 	registryName := imageName.Context().RegistryStr()
+	version := imageName.Identifier()
+	switch t := imageName.(type) {
+	case containerimage.Digest:
+		version = strings.TrimPrefix(strings.TrimSuffix(strings.TrimPrefix(imageName.String(), imageName.Context().Name()), "@"+t.DigestStr()), ":")
+	}
+
 	return bom.Container{
 		Repository: repoName,
 		Registry:   registryName,
 		ID:         fmt.Sprintf("%s:%s", repoName, imageName.Identifier()),
 		Digest:     hex,
-		Version:    imageName.Identifier(),
+		Version:    version,
 	}, nil
 }
 
@@ -561,25 +568,45 @@ func (c *cluster) collectComponents(ctx context.Context, labels map[string]strin
 	return components, nil
 }
 
+func getImageIDsByStatuses(pod corev1.Pod) []string {
+	ids := make([]string, len(pod.Spec.Containers))
+	if len(pod.Spec.Containers) == 1 && len(pod.Status.ContainerStatuses) == 1 {
+		ids[0] = getImageID(pod.Status.ContainerStatuses[0].ImageID)
+		return ids
+	}
+
+	statusMap := make(map[string]string)
+	for _, status := range pod.Status.ContainerStatuses {
+		statusMap[status.Name] = status.ImageID
+	}
+	for i, container := range pod.Spec.Containers {
+		if id, ok := statusMap[container.Name]; ok {
+			ids[i] = getImageID(id)
+			continue
+		}
+		ids[i] = getImageID(container.Image)
+	}
+
+	return ids
+}
+
 func PodInfo(pod corev1.Pod, labelSelector string) (*bom.Component, error) {
 	containers := make([]bom.Container, 0)
-	for _, s := range pod.Status.ContainerStatuses {
+
+	ids := getImageIDsByStatuses(pod)
+
+	for i, s := range pod.Spec.Containers {
 		imageName, err := utils.ParseReference(s.Image)
 		if err != nil {
-			slog.Warn(fmt.Sprintf("unable to parse image reference, skipping: %s", s.Image))
+			slog.Warn(fmt.Sprintf("unable to parse image name reference, skipping: %s", s.Image))
 			continue
 		}
-		imageID := getImageID(s.ImageID, s.Image)
-		if len(imageID) == 0 {
-			continue
-		}
-		imageRef, err := utils.ParseReference(imageID)
+		imageRef, err := utils.ParseReference(ids[i])
 		if err != nil {
-			slog.Warn(fmt.Sprintf("unable to parse image reference, skipping: %s", s.Image))
+			slog.Warn(fmt.Sprintf("unable to parse image id reference, skipping: %s", ids[i]))
 			continue
 		}
 		hex := imageRef.Context().Digest(imageRef.Identifier()).DigestStr()
-		hex = strings.TrimPrefix(hex, string(digest.Canonical)+":")
 		// skip non sha256 digests
 		if len(hex) != digest.Canonical.Size()*2 {
 			continue
@@ -915,13 +942,10 @@ func trimString(version string, trimValues []string) string {
 	return strings.TrimSpace(version)
 }
 
-func getImageID(imageID string, image string) string {
-	if len(imageID) > 0 {
-		return imageID
-	}
+func getImageID(image string) string {
 	imageParts := strings.Split(image, "@")
 	if len(imageParts) > 1 && strings.HasPrefix(imageParts[1], "sha256") {
 		return imageParts[1]
 	}
-	return ""
+	return image
 }

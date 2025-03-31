@@ -317,24 +317,24 @@ func TestGetImageId(t *testing.T) {
 		imageId string
 	}{
 		{
-			"sha256 (ex. KinD)",
-			"sha256:a6daed8429c54f0008910fc4ecc17aefa1dfcd7cc2ff0089570854d4f95213ed",
-			"sha256:a6daed8429c54f0008910fc4ecc17aefa1dfcd7cc2ff0089570854d4f95213ed",
+			name:    "sha256 (ex. KinD)",
+			input:   "sha256:a6daed8429c54f0008910fc4ecc17aefa1dfcd7cc2ff0089570854d4f95213ed",
+			imageId: "sha256:a6daed8429c54f0008910fc4ecc17aefa1dfcd7cc2ff0089570854d4f95213ed",
 		},
 		{
-			"docker pullable (ex. Minikube)",
-			"docker-pullable://registry.k8s.io/kube-apiserver@sha256:a6daed8429c54f0008910fc4ecc17aefa1dfcd7cc2ff0089570854d4f95213ed",
-			"sha256:a6daed8429c54f0008910fc4ecc17aefa1dfcd7cc2ff0089570854d4f95213ed",
+			name:    "docker pullable (ex. Minikube)",
+			input:   "docker-pullable://registry.k8s.io/kube-apiserver@sha256:a6daed8429c54f0008910fc4ecc17aefa1dfcd7cc2ff0089570854d4f95213ed",
+			imageId: "sha256:a6daed8429c54f0008910fc4ecc17aefa1dfcd7cc2ff0089570854d4f95213ed",
 		},
 		{
-			"image name",
-			"registry.k8s.io/ingress-nginx/controller:v1.11.0@sha256:a886e56d532d1388c77c8340261149d974370edca1093af4c97a96fb1467cb39",
-			"sha256:a886e56d532d1388c77c8340261149d974370edca1093af4c97a96fb1467cb39",
+			name:    "image name",
+			input:   "registry.k8s.io/ingress-nginx/controller:v1.11.0@sha256:a886e56d532d1388c77c8340261149d974370edca1093af4c97a96fb1467cb39",
+			imageId: "sha256:a886e56d532d1388c77c8340261149d974370edca1093af4c97a96fb1467cb39",
 		},
 		{
-			"id with data",
-			"docker.io/library/import-2023-05-12@sha256:346b96f3a1892101fc63ca880036b4f72562961984d208df71c299041c3f0e51",
-			"sha256:346b96f3a1892101fc63ca880036b4f72562961984d208df71c299041c3f0e51",
+			name:    "id with data",
+			input:   "docker.io/library/import-2023-05-12@sha256:346b96f3a1892101fc63ca880036b4f72562961984d208df71c299041c3f0e51",
+			imageId: "sha256:346b96f3a1892101fc63ca880036b4f72562961984d208df71c299041c3f0e51",
 		},
 	}
 
@@ -344,5 +344,4 @@ func TestGetImageId(t *testing.T) {
 			assert.Equal(t, got, test.imageId)
 		})
 	}
-
 }

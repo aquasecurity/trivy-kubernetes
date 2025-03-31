@@ -472,13 +472,17 @@ func (c *cluster) CreateClusterBom(ctx context.Context) (*bom.Result, error) {
 	return c.getClusterBomInfo(components, nodesInfo)
 }
 
+func extractVersion(image containerimage.Digest) string {
+	return strings.TrimPrefix(strings.TrimSuffix(strings.TrimPrefix(image.String(), image.Context().Name()), "@"+image.DigestStr()), ":")
+}
+
 func GetContainer(hex string, imageName containerimage.Reference) (bom.Container, error) {
 	repoName := imageName.Context().RepositoryStr()
 	registryName := imageName.Context().RegistryStr()
 	version := imageName.Identifier()
-	switch t := imageName.(type) {
+	switch image := imageName.(type) {
 	case containerimage.Digest:
-		version = strings.TrimPrefix(strings.TrimSuffix(strings.TrimPrefix(imageName.String(), imageName.Context().Name()), "@"+t.DigestStr()), ":")
+		version = extractVersion(image)
 	}
 
 	return bom.Container{

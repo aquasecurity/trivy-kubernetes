@@ -502,7 +502,7 @@ func GetContainer(imageName, imageId string) (bom.Container, error) {
 	hex := extractDigest(imageId)
 	// skip non sha256 digests
 	if len(hex) != digest.Canonical.Size()*2 {
-		return bom.Container{}, fmt.Errorf("unable to parse digest %q for %q: %v", imageName, imageName, err)
+		return bom.Container{}, fmt.Errorf("unable to parse digest %q for %q", imageName, imageName)
 	}
 
 	repoName := imageRef.Context().RepositoryStr()

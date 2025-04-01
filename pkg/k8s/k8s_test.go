@@ -239,7 +239,7 @@ func TestPodInfo(t *testing.T) {
 				},
 				Containers: []bom.Container{
 					{
-						ID:         "ingress-nginx/controller:sha256:a886e56d532d1388c77c8340261149d974370edca1093af4c97a96fb1467cb39",
+						ID:         "ingress-nginx/controller:v1.11.0",
 						Version:    "v1.11.0",
 						Repository: "ingress-nginx/controller",
 						Registry:   "registry.k8s.io",
@@ -342,6 +342,156 @@ func TestGetImageId(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			got := getImageID(test.input)
 			assert.Equal(t, got, test.imageId)
+		})
+	}
+}
+
+func TestGetContainer(t *testing.T) {
+	tests := []struct {
+		name      string
+		image     string
+		imageId   string
+		container bom.Container
+	}{
+		{
+			name:    "standard case",
+			image:   "gcr.io/project/image:v1.0.0",
+			imageId: "gcr.io/project/image@sha256:1420cefd4b20014b3361951c22593de6e9a2476bbbadd1759464eab5bfc0d34f",
+			container: bom.Container{
+				ID:         "project/image:v1.0.0",
+				Version:    "v1.0.0",
+				Repository: "project/image",
+				Registry:   "gcr.io",
+				Digest:     "1420cefd4b20014b3361951c22593de6e9a2476bbbadd1759464eab5bfc0d34f",
+			},
+		},
+		{
+			name:    "with tag and digest",
+			image:   "gcr.io/project/image:v1.0.0@sha256:1420cefd4b20014b3361951c22593de6e9a2476bbbadd1759464eab5bfc0d34f",
+			imageId: "gcr.io/project/image@sha256:1420cefd4b20014b3361951c22593de6e9a2476bbbadd1759464eab5bfc0d34f",
+			container: bom.Container{
+				ID:         "project/image:v1.0.0",
+				Version:    "v1.0.0",
+				Repository: "project/image",
+				Registry:   "gcr.io",
+				Digest:     "1420cefd4b20014b3361951c22593de6e9a2476bbbadd1759464eab5bfc0d34f",
+			},
+		},
+		{
+			name:    "imageID is digest",
+			image:   "gcr.io/project/image:v1.0.0",
+			imageId: "sha256:1420cefd4b20014b3361951c22593de6e9a2476bbbadd1759464eab5bfc0d34f",
+			container: bom.Container{
+				ID:         "project/image:v1.0.0",
+				Version:    "v1.0.0",
+				Repository: "project/image",
+				Registry:   "gcr.io",
+				Digest:     "1420cefd4b20014b3361951c22593de6e9a2476bbbadd1759464eab5bfc0d34f",
+			},
+		},
+		{
+			name:    "without registry (default value)",
+			image:   "project/image:v1.0.0",
+			imageId: "docker.io/project/image@sha256:1420cefd4b20014b3361951c22593de6e9a2476bbbadd1759464eab5bfc0d34f",
+			container: bom.Container{
+				ID:         "project/image:v1.0.0",
+				Version:    "v1.0.0",
+				Repository: "project/image",
+				Registry:   "index.docker.io",
+				Digest:     "1420cefd4b20014b3361951c22593de6e9a2476bbbadd1759464eab5bfc0d34f",
+			},
+		},
+		{
+			name:    "without tag, but with digest (kind)",
+			image:   "alpine@sha256:d6d0a0eb4d40ef96f2310ead734848b9c819bb97c9d846385c4aca1767186cd4",
+			imageId: "docker.io/library/alpine@sha256:d6d0a0eb4d40ef96f2310ead734848b9c819bb97c9d846385c4aca1767186cd4",
+			container: bom.Container{
+				ID:         "alpine:latest",
+				Version:    "latest",
+				Repository: "alpine",
+				Registry:   "index.docker.io",
+				Digest:     "d6d0a0eb4d40ef96f2310ead734848b9c819bb97c9d846385c4aca1767186cd4",
+			},
+		},
+		{
+			name:    "ID with docker-pullable",
+			image:   "registry.k8s.io/coredns/coredns:v1.11.1",
+			imageId: "docker-pullable://registry.k8s.io/coredns/coredns@sha256:1eeb4c7316bacb1d4c8ead65571cd92dd21e27359f0d4917f1a5822a73b75db1",
+			container: bom.Container{
+				ID:         "coredns/coredns:v1.11.1",
+				Version:    "v1.11.1",
+				Repository: "coredns/coredns",
+				Registry:   "registry.k8s.io",
+				Digest:     "1eeb4c7316bacb1d4c8ead65571cd92dd21e27359f0d4917f1a5822a73b75db1",
+			},
+		},
+		{
+			name:    "alpine without tag (minikube)",
+			image:   "alpine",
+			imageId: "docker-pullable://alpine@sha256:a8560b36e8b8210634f77d9f7f9efd7ffa463e380b75e2e74aff4511df3ef88c",
+			container: bom.Container{
+				ID:         "alpine:latest",
+				Version:    "latest",
+				Repository: "alpine",
+				Registry:   "index.docker.io",
+				Digest:     "a8560b36e8b8210634f77d9f7f9efd7ffa463e380b75e2e74aff4511df3ef88c",
+			},
+		},
+		{
+			name:    "alpine without tag (kind)",
+			image:   "alpine",
+			imageId: "docker.io/library/alpine@sha256:a8560b36e8b8210634f77d9f7f9efd7ffa463e380b75e2e74aff4511df3ef88c",
+			container: bom.Container{
+				ID:         "alpine:latest",
+				Version:    "latest",
+				Repository: "alpine",
+				Registry:   "index.docker.io",
+				Digest:     "a8560b36e8b8210634f77d9f7f9efd7ffa463e380b75e2e74aff4511df3ef88c",
+			},
+		},
+		{
+			name:    "ingress-nginx controller v1.11.0 (minikube)",
+			image:   "registry.k8s.io/ingress-nginx/controller:v1.11.0@sha256:a886e56d532d1388c77c8340261149d974370edca1093af4c97a96fb1467cb39",
+			imageId: "docker-pullable://registry.k8s.io/ingress-nginx/controller@sha256:a886e56d532d1388c77c8340261149d974370edca1093af4c97a96fb1467cb39",
+			container: bom.Container{
+				ID:         "ingress-nginx/controller:v1.11.0",
+				Version:    "v1.11.0",
+				Repository: "ingress-nginx/controller",
+				Registry:   "registry.k8s.io",
+				Digest:     "a886e56d532d1388c77c8340261149d974370edca1093af4c97a96fb1467cb39",
+			},
+		},
+		{
+			name:    "ingress-nginx controller v1.11.0 (kind)",
+			image:   "registry.k8s.io/ingress-nginx/controller:v1.11.0@sha256:a886e56d532d1388c77c8340261149d974370edca1093af4c97a96fb1467cb39",
+			imageId: "registry.k8s.io/ingress-nginx/controller@sha256:a886e56d532d1388c77c8340261149d974370edca1093af4c97a96fb1467cb39",
+			container: bom.Container{
+				ID:         "ingress-nginx/controller:v1.11.0",
+				Version:    "v1.11.0",
+				Repository: "ingress-nginx/controller",
+				Registry:   "registry.k8s.io",
+				Digest:     "a886e56d532d1388c77c8340261149d974370edca1093af4c97a96fb1467cb39",
+			},
+		},
+		{
+			name:    "amazon resource name",
+			image:   "arn:aws:ecr:us-east-1:123456789012:12131415.dkr.ecr.us-west-2.amazonaws.com/repository/my-repo:v1.0.0",
+			imageId: "123456789012.dkr.ecr.us-west-2.amazonaws.com/repository/my-repo@sha256:569cfa0ff435f3a076a1b06a1f45d772ee3f5d4fbf6b39242a573c0cff632d69",
+			container: bom.Container{
+				ID:         "repository/my-repo:v1.0.0",
+				Version:    "v1.0.0",
+				Repository: "repository/my-repo",
+				Registry:   "12131415.dkr.ecr.us-west-2.amazonaws.com",
+				Digest:     "569cfa0ff435f3a076a1b06a1f45d772ee3f5d4fbf6b39242a573c0cff632d69",
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			got, err := GetContainer(test.image, test.imageId)
+			assert.NoError(t, err)
+			assert.Equal(t, test.container, got)
 		})
 	}
 }

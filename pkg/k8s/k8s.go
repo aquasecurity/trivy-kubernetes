@@ -472,23 +472,58 @@ func (c *cluster) CreateClusterBom(ctx context.Context) (*bom.Result, error) {
 	return c.getClusterBomInfo(components, nodesInfo)
 }
 
-func extractVersion(image containerimage.Digest) string {
-	return strings.TrimPrefix(strings.TrimSuffix(strings.TrimPrefix(image.String(), image.Context().Name()), "@"+image.DigestStr()), ":")
+func extractTag(imageName, digest string) string {
+	if !strings.Contains(imageName, ":") {
+		return containerimage.DefaultTag
+	}
+	parts := strings.Split(imageName, ":")
+	return strings.TrimSuffix(parts[len(parts)-1], "@"+digest)
 }
 
-func GetContainer(hex string, imageName containerimage.Reference) (bom.Container, error) {
-	repoName := imageName.Context().RepositoryStr()
-	registryName := imageName.Context().RegistryStr()
-	version := imageName.Identifier()
-	switch image := imageName.(type) {
+func extractDigest(imageId string) string {
+	if strings.Contains(imageId, "@") {
+		imageId = strings.Split(imageId, "@")[1]
+	}
+	return strings.TrimPrefix(imageId, string(digest.Canonical)+":")
+
+}
+
+// GetContainer returns a container object based on `imageName` (pod.Spec.Containers.Name)
+// and `imageId` (pod.Status.ContainerStatuses.ImageID).
+func GetContainer(imageName, imageId string) (bom.Container, error) {
+	if strings.Contains(imageName, "@") {
+		imageName = strings.Split(imageName, "@")[0]
+	}
+	imageRef, err := utils.ParseReference(imageName)
+	if err != nil {
+		return bom.Container{}, fmt.Errorf("unable to parse imageRef name reference %q: %v", imageName, err)
+	}
+	// parse imageId to get the digest
+	hex := extractDigest(imageId)
+	// skip non sha256 digests
+	if len(hex) != digest.Canonical.Size()*2 {
+		return bom.Container{}, fmt.Errorf("unable to parse digest %q for %q: %v", imageName, imageName, err)
+	}
+
+	repoName := imageRef.Context().RepositoryStr()
+	registryName := imageRef.Context().RegistryStr()
+
+	// Trim default namespace
+	// See https://docs.docker.com/docker-hub/official_repos
+	if registryName == containerimage.DefaultRegistry {
+		repoName = strings.TrimPrefix(repoName, "library/")
+	}
+
+	version := imageRef.Identifier()
+	switch digestRef := imageRef.(type) {
 	case containerimage.Digest:
-		version = extractVersion(image)
+		version = extractTag(imageName, digestRef.DigestStr())
 	}
 
 	return bom.Container{
 		Repository: repoName,
 		Registry:   registryName,
-		ID:         fmt.Sprintf("%s:%s", repoName, imageName.Identifier()),
+		ID:         fmt.Sprintf("%s:%s", repoName, version),
 		Digest:     hex,
 		Version:    version,
 	}, nil
@@ -583,6 +618,7 @@ func getImageIDsByStatuses(pod corev1.Pod) []string {
 	for _, status := range pod.Status.ContainerStatuses {
 		statusMap[status.Name] = status.ImageID
 	}
+
 	for i, container := range pod.Spec.Containers {
 		if id, ok := statusMap[container.Name]; ok {
 			ids[i] = getImageID(id)
@@ -600,26 +636,12 @@ func PodInfo(pod corev1.Pod, labelSelector string) (*bom.Component, error) {
 	ids := getImageIDsByStatuses(pod)
 
 	for i, s := range pod.Spec.Containers {
-		imageName, err := utils.ParseReference(s.Image)
+		container, err := GetContainer(s.Image, ids[i])
 		if err != nil {
-			slog.Warn(fmt.Sprintf("unable to parse image name reference, skipping: %s", s.Image))
+			slog.Warn("Unable to parse container", "error", err)
 			continue
 		}
-		imageRef, err := utils.ParseReference(ids[i])
-		if err != nil {
-			slog.Warn(fmt.Sprintf("unable to parse image id reference, skipping: %s", ids[i]))
-			continue
-		}
-		hex := imageRef.Context().Digest(imageRef.Identifier()).DigestStr()
-		// skip non sha256 digests
-		if len(hex) != digest.Canonical.Size()*2 {
-			continue
-		}
-		co, err := GetContainer(hex, imageName)
-		if err != nil {
-			continue
-		}
-		containers = append(containers, co)
+		containers = append(containers, container)
 	}
 	props := make(map[string]string)
 

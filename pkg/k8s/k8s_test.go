@@ -378,6 +378,18 @@ func TestGetContainer(t *testing.T) {
 			},
 		},
 		{
+			name:    "use local registry with custom port",
+			image:   "myregistry.com:5000/project/image:v1.0.0",
+			imageId: "myregistry.com:5000/project/image@sha256:1420cefd4b20014b3361951c22593de6e9a2476bbbadd1759464eab5bfc0d34f",
+			container: bom.Container{
+				ID:         "project/image:v1.0.0",
+				Version:    "v1.0.0",
+				Repository: "project/image",
+				Registry:   "myregistry.com:5000",
+				Digest:     "1420cefd4b20014b3361951c22593de6e9a2476bbbadd1759464eab5bfc0d34f",
+			},
+		},
+		{
 			name:    "imageID is digest",
 			image:   "gcr.io/project/image:v1.0.0",
 			imageId: "sha256:1420cefd4b20014b3361951c22593de6e9a2476bbbadd1759464eab5bfc0d34f",

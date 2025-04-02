@@ -248,6 +248,121 @@ func TestPodInfo(t *testing.T) {
 				},
 			},
 		},
+		{
+			Name:          "multi-image pod - strict mapping",
+			labelSelector: "app.kubernetes.io/component=controller",
+			pod: corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "ingress-nginx-controller-8547bfc86c-dr7lq",
+					Namespace: "ingress-nginx",
+					Labels: map[string]string{
+						"app.kubernetes.io/component": "controller",
+						"app.kubernetes.io/name":      "ingress-nginx",
+					},
+				},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Image: "registry.k8s.io/ingress-nginx/controller:v1.11.0@sha256:a886e56d532d1388c77c8340261149d974370edca1093af4c97a96fb1467cb39",
+						},
+						{
+							Image: "registry.k8s.io/ingress-nginx/controller:v1.21.0",
+						},
+					},
+				},
+				Status: corev1.PodStatus{
+					ContainerStatuses: []corev1.ContainerStatus{
+						{
+							Image:   "registry.k8s.io/ingress-nginx/controller@sha256:a886e56d532d1388c77c8340261149d974370edca1093af4c97a96fb1467cb39",
+							ImageID: "docker-pullable://registry.k8s.io/ingress-nginx/controller@sha256:a886e56d532d1388c77c8340261149d974370edca1093af4c97a96fb1467cb39",
+						},
+						{
+							Image:   "registry.k8s.io/ingress-nginx/controller:v1.21.0",
+							ImageID: "docker-pullable://registry.k8s.io/ingress-nginx/controller@sha256:a886e56d532d1388c77c8340261149d974370edca1093af4c97a96fb1467cb51",
+						},
+					},
+				},
+			},
+			want: &bom.Component{
+				Namespace: "ingress-nginx",
+				Name:      "k8s.io/ingress-nginx",
+				Version:   "1.11.0",
+				Properties: map[string]string{
+					"Name": "ingress-nginx-controller-8547bfc86c-dr7lq",
+					"Type": "controller",
+				},
+				Containers: []bom.Container{
+					{
+						ID:         "ingress-nginx/controller:v1.11.0",
+						Version:    "v1.11.0",
+						Repository: "ingress-nginx/controller",
+						Registry:   "registry.k8s.io",
+						Digest:     "a886e56d532d1388c77c8340261149d974370edca1093af4c97a96fb1467cb39",
+					},
+					{
+						ID:         "ingress-nginx/controller:v1.21.0",
+						Version:    "v1.21.0",
+						Repository: "ingress-nginx/controller",
+						Registry:   "registry.k8s.io",
+						Digest:     "a886e56d532d1388c77c8340261149d974370edca1093af4c97a96fb1467cb51",
+					},
+				},
+			},
+		},
+		{
+			Name:          "multi-image pod - digest from image",
+			labelSelector: "app.kubernetes.io/component=controller",
+			pod: corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "ingress-nginx-controller-8547bfc86c-dr7lq",
+					Namespace: "ingress-nginx",
+					Labels: map[string]string{
+						"app.kubernetes.io/component": "controller",
+						"app.kubernetes.io/name":      "ingress-nginx",
+					},
+				},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Image: "registry.k8s.io/ingress-nginx/controller:v1.11.0@sha256:a886e56d532d1388c77c8340261149d974370edca1093af4c97a96fb1467cb39",
+						},
+						{
+							Image: "registry.k8s.io/ingress-nginx/controller:v1.21.0",
+						},
+					},
+				},
+				Status: corev1.PodStatus{
+					ContainerStatuses: []corev1.ContainerStatus{
+						{
+							Image:   "registry.k8s.io/ingress-nginx/controller@sha256:a886e56d532d1388c77c8340261149d974370edca1093af4c97a96fb1467cb39",
+							ImageID: "docker-pullable://registry.k8s.io/ingress-nginx/controller@sha256:a886e56d532d1388c77c8340261149d974370edca1093af4c97a96fb1467cb39",
+						},
+						{
+							Image:   "sha256:a886e56d532d1388c77c8340261149d974370edca1093af4c97a96fb1467cb51",
+							ImageID: "docker-pullable://registry.k8s.io/ingress-nginx/controller@sha256:a886e56d532d1388c77c8340261149d974370edca1093af4c97a96fb1467cb51",
+						},
+					},
+				},
+			},
+			want: &bom.Component{
+				Namespace: "ingress-nginx",
+				Name:      "k8s.io/ingress-nginx",
+				Version:   "1.11.0",
+				Properties: map[string]string{
+					"Name": "ingress-nginx-controller-8547bfc86c-dr7lq",
+					"Type": "controller",
+				},
+				Containers: []bom.Container{
+					{
+						ID:         "ingress-nginx/controller:v1.11.0",
+						Version:    "v1.11.0",
+						Repository: "ingress-nginx/controller",
+						Registry:   "registry.k8s.io",
+						Digest:     "a886e56d532d1388c77c8340261149d974370edca1093af4c97a96fb1467cb39",
+					},
+				},
+			},
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.Name, func(t *testing.T) {

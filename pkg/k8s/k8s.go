@@ -472,14 +472,6 @@ func (c *cluster) CreateClusterBom(ctx context.Context) (*bom.Result, error) {
 	return c.getClusterBomInfo(components, nodesInfo)
 }
 
-func extractTag(imageName, digest string) string {
-	if !strings.Contains(imageName, ":") {
-		return containerimage.DefaultTag
-	}
-	parts := strings.Split(imageName, ":")
-	return strings.TrimSuffix(parts[len(parts)-1], "@"+digest)
-}
-
 func extractDigest(imageId string) string {
 	if strings.Contains(imageId, "@") {
 		imageId = strings.Split(imageId, "@")[1]
@@ -515,11 +507,6 @@ func GetContainer(imageName, imageId string) (bom.Container, error) {
 	}
 
 	version := imageRef.Identifier()
-	switch digestRef := imageRef.(type) {
-	case containerimage.Digest:
-		version = extractTag(imageName, digestRef.DigestStr())
-	}
-
 	return bom.Container{
 		Repository: repoName,
 		Registry:   registryName,

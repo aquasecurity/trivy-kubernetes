@@ -956,9 +956,12 @@ func trimString(version string, trimValues []string) string {
 }
 
 func getImageID(image string) string {
+	if strings.HasPrefix(image, digest.Canonical.String()+":") {
+		return image
+	}
 	imageParts := strings.Split(image, "@")
-	if len(imageParts) > 1 && strings.HasPrefix(imageParts[1], "sha256") {
+	if len(imageParts) > 1 && strings.HasPrefix(imageParts[1], digest.Canonical.String()+":") {
 		return imageParts[1]
 	}
-	return image
+	return ""
 }

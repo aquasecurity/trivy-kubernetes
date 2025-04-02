@@ -336,6 +336,11 @@ func TestGetImageId(t *testing.T) {
 			input:   "docker.io/library/import-2023-05-12@sha256:346b96f3a1892101fc63ca880036b4f72562961984d208df71c299041c3f0e51",
 			imageId: "sha256:346b96f3a1892101fc63ca880036b4f72562961984d208df71c299041c3f0e51",
 		},
+		{
+			name:    "parse email",
+			input:   "docker.io/library/import-2023-05-12@baddigest",
+			imageId: "",
+		},
 	}
 
 	for _, test := range tests {

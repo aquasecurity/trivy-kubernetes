@@ -603,11 +603,11 @@ func getImageIDsByStatuses(pod corev1.Pod) []string {
 
 	statusMap := make(map[string]string)
 	for _, status := range pod.Status.ContainerStatuses {
-		statusMap[status.Name] = status.ImageID
+		statusMap[status.Image] = status.ImageID
 	}
 
 	for i, container := range pod.Spec.Containers {
-		if id, ok := statusMap[container.Name]; ok {
+		if id, ok := statusMap[container.Image]; ok {
 			ids[i] = getImageID(id)
 			continue
 		}

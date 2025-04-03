@@ -491,9 +491,9 @@ func GetContainer(imageName, imageId string) (bom.Container, error) {
 		return bom.Container{}, fmt.Errorf("unable to parse image name %q: %v", imageName, err)
 	}
 	// parse imageId to get the digest
-	hex := extractDigest(imageId)
+	imageDigest := extractDigest(imageId)
 	// skip non sha256 digests
-	if len(hex) != digest.Canonical.Size()*2 {
+	if len(imageDigest) != digest.Canonical.Size()*2 {
 		return bom.Container{}, fmt.Errorf("unable to parse digest %q for %q", imageId, imageName)
 	}
 
@@ -511,7 +511,7 @@ func GetContainer(imageName, imageId string) (bom.Container, error) {
 		Repository: repoName,
 		Registry:   registryName,
 		ID:         fmt.Sprintf("%s:%s", repoName, version),
-		Digest:     hex,
+		Digest:     imageDigest,
 		Version:    version,
 	}, nil
 }

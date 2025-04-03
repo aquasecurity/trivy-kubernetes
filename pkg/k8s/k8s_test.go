@@ -530,10 +530,11 @@ func TestGetImageId(t *testing.T) {
 
 func TestGetContainer(t *testing.T) {
 	tests := []struct {
-		name      string
-		image     string
-		imageId   string
-		container bom.Container
+		name        string
+		image       string
+		imageId     string
+		container   bom.Container
+		prefixError string
 	}{
 		{
 			name:    "standard case",
@@ -679,11 +680,30 @@ func TestGetContainer(t *testing.T) {
 				Digest:     "569cfa0ff435f3a076a1b06a1f45d772ee3f5d4fbf6b39242a573c0cff632d69",
 			},
 		},
+		{
+			name:        "unhappy path with incorrect image name",
+			image:       "irepository/'my-repo'",
+			imageId:     "repository/my-repo@sha256:569cfa0ff435f3a076a1b06a1f45d772ee3f5d4fbf6b39242a573c0cff632d69",
+			container:   bom.Container{},
+			prefixError: "unable to parse image name",
+		},
+		{
+			name:        "unhappy path without digest",
+			image:       "repository/my-repo:v1.0.0",
+			imageId:     "repository/my-repo:v1.0.0",
+			container:   bom.Container{},
+			prefixError: "unable to parse digest",
+		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			got, err := GetContainer(test.image, test.imageId)
+			if test.prefixError != "" {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), test.prefixError)
+				return
+			}
 			assert.NoError(t, err)
 			assert.Equal(t, test.container, got)
 		})

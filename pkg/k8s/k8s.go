@@ -488,7 +488,7 @@ func GetContainer(imageName, imageId string) (bom.Container, error) {
 	}
 	imageRef, err := utils.ParseReference(imageName)
 	if err != nil {
-		return bom.Container{}, fmt.Errorf("unable to parse imageRef name reference %q: %v", imageName, err)
+		return bom.Container{}, fmt.Errorf("unable to parse image name %q: %v", imageName, err)
 	}
 	// parse imageId to get the digest
 	hex := extractDigest(imageId)

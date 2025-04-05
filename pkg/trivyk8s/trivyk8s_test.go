@@ -452,13 +452,13 @@ func TestListSpecificArtifacts(t *testing.T) {
 				require.NoError(t, test.action())
 			}
 
-			artifacts, err := c.ListSpecificArtifacts(ctx)
+			gotArtifacts, err := c.ListSpecificArtifacts(ctx)
 			for i := range test.expectedArtifacts {
-				artifacts[i].RawResource = nil
+				gotArtifacts[i].RawResource = nil
 			}
 
 			require.NoError(t, err)
-			assert.Equal(t, test.expectedArtifacts, artifacts)
+			assert.Equal(t, test.expectedArtifacts, gotArtifacts)
 		})
 	}
 }

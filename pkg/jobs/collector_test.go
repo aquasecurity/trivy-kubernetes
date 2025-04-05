@@ -1,11 +1,14 @@
 package jobs
 
 import (
+	"context"
 	"reflect"
 	"testing"
 
 	trivy_checks "github.com/aquasecurity/trivy-checks"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/aquasecurity/trivy-kubernetes/pkg/k8s"
 )
 
 func TestLoadCheckFilesByID(t *testing.T) {
@@ -177,8 +180,8 @@ func TestFilterCommands(t *testing.T) {
 	}
 }
 
-func TestFilterCommandsByPlatform(t *testing.T) {
-	commandsK8s := []any{
+var (
+	commandsK8s = []any{
 		map[string]interface{}{
 			"id":        "CMD-0001",
 			"title":     "kubelet.conf file permissions",
@@ -204,7 +207,7 @@ func TestFilterCommandsByPlatform(t *testing.T) {
 			"platforms": []interface{}{"k8s"},
 		},
 	}
-	commandsRKE2 := []any{
+	commandsRKE2 = []any{
 		map[string]interface{}{
 			"id":        "CMD-0001",
 			"title":     "kubelet.conf file permissions",
@@ -222,11 +225,13 @@ func TestFilterCommandsByPlatform(t *testing.T) {
 			"platforms": []interface{}{"k8s", "rke2"},
 		},
 	}
-	commandsMap := map[string][]any{
+	commandsMap = map[string][]any{
 		"k8s":  commandsK8s,
 		"rke2": commandsRKE2,
 	}
+)
 
+func TestFilterCommandsByPlatform(t *testing.T) {
 	tests := []struct {
 		name        string
 		platform    string
@@ -272,4 +277,40 @@ func TestFilterCommandsByPlatform(t *testing.T) {
 			assert.True(t, reflect.DeepEqual(got.Commands, tt.want.Commands))
 		})
 	}
+}
+
+func TestJobCollector_ApplyAndCollect(t *testing.T) {
+	nss := []string{"default", "kube-system"}
+
+	tests := []struct {
+		name     string
+		nodeName string
+		err      error
+		want     string
+	}{
+		{
+			"success",
+			"node1",
+			nil,
+			"",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			nsResource := k8s.NewMockNamespaceableResourceInterface(nss, test.err)
+			mockCluster := k8s.NewMockCluster(k8s.NewMockClusterDynamicClient(nsResource))
+			mockCollector := NewCollector(mockCluster,
+				WithEmbeddedCommandFileSystem(trivy_checks.EmbeddedK8sCommandsFileSystem),
+				WithEmbeddedNodeConfigFilesystem(trivy_checks.EmbeddedConfigCommandsFileSystem))
+			//			gotCmd, gotCfg := getEmbeddedCommands(trivy_checks.EmbeddedK8sCommandsFileSystem, trivy_checks.EmbeddedConfigCommandsFileSystem, AddChecksByCheckId)
+
+			got, err := mockCollector.ApplyAndCollect(context.TODO(), test.nodeName)
+			if err != test.err {
+				t.Errorf("expected error %v, got %v", test.err, err)
+			}
+			assert.Equal(t, got, test.want)
+		})
+	}
+
 }

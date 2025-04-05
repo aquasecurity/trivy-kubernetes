@@ -355,6 +355,8 @@ func TestInitResources(t *testing.T) {
 type kubectlAction func() error
 
 func TestListSpecificArtifacts(t *testing.T) {
+	t.Setenv("TESTCONTAINERS_RYUK_DISABLED", "true")
+
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(10*time.Minute))
 	defer cancel()
 

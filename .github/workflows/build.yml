@@ -27,7 +27,7 @@ on:
 
 env:
   GO_VERSION: 1.24
-  KIND_VERSION: v0.11.1
+  KIND_VERSION: v0.27.0
 
 # Disable permissions granted to the GITHUB_TOKEN for all the available scopes.
 permissions: {}
@@ -83,6 +83,13 @@ jobs:
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
           restore-keys: |
             ${{ runner.os }}-go-
+
+      - name: Install kubectl
+        run: >
+          curl -LO https://dl.k8s.io/release/v1.26.0/bin/linux/amd64/kubectl
+
+          sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+
       - name: Run unit tests
         run: make unit-tests
       - name: Upload code coverage

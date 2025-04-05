@@ -3,8 +3,21 @@ package trivyk8s
 import (
 	"context"
 	"fmt"
+	"os"
+	"os/exec"
+	"path"
+	"path/filepath"
 	"testing"
+	"time"
 
+	"github.com/aquasecurity/trivy-kubernetes/pkg/artifacts"
+	"github.com/aquasecurity/trivy-kubernetes/pkg/bom"
+	"github.com/aquasecurity/trivy-kubernetes/pkg/k8s"
+	"github.com/aquasecurity/trivy-kubernetes/pkg/k8s/docker"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/modules/k3s"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -13,13 +26,6 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
-
-	"github.com/stretchr/testify/assert"
-
-	"github.com/aquasecurity/trivy-kubernetes/pkg/artifacts"
-	"github.com/aquasecurity/trivy-kubernetes/pkg/bom"
-	"github.com/aquasecurity/trivy-kubernetes/pkg/k8s"
-	"github.com/aquasecurity/trivy-kubernetes/pkg/k8s/docker"
 )
 
 type MockClusterDynamicClient struct {
@@ -342,6 +348,117 @@ func TestInitResources(t *testing.T) {
 			c := &client{excludeKinds: tt.excludeKinds, includeKinds: tt.includeKinds}
 			c.initResourceList()
 			assert.Equal(t, tt.want, c.resources)
+		})
+	}
+}
+
+type kubectlAction func() error
+
+func TestListSpecificArtifacts(t *testing.T) {
+	t.Setenv("TESTCONTAINERS_RYUK_DISABLED", "true")
+
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(10*time.Minute))
+	defer cancel()
+
+	k3sContainer, err := k3s.Run(ctx, "rancher/k3s:v1.27.1-k3s1")
+	require.NoError(t, err)
+	testcontainers.CleanupContainer(t, k3sContainer)
+
+	kubeConfigYaml, err := k3sContainer.GetKubeConfig(ctx)
+	require.NoError(t, err)
+
+	configPath := path.Join(t.TempDir(), "kubeconfig")
+	err = os.WriteFile(configPath, kubeConfigYaml, 0644)
+	require.NoError(t, err)
+
+	provider, err := testcontainers.ProviderDocker.GetProvider()
+	require.NoError(t, err)
+
+	images := []string{
+		"nginx:1.14.1",
+		"nginx:1.27.4",
+	}
+
+	for _, image := range images {
+		err = provider.PullImage(ctx, image)
+		require.NoError(t, err)
+	}
+
+	tests := []struct {
+		name              string
+		namespace         string
+		resources         []string
+		kinds             []string
+		action            kubectlAction
+		expectedArtifacts []*artifacts.Artifact
+	}{
+		{
+			name:      "good way for pod",
+			namespace: "default",
+			resources: []string{filepath.Join("testdata", "single-pod.yaml")},
+			kinds:     []string{"pod"},
+			action:    nil,
+			expectedArtifacts: []*artifacts.Artifact{
+				{
+					Namespace:   "default",
+					Kind:        "Pod",
+					Labels:      nil,
+					Name:        "nginx-pod",
+					Images:      []string{"nginx:1.14.1"},
+					Credentials: []docker.Auth{},
+				},
+			},
+		},
+		{
+			name:      "use last-applied-config",
+			namespace: "default",
+			resources: []string{filepath.Join("testdata", "single-pod.yaml")},
+			kinds:     []string{"pod"},
+			action: func() error {
+				return exec.Command("kubectl", "set", "image", "pod/nginx-pod", "test-nginx=nginx:1.27.4", "--kubeconfig", configPath).Run()
+			},
+			expectedArtifacts: []*artifacts.Artifact{
+				{
+					Namespace:   "default",
+					Kind:        "Pod",
+					Labels:      nil,
+					Name:        "nginx-pod",
+					Images:      []string{"nginx:1.14.1"},
+					Credentials: []docker.Auth{},
+				},
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			for _, resource := range test.resources {
+				err := exec.Command("kubectl", "apply", "-f", resource, "--kubeconfig", configPath).Run()
+				require.NoError(t, err)
+				err = exec.Command("kubectl", "wait", "--for=condition=Ready", "pods", "--timeout", "300s", "--all", "--kubeconfig", configPath).Run()
+				require.NoError(t, err)
+			}
+
+			cluster, err := k8s.GetCluster(k8s.WithKubeConfig(configPath))
+			require.NoError(t, err)
+
+			c := &client{
+				cluster:   cluster,
+				namespace: test.namespace,
+				resources: test.kinds,
+			}
+
+			if test.action != nil {
+				require.NoError(t, test.action())
+			}
+
+			gotArtifacts, err := c.ListSpecificArtifacts(ctx)
+			for i := range test.expectedArtifacts {
+				gotArtifacts[i].RawResource = nil
+			}
+
+			require.NoError(t, err)
+			assert.Equal(t, test.expectedArtifacts, gotArtifacts)
 		})
 	}
 }

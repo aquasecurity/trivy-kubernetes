@@ -386,17 +386,18 @@ func TestListSpecificArtifacts(t *testing.T) {
 
 	tests := []struct {
 		name              string
-		namespace         string
+		opts              []K8sOption
 		resources         []string
-		kinds             []string
 		action            kubectlAction
 		expectedArtifacts []*artifacts.Artifact
 	}{
 		{
-			name:      "good way for pod",
-			namespace: "default",
+			name: "good way for pod",
+			opts: []K8sOption{
+				WithIncludeNamespaces([]string{"default"}),
+				WithIncludeKinds([]string{"Pod"}),
+			},
 			resources: []string{filepath.Join("testdata", "single-pod.yaml")},
-			kinds:     []string{"pod"},
 			action:    nil,
 			expectedArtifacts: []*artifacts.Artifact{
 				{
@@ -410,10 +411,12 @@ func TestListSpecificArtifacts(t *testing.T) {
 			},
 		},
 		{
-			name:      "use last-applied-config",
-			namespace: "default",
+			name: "use last-applied-config",
+			opts: []K8sOption{
+				WithIncludeNamespaces([]string{"default"}),
+				WithIncludeKinds([]string{"Pod"}),
+			},
 			resources: []string{filepath.Join("testdata", "single-pod.yaml")},
-			kinds:     []string{"pod"},
 			action: func() error {
 				return exec.Command("kubectl", "set", "image", "pod/nginx-pod", "test-nginx=nginx:1.27.4", "--kubeconfig", configPath).Run()
 			},
@@ -424,6 +427,28 @@ func TestListSpecificArtifacts(t *testing.T) {
 					Labels:      nil,
 					Name:        "nginx-pod",
 					Images:      []string{"nginx:1.14.1"},
+					Credentials: []docker.Auth{},
+				},
+			},
+		},
+		{
+			name: "use actual config with last-applied-config",
+			opts: []K8sOption{
+				WithIncludeNamespaces([]string{"default"}),
+				WithIncludeKinds([]string{"pod"}),
+				WithUseActualConfig(true),
+			},
+			resources: []string{filepath.Join("testdata", "single-pod.yaml")},
+			action: func() error {
+				return exec.Command("kubectl", "set", "image", "pod/nginx-pod", "test-nginx=nginx:1.27.4", "--kubeconfig", configPath).Run()
+			},
+			expectedArtifacts: []*artifacts.Artifact{
+				{
+					Namespace:   "default",
+					Kind:        "Pod",
+					Labels:      nil,
+					Name:        "nginx-pod",
+					Images:      []string{"nginx:1.27.4"},
 					Credentials: []docker.Auth{},
 				},
 			},
@@ -443,16 +468,17 @@ func TestListSpecificArtifacts(t *testing.T) {
 			require.NoError(t, err)
 
 			c := &client{
-				cluster:   cluster,
-				namespace: test.namespace,
-				resources: test.kinds,
+				cluster: cluster,
+			}
+			for _, opt := range test.opts {
+				opt(c)
 			}
 
 			if test.action != nil {
 				require.NoError(t, test.action())
 			}
 
-			gotArtifacts, err := c.ListSpecificArtifacts(ctx)
+			gotArtifacts, err := c.ListArtifacts(ctx)
 			for i := range test.expectedArtifacts {
 				gotArtifacts[i].RawResource = nil
 			}

@@ -462,3 +462,117 @@ func TestListSpecificArtifacts(t *testing.T) {
 		})
 	}
 }
+
+func TestSetActualResource(t *testing.T) {
+	tests := []struct {
+		name           string
+		actualResource *unstructured.Unstructured
+		useActualState bool
+		expectError    bool
+		expectedResult *unstructured.Unstructured
+	}{
+		{
+			name: "useActualState is true, should return nil and not modify actualResource",
+			actualResource: &unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"kind":       "Pod",
+					"apiVersion": "v1",
+					"metadata": map[string]interface{}{
+						"annotations": map[string]interface{}{
+							"kubectl.kubernetes.io/last-applied-configuration": "{\"kind\":\"Pod\",\"apiVersion\":\"v1beta\"}",
+						},
+					},
+				},
+			},
+			useActualState: true,
+			expectError:    false,
+			expectedResult: &unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"kind":       "Pod",
+					"apiVersion": "v1",
+					"metadata": map[string]interface{}{
+						"annotations": map[string]interface{}{
+							"kubectl.kubernetes.io/last-applied-configuration": "{\"kind\":\"Pod\",\"apiVersion\":\"v1beta\"}",
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "valid last-applied-configuration annotation",
+			actualResource: &unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"kind":       "Pod",
+					"apiVersion": "v1",
+					"metadata": map[string]interface{}{
+						"annotations": map[string]interface{}{
+							"kubectl.kubernetes.io/last-applied-configuration": "{\"kind\":\"Pod\",\"apiVersion\":\"v1beta\"}",
+						},
+					},
+				},
+			},
+			useActualState: false,
+			expectError:    false,
+			expectedResult: &unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"kind":       "Pod",
+					"apiVersion": "v1beta",
+				},
+			},
+		},
+		{
+			name: "useActualState is true without annotations, should not modify actualResource",
+			actualResource: &unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"kind":       "Pod",
+					"apiVersion": "v1",
+					"metadata": map[string]interface{}{
+						"annotations": map[string]interface{}{
+							"kubectl.kubernetes.io/version": "1",
+						},
+					},
+				},
+			},
+			useActualState: true,
+			expectError:    false,
+			expectedResult: &unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"kind":       "Pod",
+					"apiVersion": "v1",
+					"metadata": map[string]interface{}{
+						"annotations": map[string]interface{}{
+							"kubectl.kubernetes.io/version": "1",
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "invalid last-applied-configuration annotation",
+			actualResource: &unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"metadata": map[string]interface{}{
+						"annotations": map[string]interface{}{
+							"kubectl.kubernetes.io/last-applied-configuration": "invalid json",
+						},
+					},
+				},
+			},
+			useActualState: false,
+			expectError:    true,
+			expectedResult: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := setActualResource(tt.actualResource, tt.useActualState)
+			if tt.expectError {
+				assert.Error(t, err)
+				return
+			}
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expectedResult.Object, tt.actualResource.Object, "actualResource should match expected result")
+		})
+	}
+}

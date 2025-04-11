@@ -423,7 +423,7 @@ func TestListSpecificArtifacts(t *testing.T) {
 					Kind:        "Pod",
 					Labels:      nil,
 					Name:        "nginx-pod",
-					Images:      []string{"nginx:1.14.1"},
+					Images:      []string{"nginx:1.27.4"},
 					Credentials: []docker.Auth{},
 				},
 			},
@@ -459,6 +459,121 @@ func TestListSpecificArtifacts(t *testing.T) {
 
 			require.NoError(t, err)
 			assert.Equal(t, test.expectedArtifacts, gotArtifacts)
+		})
+	}
+}
+
+func TestGetActualResource(t *testing.T) {
+	tests := []struct {
+		name           string
+		resource       *unstructured.Unstructured
+		expectError    bool
+		expectedResult *unstructured.Unstructured
+	}{
+		{
+			name: "good way: a pod with non-deprecate apiVersion and valid last-applied-configuration annotation",
+			resource: &unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"kind":       "Pod",
+					"apiVersion": "v1",
+					"metadata": map[string]interface{}{
+						"annotations": map[string]interface{}{
+							"kubectl.kubernetes.io/last-applied-configuration": "{\"kind\":\"Pod\",\"apiVersion\":\"v1\"}",
+						},
+					},
+				},
+			},
+			expectError: false,
+			expectedResult: &unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"kind":       "Pod",
+					"apiVersion": "v1",
+					"metadata": map[string]interface{}{
+						"annotations": map[string]interface{}{
+							"kubectl.kubernetes.io/last-applied-configuration": "{\"kind\":\"Pod\",\"apiVersion\":\"v1\"}",
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "a pod with non-deprecate apiVersion and without last-applied-configuration",
+			resource: &unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"kind":       "Pod",
+					"apiVersion": "v1",
+				},
+			},
+			expectError: false,
+			expectedResult: &unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"kind":       "Pod",
+					"apiVersion": "v1",
+				},
+			},
+		},
+		{
+			name: "a cronjob with deprecated apiVersion inside last-applied-configuration annotation",
+			resource: &unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"kind":       "CronJob",
+					"apiVersion": "batch/v1",
+					"metadata": map[string]interface{}{
+						"annotations": map[string]interface{}{
+							"kubectl.kubernetes.io/last-applied-configuration": "{\"kind\":\"CronJob\",\"apiVersion\":\"batch/v1beta1\"}",
+						},
+					},
+				},
+			},
+			expectError: false,
+			expectedResult: &unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"kind":       "CronJob",
+					"apiVersion": "batch/v1beta1",
+				},
+			},
+		},
+		{
+			name: "a cronjob without last-applied-configuration annotation",
+			resource: &unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"kind":       "CronJob",
+					"apiVersion": "batch/v1",
+				},
+			},
+			expectError: false,
+			expectedResult: &unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"kind":       "CronJob",
+					"apiVersion": "batch/v1",
+				},
+			},
+		},
+		{
+			name: "invalid last-applied-configuration annotation",
+			resource: &unstructured.Unstructured{
+				Object: map[string]interface{}{
+					"metadata": map[string]interface{}{
+						"annotations": map[string]interface{}{
+							"kubectl.kubernetes.io/last-applied-configuration": "invalid json",
+						},
+					},
+				},
+			},
+			expectError:    true,
+			expectedResult: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			actualResource, err := getActualResource(tt.resource)
+			if tt.expectError {
+				assert.Error(t, err)
+				return
+			}
+			assert.NoError(t, err)
+			assert.Equal(t, tt.expectedResult, actualResource, "actualResource should match expected result")
 		})
 	}
 }

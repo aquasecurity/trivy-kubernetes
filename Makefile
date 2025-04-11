@@ -43,10 +43,6 @@ update-outdated-api-data:
 	@echo "package trivyk8s" > $(GO_OUTPUT)
 	@echo "" >> $(GO_OUTPUT)
 	@echo "var deprecatedAPIs = map[string][]string{" >> $(GO_OUTPUT)
-	@jq -r 'to_entries[] | \
-		"\"\(.key)\": {" + \
-		( .value | keys_unsorted | map("\"\(.)\"") | join(", ") ) + \
-		"},"' tmp-json-api/outdated-api.json | \
-	sed 's/^/    /' >> $(GO_OUTPUT)
+	@jq -r 'to_entries[] | "\"\(.key)\": {" + ( .value | keys_unsorted | map("\"\(.)\"") | join(", ") ) + "},"' tmp-json-api/outdated-api.json | sed 's/^/    /' >> $(GO_OUTPUT)
 	@echo "}" >> $(GO_OUTPUT)
 	@rm -r tmp-json-api

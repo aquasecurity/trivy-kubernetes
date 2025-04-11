@@ -67,6 +67,14 @@ jobs:
         uses: ibiqlik/action-yamllint@v3
       - name: Vendor Go modules
         run: go mod vendor
+      - name: Check Deprecated k8s APIs
+        run: |
+          make update-outdated-api-data
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "Update deprecated k8s APIs and push it"
+            exit 1
+          fi
+
   unit-tests:
     name: Run unit tests
     runs-on: ubuntu-24.04

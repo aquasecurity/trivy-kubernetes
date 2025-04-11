@@ -278,18 +278,16 @@ func (c *client) ListSpecificArtifacts(ctx context.Context) ([]*artifacts.Artifa
 				continue
 			}
 
-			lastAppliedResource := resource
-			if jsonManifest, ok := resource.GetAnnotations()["kubectl.kubernetes.io/last-applied-configuration"]; ok { // required for outdated-api when k8s convert resources
-				err := json.Unmarshal([]byte(jsonManifest), &lastAppliedResource)
-				if err != nil {
-					continue
-				}
+			actualResource, err := getActualResource(&resource)
+			if err != nil {
+				slog.Error("Unable to get actual resource", "error", err)
+				continue
 			}
-			auths, err := c.cluster.AuthByResource(lastAppliedResource)
+			auths, err := c.cluster.AuthByResource(*actualResource)
 			if err != nil {
 				return nil, fmt.Errorf("failed getting auth for gvr: %v - %w", gvr, err)
 			}
-			artifact, err := artifacts.FromResource(lastAppliedResource, auths)
+			artifact, err := artifacts.FromResource(*actualResource, auths)
 			if err != nil {
 				return nil, err
 			}
@@ -305,6 +303,24 @@ func (c *client) ListSpecificArtifacts(ctx context.Context) ([]*artifacts.Artifa
 		artifactList = append(artifactList, bomArtifacts...)
 	}
 	return artifactList, nil
+}
+
+func getActualResource(resource *unstructured.Unstructured) (*unstructured.Unstructured, error) {
+	jsonManifest, ok := resource.GetAnnotations()["kubectl.kubernetes.io/last-applied-configuration"]
+	if !ok {
+		return resource, nil
+	}
+
+	var lastAppliedResource unstructured.Unstructured
+	if err := json.Unmarshal([]byte(jsonManifest), &lastAppliedResource); err != nil {
+		return nil, fmt.Errorf("failed unmarshal resource %v: %v", lastAppliedResource.GetName(), err)
+	}
+
+	deprecatedKinds, isDeprecatedAPI := deprecatedAPIs[lastAppliedResource.GetAPIVersion()]
+	if isDeprecatedAPI && slices.Contains(deprecatedKinds, lastAppliedResource.GetKind()) {
+		return &lastAppliedResource, nil
+	}
+	return resource, nil
 }
 
 func FilterResources(include []string, exclude []string, key string) bool {

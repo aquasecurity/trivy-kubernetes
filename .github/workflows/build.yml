@@ -71,6 +71,7 @@ jobs:
         run: |
           make update-outdated-api-data
           if [ -n "$(git status --porcelain)" ]; then
+            git status
             echo "Update deprecated k8s APIs and push it"
             exit 1
           fi

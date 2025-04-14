@@ -278,18 +278,11 @@ func (c *client) ListSpecificArtifacts(ctx context.Context) ([]*artifacts.Artifa
 				continue
 			}
 
-			lastAppliedResource := resource
-			if jsonManifest, ok := resource.GetAnnotations()["kubectl.kubernetes.io/last-applied-configuration"]; ok { // required for outdated-api when k8s convert resources
-				err := json.Unmarshal([]byte(jsonManifest), &lastAppliedResource)
-				if err != nil {
-					continue
-				}
-			}
-			auths, err := c.cluster.AuthByResource(lastAppliedResource)
+			auths, err := c.cluster.AuthByResource(resource)
 			if err != nil {
 				return nil, fmt.Errorf("failed getting auth for gvr: %v - %w", gvr, err)
 			}
-			artifact, err := artifacts.FromResource(lastAppliedResource, auths)
+			artifact, err := artifacts.FromResource(resource, auths)
 			if err != nil {
 				return nil, err
 			}

@@ -410,7 +410,7 @@ func TestListSpecificArtifacts(t *testing.T) {
 			},
 		},
 		{
-			name:      "use last-applied-config",
+			name:      "ignore last-applied-config",
 			namespace: "default",
 			resources: []string{filepath.Join("testdata", "single-pod.yaml")},
 			kinds:     []string{"pod"},
@@ -423,7 +423,7 @@ func TestListSpecificArtifacts(t *testing.T) {
 					Kind:        "Pod",
 					Labels:      nil,
 					Name:        "nginx-pod",
-					Images:      []string{"nginx:1.14.1"},
+					Images:      []string{"nginx:1.27.4"},
 					Credentials: []docker.Auth{},
 				},
 			},

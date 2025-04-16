@@ -7,5 +7,5 @@ spec:
   containers:
     - name: runner
       image: alpine:3.14.1
-      command: [ "/bin/sh", "-c", "--" ]
-      args: [ "while true; do sleep 30; done;" ]
+      command: ["/bin/sh", "-c", "--"]
+      args: ["while true; do sleep 30; done;"]

@@ -241,8 +241,8 @@ func TestListArtifacts(t *testing.T) {
 	require.NoError(t, err)
 
 	images := []string{
-		"nginx:1.14.1",
-		"nginx:1.27.4",
+		"alpine:3.14.1",
+		"alpine:3.21.1",
 	}
 
 	for _, image := range images {
@@ -270,8 +270,8 @@ func TestListArtifacts(t *testing.T) {
 					Namespace:   "default",
 					Kind:        "Pod",
 					Labels:      nil,
-					Name:        "nginx-pod",
-					Images:      []string{"nginx:1.14.1"},
+					Name:        "alpine-runner",
+					Images:      []string{"alpine:3.14.1"},
 					Credentials: []docker.Auth{},
 				},
 			},
@@ -284,15 +284,15 @@ func TestListArtifacts(t *testing.T) {
 			},
 			resources: []string{filepath.Join("testdata", "single-pod.yaml")},
 			action: func() error {
-				return exec.Command("kubectl", "set", "image", "pod/nginx-pod", "test-nginx=nginx:1.27.4", "--kubeconfig", configPath).Run()
+				return exec.Command("kubectl", "set", "image", "pod/alpine-runner", "runner=alpine:3.21.1", "--kubeconfig", configPath).Run()
 			},
 			expectedArtifacts: []*artifacts.Artifact{
 				{
 					Namespace:   "default",
 					Kind:        "Pod",
 					Labels:      nil,
-					Name:        "nginx-pod",
-					Images:      []string{"nginx:1.14.1"},
+					Name:        "alpine-runner",
+					Images:      []string{"alpine:3.14.1"},
 					Credentials: []docker.Auth{},
 				},
 			},

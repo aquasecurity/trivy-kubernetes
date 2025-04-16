@@ -370,7 +370,7 @@ func TestListArtifacts(t *testing.T) {
 				require.NoError(t, test.action())
 			}
 
-			gotArtifacts, err := c.ListArtifacts(context.Background())
+			gotArtifacts, err := c.ListArtifacts(ctx)
 			for i := range test.expectedArtifacts {
 				gotArtifacts[i].RawResource = nil
 			}

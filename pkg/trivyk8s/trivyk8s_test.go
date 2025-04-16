@@ -2,11 +2,14 @@ package trivyk8s
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"path"
 	"path/filepath"
+	"sort"
 	"testing"
 	"time"
 
@@ -17,78 +20,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/k3s"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
-
-func TestGetNamespaces(t *testing.T) {
-	tests := []struct {
-		name               string
-		includeNamespaces  []string
-		excludeNamespaces  []string
-		mockNamespaces     []string
-		mockError          error
-		expectedNamespaces []string
-		expectedError      error
-	}{
-		{
-			name:               "No includeNamespaces, no excludeNamespaces",
-			includeNamespaces:  nil,
-			excludeNamespaces:  nil,
-			mockNamespaces:     nil,
-			expectedNamespaces: []string{},
-			expectedError:      nil,
-		},
-		{
-			name:               "Include namespaces set",
-			includeNamespaces:  []string{"namespace1", "namespace2"},
-			excludeNamespaces:  nil,
-			mockNamespaces:     nil,
-			expectedNamespaces: []string{"namespace1", "namespace2"},
-			expectedError:      nil,
-		},
-		{
-			name:               "Exclude namespaces set but no namespaces in cluster",
-			includeNamespaces:  nil,
-			excludeNamespaces:  []string{"namespace3"},
-			mockNamespaces:     nil,
-			expectedNamespaces: []string{},
-			expectedError:      nil,
-		},
-		{
-			name:               "Exclude namespaces set with namespaces in cluster",
-			includeNamespaces:  nil,
-			excludeNamespaces:  []string{"namespace3"},
-			mockNamespaces:     []string{"namespace1", "namespace2", "namespace3"},
-			expectedNamespaces: []string{"namespace1", "namespace2"},
-			expectedError:      nil,
-		},
-		{
-			name:               "Error in listing namespaces",
-			includeNamespaces:  nil,
-			excludeNamespaces:  []string{"namespace3"},
-			mockError:          fmt.Errorf("some error"),
-			expectedNamespaces: []string{},
-			expectedError:      fmt.Errorf("unable to list namespaces: %v", fmt.Errorf("some error")),
-		},
-		{
-			name:              "Forbidden error",
-			includeNamespaces: nil,
-			excludeNamespaces: []string{"namespace3"},
-			mockError: errors.NewForbidden(schema.GroupResource{
-				Group:    "",
-				Resource: "namespaces",
-			}, "namespaces", fmt.Errorf("forbidden")),
-			expectedNamespaces: []string{},
-			expectedError:      fmt.Errorf("'exclude namespaces' option requires a cluster role with permissions to list namespaces"),
-		},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			fmt.Printf("testing %v", test.excludeNamespaces)
-		})
-	}
-}
 
 func TestIgnoreNodeByLabel(t *testing.T) {
 	tests := []struct {
@@ -221,6 +154,7 @@ func TestInitResources(t *testing.T) {
 type kubectlAction func() error
 
 func TestListArtifacts(t *testing.T) {
+	t.Log("Preparing test environment...")
 	t.Setenv("TESTCONTAINERS_RYUK_DISABLED", "true")
 
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(10*time.Minute))
@@ -228,13 +162,14 @@ func TestListArtifacts(t *testing.T) {
 
 	k3sContainer, err := k3s.Run(ctx, "rancher/k3s:v1.27.1-k3s1")
 	require.NoError(t, err)
+
 	testcontainers.CleanupContainer(t, k3sContainer)
 
 	kubeConfigYaml, err := k3sContainer.GetKubeConfig(ctx)
 	require.NoError(t, err)
 
-	configPath := path.Join(t.TempDir(), "kubeconfig")
-	err = os.WriteFile(configPath, kubeConfigYaml, 0644)
+	kubeConfigPath := path.Join(t.TempDir(), "kubeconfig")
+	err = os.WriteFile(kubeConfigPath, kubeConfigYaml, 0644)
 	require.NoError(t, err)
 
 	provider, err := testcontainers.ProviderDocker.GetProvider()
@@ -244,27 +179,50 @@ func TestListArtifacts(t *testing.T) {
 		"alpine:3.14.1",
 		"alpine:3.21.1",
 	}
-
 	for _, image := range images {
 		err = provider.PullImage(ctx, image)
 		require.NoError(t, err)
 	}
 
+	customNamespaces := []string{"custom-namespace"}
+	defaultNamespaces := []string{"default", "kube-system", "kube-public", "kube-node-lease"}
+	for _, ns := range customNamespaces {
+		err := exec.Command("kubectl", "create", "namespace", ns, "--kubeconfig", kubeConfigPath).Run()
+		require.NoError(t, err)
+	}
+	// Wait for nodes are running
+	err = exec.Command("kubectl", "wait", "--for=condition=Ready", "nodes", "--timeout", "300s", "--all", "--kubeconfig", kubeConfigPath).Run()
+	require.NoError(t, err)
+
+	allDefaultPods := kubectlGetArtifacts("pods", kubeConfigPath)
+
+	// Create custom resources
+	resources := []string{
+		filepath.Join("testdata", "single-pod.yaml"),
+		filepath.Join("testdata", "pod-ns1.yaml"),
+	}
+	for _, resource := range resources {
+		err := exec.Command("kubectl", "apply", "-f", resource, "--kubeconfig", kubeConfigPath).Run()
+		require.NoError(t, err)
+	}
+	err = exec.Command("kubectl", "wait", "--for=condition=Ready", "pods", "--timeout", "300s", "--all", "--kubeconfig", kubeConfigPath).Run()
+	require.NoError(t, err)
+
 	tests := []struct {
 		name              string
+		kubeConfigPath    string
 		opts              []K8sOption
-		resources         []string
 		action            kubectlAction
 		expectedArtifacts []*artifacts.Artifact
 	}{
 		{
-			name: "good way for pod",
+			name:           "good way for pod",
+			kubeConfigPath: kubeConfigPath,
 			opts: []K8sOption{
 				WithIncludeNamespaces([]string{"default"}),
 				WithIncludeKinds([]string{"Pod"}),
 			},
-			resources: []string{filepath.Join("testdata", "single-pod.yaml")},
-			action:    nil,
+			action: nil,
 			expectedArtifacts: []*artifacts.Artifact{
 				{
 					Namespace:   "default",
@@ -277,14 +235,14 @@ func TestListArtifacts(t *testing.T) {
 			},
 		},
 		{
-			name: "use last-applied-config",
+			name:           "use last-applied-config",
+			kubeConfigPath: kubeConfigPath,
 			opts: []K8sOption{
 				WithIncludeNamespaces([]string{"default"}),
 				WithIncludeKinds([]string{"Pod"}),
 			},
-			resources: []string{filepath.Join("testdata", "single-pod.yaml")},
 			action: func() error {
-				return exec.Command("kubectl", "set", "image", "pod/alpine-runner", "runner=alpine:3.21.1", "--kubeconfig", configPath).Run()
+				return exec.Command("kubectl", "set", "image", "pod/alpine-runner", "runner=alpine:3.21.1", "--kubeconfig", kubeConfigPath).Run()
 			},
 			expectedArtifacts: []*artifacts.Artifact{
 				{
@@ -297,22 +255,112 @@ func TestListArtifacts(t *testing.T) {
 				},
 			},
 		},
+		{
+			name:           "include only custom-namespace",
+			kubeConfigPath: kubeConfigPath,
+			opts: []K8sOption{
+				WithIncludeNamespaces([]string{"custom-namespace"}),
+				WithIncludeKinds([]string{"Pod"}),
+			},
+			expectedArtifacts: []*artifacts.Artifact{
+				{
+					Namespace:   "custom-namespace",
+					Kind:        "Pod",
+					Labels:      nil,
+					Name:        "alpine-runner-custom-ns",
+					Images:      []string{"alpine:3.14.1"},
+					Credentials: []docker.Auth{},
+				},
+			},
+		},
+		{
+			name:           "exclude default namespaces" + fmt.Sprintf(" (%v)", defaultNamespaces),
+			kubeConfigPath: kubeConfigPath,
+			opts: []K8sOption{
+				WithIncludeKinds([]string{"Pod"}),
+				WithExcludeNamespaces(defaultNamespaces),
+			},
+			expectedArtifacts: []*artifacts.Artifact{
+				{
+					Namespace:   "custom-namespace",
+					Kind:        "Pod",
+					Labels:      nil,
+					Name:        "alpine-runner-custom-ns",
+					Images:      []string{"alpine:3.14.1"},
+					Credentials: []docker.Auth{},
+				},
+			},
+		},
+		{
+			name:           "include unknown namespace",
+			kubeConfigPath: kubeConfigPath,
+			opts: []K8sOption{
+				WithIncludeNamespaces([]string{"custom-namespace-2"}),
+				WithIncludeKinds([]string{"Pod"}),
+			},
+			expectedArtifacts: []*artifacts.Artifact{},
+		},
+		{
+			name:           "No includeNamespaces, no excludeNamespaces - get all pods",
+			kubeConfigPath: kubeConfigPath,
+			opts: []K8sOption{
+				WithIncludeKinds([]string{"Pod"}),
+			},
+			expectedArtifacts: append(allDefaultPods, &artifacts.Artifact{
+				Namespace:   "default",
+				Kind:        "Pod",
+				Labels:      nil,
+				Name:        "alpine-runner",
+				Images:      []string{"alpine:3.14.1"},
+				Credentials: []docker.Auth{},
+			}, &artifacts.Artifact{
+				Namespace:   "custom-namespace",
+				Kind:        "Pod",
+				Labels:      nil,
+				Name:        "alpine-runner-custom-ns",
+				Images:      []string{"alpine:3.14.1"},
+				Credentials: []docker.Auth{},
+			}),
+		},
+		{
+			name:           "Exclude unknown namespace",
+			kubeConfigPath: kubeConfigPath,
+			opts: []K8sOption{
+				WithExcludeNamespaces([]string{"uncreated-custom-namespace"}),
+				WithIncludeKinds([]string{"Pod"}),
+			},
+			expectedArtifacts: append(allDefaultPods, &artifacts.Artifact{
+				Namespace:   "default",
+				Kind:        "Pod",
+				Labels:      nil,
+				Name:        "alpine-runner",
+				Images:      []string{"alpine:3.14.1"},
+				Credentials: []docker.Auth{},
+			}, &artifacts.Artifact{
+				Namespace:   "custom-namespace",
+				Kind:        "Pod",
+				Labels:      nil,
+				Name:        "alpine-runner-custom-ns",
+				Images:      []string{"alpine:3.14.1"},
+				Credentials: []docker.Auth{},
+			}),
+		},
+		// ToDo - add a kube config for limited users
+		// 	{
+		//			name:               "Forbidden error",
+		//			expectedError:      fmt.Errorf("'exclude namespaces' option requires a cluster role with permissions to list namespaces"),
+		//	},
 	}
 
+	t.Log("Running tests")
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			for _, resource := range test.resources {
-				err := exec.Command("kubectl", "apply", "-f", resource, "--kubeconfig", configPath).Run()
-				require.NoError(t, err)
-				err = exec.Command("kubectl", "wait", "--for=condition=Ready", "pods", "--timeout", "300s", "--all", "--kubeconfig", configPath).Run()
-				require.NoError(t, err)
-			}
-
-			cluster, err := k8s.GetCluster(k8s.WithKubeConfig(configPath))
+			cluster, err := k8s.GetCluster(k8s.WithKubeConfig(test.kubeConfigPath))
 			require.NoError(t, err)
 
 			c := &client{
-				cluster: cluster,
+				cluster:       cluster,
+				allNamespaces: true, // to avoid adding ClusterBomInfo
 			}
 			for _, opt := range test.opts {
 				opt(c)
@@ -322,13 +370,46 @@ func TestListArtifacts(t *testing.T) {
 				require.NoError(t, test.action())
 			}
 
-			gotArtifacts, err := c.ListArtifacts(ctx)
+			gotArtifacts, err := c.ListArtifacts(context.Background())
 			for i := range test.expectedArtifacts {
 				gotArtifacts[i].RawResource = nil
 			}
-
 			require.NoError(t, err)
+
+			sort.Slice(gotArtifacts, func(i, j int) bool {
+				return gotArtifacts[i].Name < gotArtifacts[j].Name
+			})
+			sort.Slice(test.expectedArtifacts, func(i, j int) bool {
+				return test.expectedArtifacts[i].Name < test.expectedArtifacts[j].Name
+			})
 			assert.Equal(t, test.expectedArtifacts, gotArtifacts)
 		})
 	}
+}
+
+func kubectlGetArtifacts(kind, kubeConfigPath string) []*artifacts.Artifact {
+	cmd := exec.Command("kubectl", "get", kind, "-A", "-o", "json", "--kubeconfig", kubeConfigPath)
+	output, err := cmd.Output()
+	if err != nil {
+		log.Fatalf("can't get all artifacts %q: %v", kind, err)
+	}
+
+	var resource unstructured.UnstructuredList
+	err = json.Unmarshal(output, &resource)
+	if err != nil {
+		log.Fatalf("can't parse resources %q: %v", kind, err)
+	}
+
+	var artifactsList []*artifacts.Artifact
+	for _, res := range resource.Items {
+
+		artifact, err := artifacts.FromResource(res, nil)
+		if err != nil {
+			log.Fatalf("can't parse resources (%v) to artifact: %v", res, err)
+		}
+		artifact.RawResource = nil
+		artifactsList = append(artifactsList, artifact)
+	}
+
+	return artifactsList
 }

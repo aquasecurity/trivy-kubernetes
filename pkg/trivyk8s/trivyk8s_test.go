@@ -250,7 +250,7 @@ func TestListArtifacts(t *testing.T) {
 					Kind:        "Pod",
 					Labels:      nil,
 					Name:        "alpine-runner",
-					Images:      []string{"alpine:3.14.1"},
+					Images:      []string{"alpine:3.21.1"},
 					Credentials: []docker.Auth{},
 				},
 			},
@@ -311,7 +311,7 @@ func TestListArtifacts(t *testing.T) {
 				Kind:        "Pod",
 				Labels:      nil,
 				Name:        "alpine-runner",
-				Images:      []string{"alpine:3.14.1"},
+				Images:      []string{"alpine:3.21.1"},
 				Credentials: []docker.Auth{},
 			}, &artifacts.Artifact{
 				Namespace:   "custom-namespace",
@@ -334,7 +334,7 @@ func TestListArtifacts(t *testing.T) {
 				Kind:        "Pod",
 				Labels:      nil,
 				Name:        "alpine-runner",
-				Images:      []string{"alpine:3.14.1"},
+				Images:      []string{"alpine:3.21.1"},
 				Credentials: []docker.Auth{},
 			}, &artifacts.Artifact{
 				Namespace:   "custom-namespace",

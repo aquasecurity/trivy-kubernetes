@@ -4,7 +4,7 @@ go 1.24
 
 require (
 	github.com/aquasecurity/trivy-checks v1.8.1
-	github.com/aws/aws-sdk-go v1.55.6
+	github.com/aws/aws-sdk-go v1.55.7
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 	github.com/dsnet/compress v0.0.2-0.20230904184137-39efe44ab707
 	github.com/google/go-containerregistry v0.20.3

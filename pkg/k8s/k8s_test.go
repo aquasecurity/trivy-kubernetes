@@ -6,7 +6,6 @@ import (
 	"github.com/aquasecurity/trivy-kubernetes/pkg/bom"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -438,13 +437,13 @@ func TestPodInfo(t *testing.T) {
 func TestNodeInfo(t *testing.T) {
 	tests := []struct {
 		Name          string
-		node          v1.Node
+		node          corev1.Node
 		labelSelector string
 		want          bom.NodeInfo
 	}{
 		{
 			Name: "node info ",
-			node: v1.Node{
+			node: corev1.Node{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "node1",
 					Labels: map[string]string{
@@ -452,8 +451,8 @@ func TestNodeInfo(t *testing.T) {
 						"node-role.kubernetes.io/master": "",
 					},
 				},
-				Status: v1.NodeStatus{
-					NodeInfo: v1.NodeSystemInfo{
+				Status: corev1.NodeStatus{
+					NodeInfo: corev1.NodeSystemInfo{
 						Architecture:            "amd64",
 						ContainerRuntimeVersion: "containerd://1.5.2",
 						KubeletVersion:          "1.21.1",

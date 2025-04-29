@@ -10,8 +10,6 @@ import (
 	ms "github.com/mitchellh/mapstructure"
 	"github.com/opencontainers/go-digest"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	k8sapierror "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -519,7 +517,7 @@ func GetContainer(imageName, imageId string) (bom.Container, error) {
 func (c *cluster) CollectNodes(components []bom.Component) ([]bom.NodeInfo, error) {
 	nodes, err := c.clientset.CoreV1().Nodes().List(context.Background(), metav1.ListOptions{})
 	if err != nil {
-		if errors.IsNotFound(err) || errors.IsForbidden(err) {
+		if k8sapierror.IsNotFound(err) || k8sapierror.IsForbidden(err) {
 			slog.Error("Unable to list node resources", "error", err)
 			return []bom.NodeInfo{}, nil
 		}
@@ -545,7 +543,7 @@ func (c *cluster) CollectNodes(components []bom.Component) ([]bom.NodeInfo, erro
 	return nodesInfo, nil
 }
 
-func NodeInfo(node v1.Node) bom.NodeInfo {
+func NodeInfo(node corev1.Node) bom.NodeInfo {
 	nodeRole := "worker"
 	if _, ok := node.Labels["node-role.kubernetes.io/control-plane"]; ok {
 		nodeRole = "master"
@@ -560,7 +558,7 @@ func NodeInfo(node v1.Node) bom.NodeInfo {
 		OsImage:                 node.Status.NodeInfo.OSImage,
 		Properties: map[string]string{
 			"NodeRole":        nodeRole,
-			"HostName":        node.ObjectMeta.Name,
+			"HostName":        node.Name,
 			"KernelVersion":   node.Status.NodeInfo.KernelVersion,
 			"OperatingSystem": node.Status.NodeInfo.OperatingSystem,
 			"Architecture":    node.Status.NodeInfo.Architecture,

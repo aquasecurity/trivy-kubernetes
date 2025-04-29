@@ -32,7 +32,7 @@ func deepHashObject(hasher hash.Hash, objectToWrite interface{}) {
 		DisableMethods: true,
 		SpewKeys:       true,
 	}
-	printer.Fprintf(hasher, "%#v", objectToWrite)
+	_, _ = printer.Fprintf(hasher, "%#v", objectToWrite)
 }
 
 func compressAndEncode(data []byte) (string, error) {
@@ -46,6 +46,6 @@ func compressAndEncode(data []byte) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	w.Close()
+	_ = w.Close()
 	return base64.StdEncoding.EncodeToString(buf.Bytes()), nil
 }

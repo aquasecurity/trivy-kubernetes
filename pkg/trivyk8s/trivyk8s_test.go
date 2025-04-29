@@ -374,6 +374,7 @@ func TestListArtifacts(t *testing.T) {
 			for i := range test.expectedArtifacts {
 				gotArtifacts[i].RawResource = nil
 			}
+
 			require.NoError(t, err)
 
 			sort.Slice(gotArtifacts, func(i, j int) bool {

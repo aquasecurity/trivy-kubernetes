@@ -290,7 +290,7 @@ func (c *client) ListSpecificArtifacts(ctx context.Context) ([]*artifacts.Artifa
 			artifactList = append(artifactList, artifact)
 		}
 	}
-	if !namespaced {
+	if namespaced {
 		bomArtifacts, err := c.ListClusterBomInfo(ctx)
 		if err != nil {
 			return nil, err

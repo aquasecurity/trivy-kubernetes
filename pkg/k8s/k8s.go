@@ -472,6 +472,9 @@ func (c *cluster) CreateBomComponents(ctx context.Context, namespace string) ([]
 
 func (c *cluster) CreateClusterBom(ctx context.Context) (*bom.Result, error) {
 	components, err := c.CreateBomComponents(ctx, "")
+	if err != nil {
+		return nil, err
+	}
 	nodesInfo, err := c.CollectNodes(components)
 	if err != nil {
 		return nil, err

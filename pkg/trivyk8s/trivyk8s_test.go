@@ -154,6 +154,8 @@ func TestInitResources(t *testing.T) {
 type kubectlAction func() error
 
 func TestListArtifacts(t *testing.T) {
+	const nodeHashName = "node-af4de95017af"
+
 	t.Log("Preparing test environment...")
 	t.Setenv("TESTCONTAINERS_RYUK_DISABLED", "true")
 
@@ -320,6 +322,20 @@ func TestListArtifacts(t *testing.T) {
 				Name:        "alpine-runner-custom-ns",
 				Images:      []string{"alpine:3.14.1"},
 				Credentials: []docker.Auth{},
+			}, &artifacts.Artifact{
+				Kind: "NodeComponents",
+				Name: nodeHashName,
+			}, &artifacts.Artifact{
+				Kind: "Cluster",
+				Name: "k8s.io/kubernetes",
+			}, &artifacts.Artifact{
+				Namespace: "kube-system",
+				Kind:      "ControlPlaneComponents",
+				Name:      "kube-dns",
+			}, &artifacts.Artifact{
+				Namespace: "kube-system",
+				Kind:      "ControlPlaneComponents",
+				Name:      "metrics-server",
 			}),
 		},
 		{
@@ -359,8 +375,7 @@ func TestListArtifacts(t *testing.T) {
 			require.NoError(t, err)
 
 			c := &client{
-				cluster:       cluster,
-				allNamespaces: true, // to avoid adding ClusterBomInfo
+				cluster: cluster,
 			}
 			for _, opt := range test.opts {
 				opt(c)
@@ -372,6 +387,9 @@ func TestListArtifacts(t *testing.T) {
 
 			gotArtifacts, err := c.ListArtifacts(ctx)
 			for i := range test.expectedArtifacts {
+				if gotArtifacts[i].Kind == "NodeComponents" {
+					gotArtifacts[i].Name = nodeHashName
+				}
 				gotArtifacts[i].RawResource = nil
 			}
 

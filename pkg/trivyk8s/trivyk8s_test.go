@@ -339,6 +339,23 @@ func TestListArtifacts(t *testing.T) {
 			}),
 		},
 		{
+			name:           "include only kube-system namespaced pods",
+			kubeConfigPath: kubeConfigPath,
+			opts: []K8sOption{
+				WithIncludeNamespaces([]string{"kube-system"}),
+				WithIncludeKinds([]string{"Pod"}),
+			},
+			expectedArtifacts: append(allDefaultPods, &artifacts.Artifact{
+				Namespace: "kube-system",
+				Kind:      "ControlPlaneComponents",
+				Name:      "kube-dns",
+			}, &artifacts.Artifact{
+				Namespace: "kube-system",
+				Kind:      "ControlPlaneComponents",
+				Name:      "metrics-server",
+			}),
+		},
+		{
 			name:           "Exclude unknown namespace",
 			kubeConfigPath: kubeConfigPath,
 			opts: []K8sOption{
@@ -359,6 +376,14 @@ func TestListArtifacts(t *testing.T) {
 				Name:        "alpine-runner-custom-ns",
 				Images:      []string{"alpine:3.14.1"},
 				Credentials: []docker.Auth{},
+			}, &artifacts.Artifact{
+				Namespace: "kube-system",
+				Kind:      "ControlPlaneComponents",
+				Name:      "kube-dns",
+			}, &artifacts.Artifact{
+				Namespace: "kube-system",
+				Kind:      "ControlPlaneComponents",
+				Name:      "metrics-server",
 			}),
 		},
 		// ToDo - add a kube config for limited users
@@ -386,7 +411,7 @@ func TestListArtifacts(t *testing.T) {
 			}
 
 			gotArtifacts, err := c.ListArtifacts(ctx)
-			for i := range test.expectedArtifacts {
+			for i := range gotArtifacts {
 				if gotArtifacts[i].Kind == "NodeComponents" {
 					gotArtifacts[i].Name = nodeHashName
 				}

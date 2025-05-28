@@ -295,9 +295,17 @@ func (c *client) ListSpecificArtifacts(ctx context.Context) ([]*artifacts.Artifa
 		if err != nil {
 			return nil, err
 		}
-		artifactList = append(artifactList, bomArtifacts...)
+		return append(artifactList, bomArtifacts...), nil
 	}
-	return artifactList, nil
+	bomComponents, err := c.cluster.CreateBomComponents(ctx, c.namespace)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get BOM artifacts: %w", err)
+	}
+	bomToArtifacts, err := convertBomComponentsToToArtifacts(bomComponents)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert BOM artifacts into trivy artifacts: %w", err)
+	}
+	return append(artifactList, bomToArtifacts...), nil
 }
 
 func FilterResources(include []string, exclude []string, key string) bool {
@@ -455,7 +463,6 @@ func (c *client) ListArtifactAndNodeInfo(ctx context.Context,
 
 // ListClusterBomInfo returns kubernetes Bom (node,core components and etc) information.
 func (c *client) ListClusterBomInfo(ctx context.Context) ([]*artifacts.Artifact, error) {
-
 	b, err := c.cluster.CreateClusterBom(ctx)
 	if err != nil {
 		return []*artifacts.Artifact{}, err
@@ -478,9 +485,9 @@ func (c *client) filterNamespaces(comp []bom.Component) []bom.Component {
 	return bm
 }
 
-func BomToArtifacts(b *bom.Result) ([]*artifacts.Artifact, error) {
+func convertBomComponentsToToArtifacts(components []bom.Component) ([]*artifacts.Artifact, error) {
 	artifactList := make([]*artifacts.Artifact, 0)
-	for _, c := range b.Components {
+	for _, c := range components {
 		rawResource, err := rawResource(&c)
 		if err != nil {
 			return []*artifacts.Artifact{}, err
@@ -491,6 +498,14 @@ func BomToArtifacts(b *bom.Result) ([]*artifacts.Artifact, error) {
 			Name:        c.Name,
 			RawResource: rawResource,
 		})
+	}
+	return artifactList, nil
+}
+
+func BomToArtifacts(b *bom.Result) ([]*artifacts.Artifact, error) {
+	artifactList, err := convertBomComponentsToToArtifacts(b.Components)
+	if err != nil {
+		return []*artifacts.Artifact{}, fmt.Errorf("failed to convert BOM components to artifacts: %w", err)
 	}
 	for _, ni := range b.NodesInfo {
 		rawResource, err := rawResource(&ni)

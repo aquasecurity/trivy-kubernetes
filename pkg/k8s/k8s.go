@@ -117,7 +117,9 @@ type Cluster interface {
 	// GetGVR returns resource GroupVersionResource to query kubernetes, receives
 	// a string with the resource kind
 	GetGVR(string) (schema.GroupVersionResource, error)
-	// CreatePkgBom returns a k8s client set
+	// CreateBomComponents returns a list of BOM components by a namespace
+	CreateBomComponents(ctx context.Context, namespace string) ([]bom.Component, error)
+	// CreateClusterBom returns KBOM for a cluster
 	CreateClusterBom(ctx context.Context) (*bom.Result, error)
 	// GetClusterVersion return cluster git version
 	GetClusterVersion() string
@@ -436,13 +438,13 @@ func getNamespaceResources() []string {
 	}
 }
 
-func (c *cluster) CreateClusterBom(ctx context.Context) (*bom.Result, error) {
+func (c *cluster) CreateBomComponents(ctx context.Context, namespace string) ([]bom.Component, error) {
 	// collect addons info
 	var components []bom.Component
 	labels := map[string]string{
-		"": "component",
+		namespace: "component",
 	}
-	if c.isOpenShift() {
+	if namespace != "" && c.isOpenShift() {
 		labels = map[string]string{
 			"openshift-kube-apiserver":          "apiserver",
 			"openshift-kube-controller-manager": "kube-controller-manager",
@@ -455,14 +457,24 @@ func (c *cluster) CreateClusterBom(ctx context.Context) (*bom.Result, error) {
 		return nil, err
 	}
 	addonLabels := map[string]string{
-		"":                    "app.kubernetes.io/component=controller",
-		k8sComponentNamespace: "k8s-app",
+		namespace: "app.kubernetes.io/component=controller",
+	}
+	if namespace == "" || namespace == k8sComponentNamespace {
+		addonLabels[k8sComponentNamespace] = "k8s-app"
 	}
 	addons, err := c.collectComponents(ctx, addonLabels)
 	if err != nil {
 		return nil, err
 	}
 	components = append(components, addons...)
+	return components, nil
+}
+
+func (c *cluster) CreateClusterBom(ctx context.Context) (*bom.Result, error) {
+	components, err := c.CreateBomComponents(ctx, "")
+	if err != nil {
+		return nil, err
+	}
 	nodesInfo, err := c.CollectNodes(components)
 	if err != nil {
 		return nil, err

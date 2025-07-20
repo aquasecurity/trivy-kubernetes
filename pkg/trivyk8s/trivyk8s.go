@@ -4,6 +4,7 @@ import (
 	"context"
 	"embed"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"slices"
@@ -15,7 +16,7 @@ import (
 	"github.com/aquasecurity/trivy-kubernetes/pkg/jobs"
 	"github.com/aquasecurity/trivy-kubernetes/pkg/k8s"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -206,7 +207,7 @@ func (c *client) getNamespaces() ([]string, error) {
 	dClient := c.getDynamicClient(namespaceGVR)
 	namespaces, err := dClient.List(context.TODO(), v1.ListOptions{})
 	if err != nil {
-		if errors.IsForbidden(err) {
+		if k8serrors.IsForbidden(err) {
 			return result, fmt.Errorf("'exclude namespaces' option requires a cluster role with permissions to list namespaces")
 		}
 		return result, fmt.Errorf("unable to list namespaces: %w", err)
@@ -260,7 +261,7 @@ func (c *client) ListSpecificArtifacts(ctx context.Context) ([]*artifacts.Artifa
 		if err != nil {
 			lerr := fmt.Errorf("failed listing resources for gvr: %v - %w", gvr, err)
 
-			if errors.IsNotFound(err) || errors.IsForbidden(err) {
+			if k8serrors.IsNotFound(err) || k8serrors.IsForbidden(err) {
 				slog.Error("Unable to list resources", "error", lerr)
 				continue
 			}
@@ -445,6 +446,11 @@ func (c *client) ListArtifactAndNodeInfo(ctx context.Context,
 		jc.AppendLabels(jobs.WithJobLabels(nodeLabels))
 		output, err := jc.ApplyAndCollect(ctx, resource.Name)
 		if err != nil {
+			// actually it doesn't matter now
+			// if the job failed by timeout we'll get a context timeout error any way
+			if errors.Is(err, jobs.ErrTimeout) {
+				continue
+			}
 			return nil, err
 		}
 		var nodeInfo map[string]interface{}

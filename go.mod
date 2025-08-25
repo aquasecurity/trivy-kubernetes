@@ -4,13 +4,13 @@ go 1.24.2
 
 require (
 	github.com/aquasecurity/trivy-checks v1.11.2
-	github.com/aws/aws-sdk-go-v2 v1.36.5
+	github.com/aws/aws-sdk-go-v2 v1.38.1
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc
 	github.com/dsnet/compress v0.0.2-0.20230904184137-39efe44ab707
 	github.com/google/go-containerregistry v0.20.6
 	github.com/mitchellh/mapstructure v1.5.0
 	github.com/opencontainers/go-digest v1.0.0
-	github.com/stretchr/testify v1.10.0
+	github.com/stretchr/testify v1.11.0
 	github.com/testcontainers/testcontainers-go v0.37.0
 	github.com/testcontainers/testcontainers-go/modules/k3s v0.37.0
 	gopkg.in/yaml.v3 v3.0.1

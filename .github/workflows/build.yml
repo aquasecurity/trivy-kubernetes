@@ -48,7 +48,7 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Cached Go dependencies
         uses: actions/cache@v4
         with:
@@ -76,7 +76,7 @@ jobs:
         with:
           go-version: ${{ env.GO_VERSION }}
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - uses: actions/cache@v4
         with:
           path: ~/go/pkg/mod
@@ -103,7 +103,7 @@ jobs:
       DOCKER_CLI_EXPERIMENTAL: enabled
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Setup Go
         uses: actions/setup-go@v5
         with:

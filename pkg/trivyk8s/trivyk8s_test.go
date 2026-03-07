@@ -20,8 +20,331 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/modules/k3s"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
+
+func TestTolerationMatchesTaint(t *testing.T) {
+	tests := []struct {
+		name       string
+		toleration corev1.Toleration
+		taint      corev1.Taint
+		want       bool
+	}{
+		{
+			name: "exact match with Equal operator",
+			toleration: corev1.Toleration{
+				Key:      "node-role.kubernetes.io/control-plane",
+				Operator: corev1.TolerationOpEqual,
+				Value:    "",
+				Effect:   corev1.TaintEffectNoSchedule,
+			},
+			taint: corev1.Taint{
+				Key:    "node-role.kubernetes.io/control-plane",
+				Value:  "",
+				Effect: corev1.TaintEffectNoSchedule,
+			},
+			want: true,
+		},
+		{
+			name: "Exists operator matches any value",
+			toleration: corev1.Toleration{
+				Key:      "node-role.kubernetes.io/control-plane",
+				Operator: corev1.TolerationOpExists,
+				Effect:   corev1.TaintEffectNoSchedule,
+			},
+			taint: corev1.Taint{
+				Key:    "node-role.kubernetes.io/control-plane",
+				Value:  "some-value",
+				Effect: corev1.TaintEffectNoSchedule,
+			},
+			want: true,
+		},
+		{
+			name: "empty key with Exists matches all taints",
+			toleration: corev1.Toleration{
+				Key:      "",
+				Operator: corev1.TolerationOpExists,
+			},
+			taint: corev1.Taint{
+				Key:    "any-key",
+				Value:  "any-value",
+				Effect: corev1.TaintEffectNoExecute,
+			},
+			want: true,
+		},
+		{
+			name: "effect mismatch",
+			toleration: corev1.Toleration{
+				Key:      "node-role.kubernetes.io/control-plane",
+				Operator: corev1.TolerationOpEqual,
+				Value:    "",
+				Effect:   corev1.TaintEffectNoSchedule,
+			},
+			taint: corev1.Taint{
+				Key:    "node-role.kubernetes.io/control-plane",
+				Value:  "",
+				Effect: corev1.TaintEffectNoExecute,
+			},
+			want: false,
+		},
+		{
+			name: "key mismatch",
+			toleration: corev1.Toleration{
+				Key:      "different-key",
+				Operator: corev1.TolerationOpEqual,
+				Value:    "",
+				Effect:   corev1.TaintEffectNoSchedule,
+			},
+			taint: corev1.Taint{
+				Key:    "node-role.kubernetes.io/control-plane",
+				Value:  "",
+				Effect: corev1.TaintEffectNoSchedule,
+			},
+			want: false,
+		},
+		{
+			name: "value mismatch with Equal operator",
+			toleration: corev1.Toleration{
+				Key:      "my-key",
+				Operator: corev1.TolerationOpEqual,
+				Value:    "value1",
+				Effect:   corev1.TaintEffectNoSchedule,
+			},
+			taint: corev1.Taint{
+				Key:    "my-key",
+				Value:  "value2",
+				Effect: corev1.TaintEffectNoSchedule,
+			},
+			want: false,
+		},
+		{
+			name: "toleration with empty effect matches any taint effect",
+			toleration: corev1.Toleration{
+				Key:      "my-key",
+				Operator: corev1.TolerationOpEqual,
+				Value:    "",
+				Effect:   "",
+			},
+			taint: corev1.Taint{
+				Key:    "my-key",
+				Value:  "",
+				Effect: corev1.TaintEffectNoExecute,
+			},
+			want: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tolerationMatchesTaint(tt.toleration, tt.taint)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestIsTaintTolerated(t *testing.T) {
+	tests := []struct {
+		name        string
+		taint       corev1.Taint
+		tolerations []corev1.Toleration
+		want        bool
+	}{
+		{
+			name: "taint tolerated by one of multiple tolerations",
+			taint: corev1.Taint{
+				Key:    "node-role.kubernetes.io/control-plane",
+				Effect: corev1.TaintEffectNoSchedule,
+			},
+			tolerations: []corev1.Toleration{
+				{
+					Key:      "other-key",
+					Operator: corev1.TolerationOpExists,
+					Effect:   corev1.TaintEffectNoSchedule,
+				},
+				{
+					Key:      "node-role.kubernetes.io/control-plane",
+					Operator: corev1.TolerationOpExists,
+					Effect:   corev1.TaintEffectNoSchedule,
+				},
+			},
+			want: true,
+		},
+		{
+			name: "taint not tolerated",
+			taint: corev1.Taint{
+				Key:    "node-role.kubernetes.io/control-plane",
+				Effect: corev1.TaintEffectNoSchedule,
+			},
+			tolerations: []corev1.Toleration{
+				{
+					Key:      "other-key",
+					Operator: corev1.TolerationOpExists,
+					Effect:   corev1.TaintEffectNoSchedule,
+				},
+			},
+			want: false,
+		},
+		{
+			name: "empty tolerations",
+			taint: corev1.Taint{
+				Key:    "any-key",
+				Effect: corev1.TaintEffectNoSchedule,
+			},
+			tolerations: []corev1.Toleration{},
+			want:        false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := isTaintTolerated(tt.taint, tt.tolerations)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestGetUntoleratedTaints(t *testing.T) {
+	tests := []struct {
+		name        string
+		artifact    *artifacts.Artifact
+		tolerations []corev1.Toleration
+		wantLen     int
+	}{
+		{
+			name: "node with no taints",
+			artifact: &artifacts.Artifact{
+				Name: "node1",
+				RawResource: map[string]interface{}{
+					"spec": map[string]interface{}{},
+				},
+			},
+			tolerations: []corev1.Toleration{},
+			wantLen:     0,
+		},
+		{
+			name: "node with tolerated taints",
+			artifact: &artifacts.Artifact{
+				Name: "node1",
+				RawResource: map[string]interface{}{
+					"spec": map[string]interface{}{
+						"taints": []interface{}{
+							map[string]interface{}{
+								"key":    "node-role.kubernetes.io/control-plane",
+								"effect": "NoSchedule",
+							},
+						},
+					},
+				},
+			},
+			tolerations: []corev1.Toleration{
+				{
+					Key:      "node-role.kubernetes.io/control-plane",
+					Operator: corev1.TolerationOpExists,
+					Effect:   corev1.TaintEffectNoSchedule,
+				},
+			},
+			wantLen: 0,
+		},
+		{
+			name: "node with untolerated taints",
+			artifact: &artifacts.Artifact{
+				Name: "node1",
+				RawResource: map[string]interface{}{
+					"spec": map[string]interface{}{
+						"taints": []interface{}{
+							map[string]interface{}{
+								"key":    "node-role.kubernetes.io/control-plane",
+								"effect": "NoSchedule",
+							},
+						},
+					},
+				},
+			},
+			tolerations: []corev1.Toleration{},
+			wantLen:     1,
+		},
+		{
+			name: "PreferNoSchedule taints are skipped",
+			artifact: &artifacts.Artifact{
+				Name: "node1",
+				RawResource: map[string]interface{}{
+					"spec": map[string]interface{}{
+						"taints": []interface{}{
+							map[string]interface{}{
+								"key":    "some-key",
+								"effect": "PreferNoSchedule",
+							},
+						},
+					},
+				},
+			},
+			tolerations: []corev1.Toleration{},
+			wantLen:     0,
+		},
+		{
+			name:        "nil raw resource",
+			artifact:    &artifacts.Artifact{Name: "node1"},
+			tolerations: []corev1.Toleration{},
+			wantLen:     0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &client{
+				scanJobParams: scanJobParams{
+					tolerations: tt.tolerations,
+				},
+			}
+			got := c.getUntoleratedTaints(tt.artifact)
+			assert.Len(t, got, tt.wantLen)
+		})
+	}
+}
+
+func TestFormatTaints(t *testing.T) {
+	tests := []struct {
+		name   string
+		taints []corev1.Taint
+		want   string
+	}{
+		{
+			name:   "empty taints",
+			taints: []corev1.Taint{},
+			want:   "",
+		},
+		{
+			name: "single taint without value",
+			taints: []corev1.Taint{
+				{Key: "key1", Effect: corev1.TaintEffectNoSchedule},
+			},
+			want: "key1:NoSchedule",
+		},
+		{
+			name: "single taint with value",
+			taints: []corev1.Taint{
+				{Key: "key1", Value: "value1", Effect: corev1.TaintEffectNoSchedule},
+			},
+			want: "key1=value1:NoSchedule",
+		},
+		{
+			name: "multiple taints",
+			taints: []corev1.Taint{
+				{Key: "key1", Effect: corev1.TaintEffectNoSchedule},
+				{Key: "key2", Value: "val2", Effect: corev1.TaintEffectNoExecute},
+			},
+			want: "key1:NoSchedule, key2=val2:NoExecute",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := formatTaints(tt.taints)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
 
 func TestIgnoreNodeByLabel(t *testing.T) {
 	tests := []struct {

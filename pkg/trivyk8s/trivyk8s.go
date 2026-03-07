@@ -4,6 +4,7 @@ import (
 	"context"
 	"embed"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"slices"
@@ -15,7 +16,7 @@ import (
 	"github.com/aquasecurity/trivy-kubernetes/pkg/jobs"
 	"github.com/aquasecurity/trivy-kubernetes/pkg/k8s"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8sapierrors "k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -206,7 +207,7 @@ func (c *client) getNamespaces() ([]string, error) {
 	dClient := c.getDynamicClient(namespaceGVR)
 	namespaces, err := dClient.List(context.TODO(), v1.ListOptions{})
 	if err != nil {
-		if errors.IsForbidden(err) {
+		if k8sapierrors.IsForbidden(err) {
 			return result, fmt.Errorf("'exclude namespaces' option requires a cluster role with permissions to list namespaces")
 		}
 		return result, fmt.Errorf("unable to list namespaces: %w", err)
@@ -260,7 +261,7 @@ func (c *client) ListSpecificArtifacts(ctx context.Context) ([]*artifacts.Artifa
 		if err != nil {
 			lerr := fmt.Errorf("failed listing resources for gvr: %v - %w", gvr, err)
 
-			if errors.IsNotFound(err) || errors.IsForbidden(err) {
+			if k8sapierrors.IsNotFound(err) || k8sapierrors.IsForbidden(err) {
 				slog.Error("Unable to list resources", "error", lerr)
 				continue
 			}
@@ -437,6 +438,15 @@ func (c *client) ListArtifactAndNodeInfo(ctx context.Context,
 			continue
 		}
 
+		// Check if node has taints that are not tolerated
+		if untoleratedTaints := c.getUntoleratedTaints(resource); len(untoleratedTaints) > 0 {
+			slog.Warn("Skipping node due to untolerated taints",
+				"node", resource.Name,
+				"taints", formatTaints(untoleratedTaints),
+				"hint", "Use --tolerations flag to scan this node")
+			continue
+		}
+
 		nodeLabels := map[string]string{
 			jobs.TrivyResourceName: resource.Name,
 			jobs.TrivyResourceKind: resource.Kind,
@@ -445,6 +455,13 @@ func (c *client) ListArtifactAndNodeInfo(ctx context.Context,
 		jc.AppendLabels(jobs.WithJobLabels(nodeLabels))
 		output, err := jc.ApplyAndCollect(ctx, resource.Name)
 		if err != nil {
+			// Handle timeout errors gracefully - skip the node and continue
+			if errors.Is(err, jobs.ErrTimeout) {
+				slog.Warn("Skipping node due to timeout",
+					"node", resource.Name,
+					"error", err)
+				continue
+			}
 			return nil, err
 		}
 		var nodeInfo map[string]interface{}
@@ -459,6 +476,110 @@ func (c *client) ListArtifactAndNodeInfo(ctx context.Context,
 		})
 	}
 	return artifactList, err
+}
+
+// getUntoleratedTaints returns taints on the node that are not tolerated by the provided tolerations
+func (c *client) getUntoleratedTaints(resource *artifacts.Artifact) []corev1.Taint {
+	if resource.RawResource == nil {
+		return nil
+	}
+
+	// Extract taints from the raw resource
+	spec, ok := resource.RawResource["spec"].(map[string]interface{})
+	if !ok {
+		return nil
+	}
+
+	taintsRaw, ok := spec["taints"].([]interface{})
+	if !ok || len(taintsRaw) == 0 {
+		return nil
+	}
+
+	var untoleratedTaints []corev1.Taint
+	for _, taintRaw := range taintsRaw {
+		taintMap, ok := taintRaw.(map[string]interface{})
+		if !ok {
+			continue
+		}
+
+		taint := corev1.Taint{
+			Key:    getString(taintMap, "key"),
+			Value:  getString(taintMap, "value"),
+			Effect: corev1.TaintEffect(getString(taintMap, "effect")),
+		}
+
+		// Skip taints with PreferNoSchedule effect as they don't prevent scheduling
+		if taint.Effect == corev1.TaintEffectPreferNoSchedule {
+			continue
+		}
+
+		if !isTaintTolerated(taint, c.scanJobParams.tolerations) {
+			untoleratedTaints = append(untoleratedTaints, taint)
+		}
+	}
+
+	return untoleratedTaints
+}
+
+// getString safely extracts a string from a map
+func getString(m map[string]interface{}, key string) string {
+	if v, ok := m[key].(string); ok {
+		return v
+	}
+	return ""
+}
+
+// isTaintTolerated checks if a taint is tolerated by any of the provided tolerations
+func isTaintTolerated(taint corev1.Taint, tolerations []corev1.Toleration) bool {
+	for _, toleration := range tolerations {
+		if tolerationMatchesTaint(toleration, taint) {
+			return true
+		}
+	}
+	return false
+}
+
+// tolerationMatchesTaint checks if a toleration matches a taint
+func tolerationMatchesTaint(toleration corev1.Toleration, taint corev1.Taint) bool {
+	// Empty key with Exists operator matches all taints
+	if toleration.Key == "" && toleration.Operator == corev1.TolerationOpExists {
+		return true
+	}
+
+	// Key must match
+	if toleration.Key != taint.Key {
+		return false
+	}
+
+	// Check operator
+	if toleration.Operator == corev1.TolerationOpExists {
+		// Exists operator matches any value
+	} else if toleration.Operator == "" || toleration.Operator == corev1.TolerationOpEqual {
+		// Equal operator (default) requires value match
+		if toleration.Value != taint.Value {
+			return false
+		}
+	}
+
+	// Effect must match if specified
+	if toleration.Effect != "" && toleration.Effect != taint.Effect {
+		return false
+	}
+
+	return true
+}
+
+// formatTaints formats a list of taints for logging
+func formatTaints(taints []corev1.Taint) string {
+	var parts []string
+	for _, t := range taints {
+		if t.Value != "" {
+			parts = append(parts, fmt.Sprintf("%s=%s:%s", t.Key, t.Value, t.Effect))
+		} else {
+			parts = append(parts, fmt.Sprintf("%s:%s", t.Key, t.Effect))
+		}
+	}
+	return strings.Join(parts, ", ")
 }
 
 // ListClusterBomInfo returns kubernetes Bom (node,core components and etc) information.

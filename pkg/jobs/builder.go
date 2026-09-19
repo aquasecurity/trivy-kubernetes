@@ -234,6 +234,14 @@ func (b *JobBuilder) build() (*batchv1.Job, error) {
 			job.Labels = make(map[string]string)
 		}
 		job.Labels[key] = val
+		// Also propagate to the Pod template, otherwise labels passed via WithLabels only ever
+		// land on the Job object itself and the Pods it creates remain unlabelled (see
+		// aquasecurity/trivy-operator#2514, where node-collector Pods cannot be labelled through
+		// this API at all).
+		if job.Spec.Template.Labels == nil {
+			job.Spec.Template.Labels = make(map[string]string)
+		}
+		job.Spec.Template.Labels[key] = val
 	}
 	// append annotation
 	for key, val := range b.annotations {

@@ -163,3 +163,26 @@ func TestLoadBuilder(t *testing.T) {
 		})
 	}
 }
+
+// TestLoadBuilder_LabelsAppliedToPodTemplate documents/probes the bug reported downstream as
+// aquasecurity/trivy-operator#2514: WithLabels(...) only reaches the Job object's own
+// ObjectMeta.Labels via the "append lables" loop in (*JobBuilder).build(), and is never copied
+// onto Spec.Template.ObjectMeta.Labels (the Pod template). Consumers such as trivy-operator's
+// node-collector Collector (pkg/jobs/collector.go, jobCollector.Apply) have no CollectorOption
+// that reaches the Pod template either, so the Pods a Job creates can never be labelled through
+// this public API - only the Job resource itself can.
+func TestLoadBuilder_LabelsAppliedToPodTemplate(t *testing.T) {
+	gotJob, err := GetJob(
+		WithTemplate("node-collector"),
+		WithLabels(map[string]string{"custom-label": "custom-value"}),
+	)
+	assert.NoError(t, err)
+
+	// Existing behavior: the Job object itself gets the label.
+	assert.Equal(t, "custom-value", gotJob.Labels["custom-label"])
+
+	// Bug: the Pod template never receives it, even though the base "node-collector" template
+	// already has its own static Pod-template label ("app") that must keep working.
+	assert.Equal(t, "node-collector", gotJob.Spec.Template.Labels["app"])
+	assert.Equal(t, "custom-value", gotJob.Spec.Template.Labels["custom-label"])
+}

@@ -1,6 +1,7 @@
 package jobs
 
 import (
+	"slices"
 	"time"
 
 	batchv1 "k8s.io/api/batch/v1"
@@ -98,6 +99,15 @@ func WithContainerVolumeMounts(volumeMounts []corev1.VolumeMount) JobOption {
 	}
 }
 
+// withHostDirectory mounts a host directory read-only at the same path in the
+// container. The directory must exist on the node. Unlike a hostPath volume
+// without a type, it is not created when it is missing.
+func withHostDirectory(name, path string) JobOption {
+	return func(j *JobBuilder) {
+		j.hostDirectories = append(j.hostDirectories, hostDirectory{name: name, path: path})
+	}
+}
+
 func WithImagePullSecrets(imagePullSecrets []corev1.LocalObjectReference) JobOption {
 	return func(j *JobBuilder) {
 		j.imagePullSecrets = imagePullSecrets
@@ -181,6 +191,7 @@ type JobBuilder struct {
 	priorityClassName    string
 	volumes              []corev1.Volume
 	volumeMounts         []corev1.VolumeMount
+	hostDirectories      []hostDirectory
 	imagePullSecrets     []corev1.LocalObjectReference
 	resourceRequirements corev1.ResourceRequirements
 	replaceResourceReq   bool
@@ -275,5 +286,36 @@ func (b *JobBuilder) build() (*batchv1.Job, error) {
 	if len(b.volumeMounts) > 0 {
 		job.Spec.Template.Spec.Containers[0].VolumeMounts = b.volumeMounts
 	}
+	for _, dir := range b.hostDirectories {
+		addHostDirectory(&job.Spec.Template.Spec, dir)
+	}
 	return &job, nil
+}
+
+type hostDirectory struct {
+	name string
+	path string
+}
+
+func addHostDirectory(spec *corev1.PodSpec, dir hostDirectory) {
+	container := &spec.Containers[0]
+	// Keep an existing volume or mount for this directory.
+	if slices.ContainsFunc(spec.Volumes, func(v corev1.Volume) bool { return v.Name == dir.name }) ||
+		slices.ContainsFunc(container.VolumeMounts, func(m corev1.VolumeMount) bool { return m.MountPath == dir.path }) {
+		return
+	}
+	spec.Volumes = append(spec.Volumes, corev1.Volume{
+		Name: dir.name,
+		VolumeSource: corev1.VolumeSource{
+			HostPath: &corev1.HostPathVolumeSource{
+				Path: dir.path,
+				Type: ptr.To(corev1.HostPathDirectory),
+			},
+		},
+	})
+	container.VolumeMounts = append(container.VolumeMounts, corev1.VolumeMount{
+		Name:      dir.name,
+		MountPath: dir.path,
+		ReadOnly:  true,
+	})
 }

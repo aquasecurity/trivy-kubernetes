@@ -708,3 +708,43 @@ func TestGetContainer(t *testing.T) {
 		})
 	}
 }
+
+func TestGetPlatformInfoFromVersion(t *testing.T) {
+	tests := []struct {
+		name    string
+		version string
+		want    Platform
+	}{
+		{
+			name:    "rke2",
+			version: "v1.36.6+rke2r1",
+			want:    Platform{Name: "rke2", Version: "1.36"},
+		},
+		{
+			name:    "k3s",
+			version: "v1.30.4+k3s1",
+			want:    Platform{Name: "k3s", Version: "1.30"},
+		},
+		{
+			name:    "k8s",
+			version: "v1.31.2",
+			want:    Platform{Name: "k8s", Version: "1.31"},
+		},
+		{
+			name:    "eks version",
+			version: "v1.29.3-eks-adc7111",
+			want:    Platform{Name: "k8s", Version: "1.29"},
+		},
+		{
+			name:    "gke version",
+			version: "v1.29.4-gke.1043002",
+			want:    Platform{Name: "k8s", Version: "1.29"},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			got := getPlatformInfoFromVersion(test.version)
+			assert.Equal(t, test.want, got)
+		})
+	}
+}

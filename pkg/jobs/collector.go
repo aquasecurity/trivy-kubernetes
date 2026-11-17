@@ -305,6 +305,7 @@ func (jb *jobCollector) ApplyAndCollect(ctx context.Context, nodeName string) (s
 		return "", fmt.Errorf("loading node config for %q: %w", nodeName, err)
 	}
 	JobOptions = append(JobOptions, WithKubeletConfig(nc))
+	JobOptions = append(JobOptions, platformJobOptions(jb.cluster.Platform().Name)...)
 	job, err := GetJob(JobOptions...)
 	if err != nil {
 		return "", fmt.Errorf("running node-collector job: %w", err)
@@ -524,6 +525,7 @@ func (jb *jobCollector) Apply(ctx context.Context, nodeName string) (*batchv1.Jo
 		WithJobName(jb.name),
 		WithUseNodeSelectorParam(jb.useNodeSelector),
 		WithResourceRequirements(jb.resourceRequirements)}
+	jobOptions = append(jobOptions, platformJobOptions(jb.cluster.Platform().Name)...)
 
 	job, err := GetJob(jobOptions...)
 	if err != nil {
@@ -535,6 +537,18 @@ func (jb *jobCollector) Apply(ctx context.Context, nodeName string) (*batchv1.Jo
 		return nil, err
 	}
 	return job, nil
+}
+
+// rke2DataDir is the directory with the RKE2 server and agent files.
+const rke2DataDir = "/var/lib/rancher/rke2"
+
+// platformJobOptions returns the job options for host directories that exist
+// only on nodes of the given platform.
+func platformJobOptions(platform string) []JobOption {
+	if platform == "rke2" {
+		return []JobOption{withHostDirectory("var-lib-rancher-rke2", rke2DataDir)}
+	}
+	return nil
 }
 
 func (jb *jobCollector) deleteTrivyNamespace(ctx context.Context) {

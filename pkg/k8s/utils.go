@@ -4,20 +4,31 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+
+	"k8s.io/apimachinery/pkg/util/version"
 )
 
+// getPlatformInfoFromVersion returns the distribution named in the build metadata
+// of a server git version, such as "rke2" in "v1.36.6+rke2r1", or "k8s" when
+// there is none.
 func getPlatformInfoFromVersion(s string) Platform {
-	versionRe := regexp.MustCompile(`v(\d+\.\d+)\.\d+[-+](\w+)(?:[.\-])\w+`)
-	subs := versionRe.FindStringSubmatch(s)
-	if len(subs) < 3 {
+	v, err := version.ParseSemantic(s)
+	if err != nil {
 		return Platform{
-			Name:    "k8s",
+			Name:    native,
 			Version: majorVersion(s),
 		}
 	}
+	name := native
+	for _, distro := range []string{k3s, rke2} {
+		if strings.HasPrefix(v.BuildMetadata(), distro) {
+			name = distro
+			break
+		}
+	}
 	return Platform{
-		Name:    subs[2],
-		Version: subs[1],
+		Name:    name,
+		Version: fmt.Sprintf("%d.%d", v.Major(), v.Minor()),
 	}
 }
 

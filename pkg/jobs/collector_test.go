@@ -6,6 +6,9 @@ import (
 
 	trivy_checks "github.com/aquasecurity/trivy-checks"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/utils/ptr"
 )
 
 func TestLoadCheckFilesByID(t *testing.T) {
@@ -270,6 +273,87 @@ func TestFilterCommandsByPlatform(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			got := filterCommandByPlatform(tt.commandsMap, tt.platform)
 			assert.True(t, reflect.DeepEqual(got.Commands, tt.want.Commands))
+		})
+	}
+}
+
+func TestPlatformJobOptions(t *testing.T) {
+	rke2Volume := corev1.Volume{
+		Name: "var-lib-rancher-rke2",
+		VolumeSource: corev1.VolumeSource{
+			HostPath: &corev1.HostPathVolumeSource{
+				Path: "/var/lib/rancher/rke2",
+				Type: ptr.To(corev1.HostPathDirectory),
+			},
+		},
+	}
+	rke2Mount := corev1.VolumeMount{
+		Name:      "var-lib-rancher-rke2",
+		MountPath: "/var/lib/rancher/rke2",
+		ReadOnly:  true,
+	}
+	callerVolume := corev1.Volume{
+		Name: "var-lib-rancher-rke2",
+		VolumeSource: corev1.VolumeSource{
+			HostPath: &corev1.HostPathVolumeSource{Path: "/var/lib/rancher/rke2"},
+		},
+	}
+	callerMount := corev1.VolumeMount{
+		Name:      "var-lib-rancher-rke2",
+		MountPath: "/var/lib/rancher/rke2",
+	}
+
+	tests := []struct {
+		name        string
+		platform    string
+		opts        []JobOption
+		wantVolumes []corev1.Volume
+		wantMounts  []corev1.VolumeMount
+	}{
+		{
+			name:        "rke2",
+			platform:    "rke2",
+			wantVolumes: []corev1.Volume{rke2Volume},
+			wantMounts:  []corev1.VolumeMount{rke2Mount},
+		},
+		{
+			name:     "k8s",
+			platform: "k8s",
+		},
+		{
+			name:     "rke2 with caller volume",
+			platform: "rke2",
+			opts: []JobOption{
+				WithPodVolumes([]corev1.Volume{callerVolume}),
+				WithContainerVolumeMounts([]corev1.VolumeMount{callerMount}),
+			},
+			wantVolumes: []corev1.Volume{callerVolume},
+			wantMounts:  []corev1.VolumeMount{callerMount},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			opts := append([]JobOption{WithTemplate("node-collector")}, tt.opts...)
+			opts = append(opts, platformJobOptions(tt.platform)...)
+			job, err := GetJob(opts...)
+			require.NoError(t, err)
+
+			spec := job.Spec.Template.Spec
+			var gotVolumes []corev1.Volume
+			for _, v := range spec.Volumes {
+				if v.HostPath != nil && v.HostPath.Path == rke2DataDir {
+					gotVolumes = append(gotVolumes, v)
+				}
+			}
+			var gotMounts []corev1.VolumeMount
+			for _, m := range spec.Containers[0].VolumeMounts {
+				if m.MountPath == rke2DataDir {
+					gotMounts = append(gotMounts, m)
+				}
+			}
+			assert.Equal(t, tt.wantVolumes, gotVolumes)
+			assert.Equal(t, tt.wantMounts, gotMounts)
 		})
 	}
 }

@@ -90,14 +90,13 @@ const (
 	k8sComponentNamespace  = "kube-system"
 	serviceAccountDefault  = "default"
 
-	native   = "k8s"
-	gke      = "gke"
-	aks      = "aks"
-	eks      = "eks"
-	rke2     = "rke2"
-	k3s      = "k3s"
-	ocp      = "ocp"
-	microk8s = "microk8s"
+	native = "k8s"
+	gke    = "gke"
+	aks    = "aks"
+	eks    = "eks"
+	rke2   = "rke2"
+	k3s    = "k3s"
+	ocp    = "ocp"
 )
 
 // Cluster interface represents the operations needed to scan a cluster
@@ -305,12 +304,8 @@ func (cluster *cluster) Platfrom() (Platform, error) {
 	p := getPlatformInfoFromVersion(semVersion.GitVersion)
 	var name string
 	switch {
-	case strings.Contains(p.Version, k3s):
-		name = k3s
-	case strings.Contains(p.Version, rke2):
-		name = rke2
-	case strings.Contains(p.Version, microk8s):
-		name = microk8s
+	case p.Name != native:
+		name = p.Name
 	case strings.Contains(nodeName, aks):
 		name = aks
 	case strings.Contains(nodeName, eks):
